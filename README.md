@@ -197,7 +197,11 @@ MIT License – Feel free to use, modify, and share this extension.
 
 ## 🤝 Contributing
 
-Found improvements or better keybindings? Contributions are welcome! Feel free to submit issues and pull requests to enhance the doomcode experience.
+Found improvements or better keybindings? Contributions are welcome! 
+
+**For users:** Feel free to submit issues and pull requests to enhance the doomcode experience.
+
+**For developers:** Want to contribute code? See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, build commands, and development workflow.
 
 ---
 
