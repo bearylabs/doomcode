@@ -2,25 +2,89 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+function getInstallDefaults(context: vscode.ExtensionContext): Record<string, unknown> {
+	const packageJson = context.extension.packageJSON as {
+		doomInstallDefaults?: Record<string, unknown>;
+	};
+
+	return packageJson.doomInstallDefaults ?? {};
+}
+
+async function applyDefaultsToUserSettings(
+	defaults: Record<string, unknown>,
+	showResultMessage = false
+): Promise<void> {
+	const config = vscode.workspace.getConfiguration();
+	const target = vscode.ConfigurationTarget.Global;
+
+	let applied = 0;
+	let skipped = 0;
+	let unsupported = 0;
+	let failed = 0;
+	const entries = Object.entries(defaults);
+
+	for (const [key, value] of entries) {
+		const inspected = config.inspect(key);
+
+		if (!inspected) {
+			unsupported++;
+			continue;
+		}
+
+		const alreadySetByUser = inspected?.globalValue !== undefined;
+
+		if (alreadySetByUser) {
+			skipped++;
+			continue;
+		}
+
+		try {
+			await config.update(key, value, target);
+			applied++;
+		} catch (error) {
+			console.warn(`Failed to apply setting '${key}':`, error);
+			failed++;
+		}
+	}
+
+	if (showResultMessage) {
+		if (entries.length === 0) {
+			void vscode.window.showWarningMessage("No Doom install defaults are configured in package.json.");
+			return;
+		}
+
+		void vscode.window.showInformationMessage(
+			`Doom defaults: applied ${applied}, skipped ${skipped} (already set), unsupported ${unsupported}, failed ${failed}.`
+		);
+	}
+}
+
+
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "doom" is now active!');
+	console.log('Congratulations, your extension "Doom Code" is now active!');
+	const installDefaults = getInstallDefaults(context);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('doom.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Doom Code!');
-	});
+	const disposable = vscode.commands.registerCommand(
+		"doom.install",
+		async () => {
+			const choice = await vscode.window.showWarningMessage(
+				"Apply Doom default settings to your User settings?",
+				{ modal: true },
+				"Apply"
+			);
+			if (choice !== "Apply") return;
 
+			await applyDefaultsToUserSettings(installDefaults, true);
+		}
+	);
 	context.subscriptions.push(disposable);
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

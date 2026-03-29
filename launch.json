@@ -11,8 +11,8 @@
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--profile-temp",
-				"--extensions-dir=${workspaceFolder}/.vscode-test/extensions"
+				"--disable-extensions",
+				"--profile-temp"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"

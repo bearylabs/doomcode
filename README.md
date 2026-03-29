@@ -1,71 +1,204 @@
-# doom README
+<div align="center">
+  <h1>Doom Code – VS Code Extension</h1>
+</div>
 
-This is the README for your extension "doom". After writing up a brief description, we recommend including the following sections.
+![screenshot ](assets/screenshot.png)
+---
 
-## Features
+Bring the power and elegance of **Doom Emacs** to VS Code. This configuration transforms VS Code into a modal, keyboard-driven editor that closely mirrors Doom Emacs' workflows and philosophy – designed for developers who either want to learn Doom Emacs or are forced to use VS Code but prefer an Emacs-like experience.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+> **How it works:** This project is packaged as a **VS Code extension** that builds on top of the excellent **[VSCodeVim](https://github.com/vscodevim/vim)** and **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** extensions, which provide the core modal editing and which-key menu system. The primary contribution of this extension is a **carefully crafted which-key configuration** that extends VSpaceCode's standard bindings and organizes them to closely match **Doom Emacs' command structure and philosophy**. Both dependencies are installed automatically alongside this extension.
 
-For example if there is an image subfolder under your extension project workspace:
+## 🎯 Purpose
 
-\!\[feature X\]\(images/feature-x.png\)
+Doom Emacs is known for its efficient keybindings, modal editing, and a clean, distraction-free interface. However, not everyone can use Emacs – whether due to ecosystem constraints, team workflows, or specific tool requirements.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+**doomcode** bridges this gap by curating and configuring the existing ecosystem of VS Code extensions:
 
-## Requirements
+- **VSCodeVim** provides authentic **evil-mode keybindings** (Vim-like modal editing)
+- **VSpaceCode** provides the **which-key menu system** for leader-key navigation
+- **This extension** configures these extensions to **recreate Doom Emacs' command structure and workflows**
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+The result is a **configuration-based adaptation** that brings Doom's philosophy to VS Code developers with minimal friction.
 
-## Extension Settings
+This configuration works best for developers who value **efficiency over mouse usage** and want a **predictable, modal editing experience**.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## ✨ Features
 
-For example:
+This configuration includes:
 
-This extension contributes the following settings:
+### Navigation & Buffers
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- **File finder** (`SPC .` / `SPC SPC`) – Quick file navigation
+- **Buffer switcher** (`SPC <`) – Switch between open editors
+- **Show all buffers** (`SPC b B`) – View all open editors/buffers
+- **File history** (`SPC s u`) – Access timeline/file history
 
-## Known Issues
+### Code Intelligence
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- **Jump to definition** (`SPC c d`) – Go to function/class definition
+- **Jump to references** (`SPC c D`) – Find all references
+- **Find implementations** (`SPC c i`) – Locate implementations
+- **Find type definition** (`SPC c t`) – Jump to type definition
+- **Format code** (`SPC c f`) – Format document or selection
+- **List errors** (`SPC c x`) – Show all diagnostics in Problems panel
+- **Trim trailing whitespace** (`SPC c w`) – Clean up whitespace
+- **Compile/Build** (`SPC c c`) – Run build tasks
 
-## Release Notes
+### Project & Sidebar
 
-Users appreciate release notes as you update your extension.
+- **Toggle project sidebar** (`SPC o p`) – Show/hide file explorer
+- **New file** (`c f` in explorer) – Create new file
+- **New folder** (`c d` in explorer) – Create new folder
+- **Rename file** (`Shift+R` in explorer) – Rename selection
+- **Delete file** (`d` in explorer) – Delete selection
 
-### 1.0.0
+### Terminal & Debug
 
-Initial release of ...
+- **Toggle terminal** (`SPC o t`) – Open/close integrated terminal
+- **Start debugger** (`SPC o d`) – Open debug sidebar
+- **Debug console** (`SPC o D`) – Open REPL/debug console
 
-### 1.0.1
+### AI Assistants
 
-Fixed issue #.
+- **Copilot Chat** (`SPC o a a`) – Toggle Copilot Chat
+- **Codex Chat** (`SPC o a c`) – Open Codex Chat
+- **Gemini Chat** (`SPC o a g`) – Open Gemini Chat
 
-### 1.1.0
+### Window Management
 
-Added features X, Y, and Z.
+- **Close editor group** (`SPC w c`) – Close current editor group
+- **New workspace** (`SPC Tab n`) – Create new VS Code window
+- **Switch workspaces** (`SPC Tab Tab`) – Switch between windows
+- **Command palette** (`SPC :`) – M-x equivalent for VS Code
+
+### UI Cleanliness
+
+- Activity bar hidden for minimal distractions
+- Tab bar disabled – modal navigation replaces tab clicking
+- Breadcrumbs disabled – cleaner editor view
+- Command center hidden
+- Menu bar in compact mode
+
+## 🎮 Modal Editing
+
+All keybindings follow **Vim/Evil conventions**:
+
+- `leader` = `Space` (configure via leader key)
+- Which-key menus activate automatically with a short delay
+- All standard movement keys work in modal contexts
+
+**File Explorer bindings:**
+
+- `c f` – New file
+- `c d` – New folder
+- `r` – Refresh
+- `Shift+R` – Rename
+- `d` – Delete
+- `q` – Close sidebar
+
+The spacer provides additional context-aware bindings for Open Editors and other panels.
+
+## 📋 Requirements
+
+This configuration **requires** two essential extensions:
+
+### Core Dependencies
+
+Both dependencies are declared as `extensionDependencies` and are installed automatically when you install Doom Code:
+
+1. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
+   - Provides modal editing (normal, insert, visual modes)
+   - Handles all Vim motions and operators
+2. **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** – Which-key menu system
+   - Displays keyboard command menus (like Doom's prefix menu)
+   - The entire custom configuration is built on which-key's binding system
+   - Standard VS Code command menus have been extended to match Doom Emacs' style as closely as possible
+
+## 🚀 Installation
+
+### Step 1: Install the Extension
+
+Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSCodeVim and VSpaceCode are declared as dependencies and will be installed automatically.
+
+### Step 2: Apply Additional Settings
+
+Some settings cannot be applied automatically by extensions (such as Vim leader-key bindings). To write these to your user settings:
+
+1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run **Install Doom Code**
+3. Confirm when prompted
+
+This only writes settings that are not already configured, so it is safe to run on an existing setup.
+
+### Step 3: Configure UI Layout
+
+For the configuration to work optimally:
+
+1. **Open the Explorer panel** (`SPC o p`)
+2. **Drag "Timeline"** from the top to the bottom panel
+3. **Drag "Open Editors"** to make it its own tab inside the primary side bar for a cleaner UI
+   
+This creates a clean primary editor area with file navigation and history in the bottom panel, matching Doom Emacs' layout philosophy.
+
+### Step 4: Clean Up Your UI (Recommended)
+
+The configuration assumes a **clean UI**. For best results:
+
+- Hide the Activity bar (already configured)
+- Disable tab bars (already configured)
+- Remove unnecessary sidebar icons
+- Keep only essential panels visible
+
+A minimal UI reduces distractions and makes keyboard-driven navigation more effective.
+
+## 🎨 UI Philosophy
+
+This configuration emphasizes:
+
+- **Keyboard-first workflow** – Everything accessible via leader key
+- **Minimal visual noise** – Hidden tabs, breadcrumbs, and command center
+- **Modal paradigm** – Use Vim modes instead of mouse-based selection
+- **Consistent keybindings** – Doom Emacs conventions throughout
+
+The cleaner your UI, the more effective the modal experience becomes.
+
+## ⚙️ Customization
+
+The main customization happens through **which-key binding overrides** in the VS Code settings. You can override specific bindings by editing `whichkey.bindingOverrides` in your user `settings.json`, or by forking this extension and editing the `contributes.configurationDefaults` section of its `package.json`. Edit the `whichkey.bindingOverrides` array to:
+
+- Add new leader-key shortcuts
+- Modify existing bindings
+- Create nested command groups
+
+Refer to the [VSpaceCode documentation](https://github.com/VSpaceCode/vscode-which-key) for advanced configuration options.
+
+## 🙏 Credits & Inspiration
+
+This configuration stands on the shoulders of amazing projects:
+
+- **[Doom Emacs](https://github.com/hlissner/doom-emacs)** – The philosophical foundation and keybinding inspiration that makes this configuration possible
+- **[VSCodeVim](https://github.com/vscodevim/vim)** – Bringing authentic Vim/Evil modal editing to VS Code
+- **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** – The which-key implementation that enables Doom-like leader-key menus
+
+Thank you to all contributors and maintainers of these projects for their dedication to improving the developer experience.
+
+## 📄 License
+
+MIT License – Feel free to use, modify, and share this extension.
+
+## 💡 Tips
+
+- Use `SPC :` to access the VS Code command palette with a Doom-like menu
+- Press `SPC` once to see all available commands (the which-key menu)
+- Combine `SPC` commands with Vim motions for powerful editing
+- Explore different language servers for enhanced code intelligence
+- Customize the theme and icon theme to match your own preferences
+
+## 🤝 Contributing
+
+Found improvements or better keybindings? Contributions are welcome! Feel free to submit issues and pull requests to enhance the doomcode experience.
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Make VS Code feel like Doom Emacs. Happy coding!** 🚀
