@@ -202,6 +202,16 @@ Found improvements or better keybindings? Contributions are welcome!
 
 **For developers:** Want to contribute code? See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, build commands, and development workflow.
 
+## 🚢 Release Automation (Maintainers)
+
+Releases are automated with GitHub Actions.
+
+1. Bump `package.json` version and update `CHANGELOG.md`
+2. Push changes to `main`
+3. Push a matching version tag (example: `v0.0.3`)
+
+That tag triggers a workflow that runs checks, creates a GitHub Release with a `.vsix` asset, and publishes the same package to the VS Code Marketplace.
+
 ---
 
 **Make VS Code feel like Doom Emacs. Happy coding!** 🚀

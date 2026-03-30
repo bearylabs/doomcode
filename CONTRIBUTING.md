@@ -179,10 +179,30 @@ Core settings go in `contributes.configurationDefaults`. Settings that don't pas
 
 **Only maintainers can publish.** To publish a new version:
 
-1. Update `version` in `package.json` (follow [semver](https://semver.org/))
-2. Update `CHANGELOG.md` with release notes
-3. Commit and tag: `git tag v0.x.x`
-4. Publish: `nix develop -c npx @vscode/vsce publish`
+### One-time setup (GitHub repository)
+
+1. Create a VS Marketplace PAT with **Marketplace (Manage)** scope.
+2. In GitHub, go to repository settings -> Secrets and variables -> Actions.
+3. Add a repository secret named `VSCE_PAT` containing that token.
+
+### Release flow (automated)
+
+1. Update `version` in `package.json` (follow [semver](https://semver.org/)).
+2. Update `CHANGELOG.md` with release notes.
+3. Commit and push to `main`.
+4. Create and push a version tag that matches `package.json` exactly:
+
+```bash
+git tag v0.x.y
+git push origin v0.x.y
+```
+
+When the tag is pushed, GitHub Actions will:
+
+1. Run compile, lint, and tests.
+2. Package a `.vsix` artifact.
+3. Create a GitHub Release for the tag and attach the `.vsix`.
+4. Publish that same package to VS Code Marketplace using `VSCE_PAT`.
 
 ## Troubleshooting
 
