@@ -69,6 +69,17 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "Doom Code" is now active!');
 	const installDefaults = getInstallDefaults(context);
+	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
+
+	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {
+		void applyDefaultsToUserSettings(installDefaults, false)
+			.then(async () => {
+				await context.globalState.update(defaultsAppliedKey, true);
+			})
+			.catch((error) => {
+				console.warn("Failed to apply Doom defaults on first activation:", error);
+			});
+	}
 
 	const disposable = vscode.commands.registerCommand(
 		"doom.install",

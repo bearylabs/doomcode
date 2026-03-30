@@ -12,3 +12,14 @@
 
 
 ## [Unreleased]
+
+### Added
+- Automatic one-time application of Doom defaults on first activation
+
+### Changed
+- Updated extension icon in `assets/icon.png`
+- Reordered and cleaned up `whichkey.bindings` entries in configuration defaults
+
+### Fixed
+- Fixed terminal popup toggle behavior
+- Changed the alternative leader key from `Alt+Shift+Space` to `Ctrl+Space`

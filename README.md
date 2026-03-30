@@ -85,6 +85,7 @@ This configuration includes:
 All keybindings follow **Vim/Evil conventions**:
 
 - `leader` = `Space` (configure via leader key)
+- Alternative which-key trigger =  `Alt+Space` and `Ctrl+Space` (only where SPC is not working)
 - Which-key menus activate automatically with a short delay
 - All standard movement keys work in modal contexts
 
@@ -121,15 +122,13 @@ Both dependencies are declared as `extensionDependencies` and are installed auto
 
 Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSCodeVim and VSpaceCode are declared as dependencies and will be installed automatically.
 
-### Step 2: Apply Additional Settings
+### Step 2: Let Doom Code Apply Its Defaults
 
-Some settings cannot be applied automatically by extensions (such as Vim leader-key bindings). To write these to your user settings:
+On first activation, Doom Code automatically writes its install defaults to your user settings when those settings are not already configured.
 
-1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run **Install Doom Code**
-3. Confirm when prompted
+This gives a fresh setup the required defaults automatically while leaving any existing user-defined settings untouched.
 
-This only writes settings that are not already configured, so it is safe to run on an existing setup.
+If you want to run the setup again later, open the Command Palette, run **Install Doom Code**, and confirm the prompt.
 
 ### Step 3: Configure UI Layout
 
@@ -138,7 +137,7 @@ For the configuration to work optimally:
 1. **Open the Explorer panel** (`SPC o p`)
 2. **Drag "Timeline"** from the top to the bottom panel
 3. **Drag "Open Editors"** to make it its own tab inside the primary side bar for a cleaner UI
-   
+
 This creates a clean primary editor area with file navigation and history in the bottom panel, matching Doom Emacs' layout philosophy.
 
 ### Step 4: Clean Up Your UI (Recommended)
@@ -165,7 +164,7 @@ The cleaner your UI, the more effective the modal experience becomes.
 
 ## ⚙️ Customization
 
-The main customization happens through **which-key binding overrides** in the VS Code settings. You can override specific bindings by editing `whichkey.bindingOverrides` in your user `settings.json`, or by forking this extension and editing the `contributes.configurationDefaults` section of its `package.json`. Edit the `whichkey.bindingOverrides` array to:
+The main customization happens through **which-key bindings** in the VS Code settings. You can customize bindings by editing `whichkey.bindings` in your user `settings.json`, or by forking this extension and editing the `contributes.configurationDefaults` section of its `package.json`. Edit the `whichkey.bindings` array to:
 
 - Add new leader-key shortcuts
 - Modify existing bindings
