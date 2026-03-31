@@ -45,6 +45,17 @@ This configuration includes:
 - **Trim trailing whitespace** (`SPC c w`) – Clean up whitespace
 - **Compile/Build** (`SPC c c`) – Run build tasks
 
+### Search
+
+- **Search in file** (`SPC s s`) – Find in current editor (uses [fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) if installed, falls back to normal find)
+- **Search project** (`SPC s p`) – Find across all files in project
+- **Find symbol** (`SPC s j`) – Jump to symbol in current file
+- **Find symbol workspace** (`SPC s J`) – Find symbol across all files
+- **Find all references** (`SPC s r`) – Show all usages (in side panel)
+- **Find all references (side view)** (`SPC s R`) – Open references in references panel
+- **Search and replace** (`Ctrl+S`) – Open find widget with multi-state navigation
+- **File history** (`SPC s u`) – Access timeline/file history
+
 ### Project & Sidebar
 
 - **Toggle project sidebar** (`SPC o p`) – Show/hide file explorer
