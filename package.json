@@ -36,7 +36,8 @@
   ],
   "extensionDependencies": [
     "vscodevim.vim",
-    "VSpaceCode.whichkey"
+    "VSpaceCode.whichkey",
+    "jacobdufault.fuzzy-search"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -917,21 +918,8 @@
             {
               "key": "s",
               "name": "Search in current file",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "when:extension:jacobdufault.fuzzy-search",
-                  "name": "Search in current file (Fuzzy)",
-                  "type": "command",
-                  "command": "fuzzySearch.activeTextEditor"
-                },
-                {
-                  "key": "",
-                  "name": "Search in current file",
-                  "type": "command",
-                  "command": "editor.action.startFindReplaceAction"
-                }
-              ]
+              "type": "command",
+              "command": "fuzzySearch.activeTextEditor"
             },
             {
               "key": "u",
@@ -1691,15 +1679,6 @@
         "when": "whichkeyVisible && multipleEditorGroups"
       },
       {
-        "key": "s",
-        "command": "whichkey.triggerKey",
-        "args": {
-          "key": "s",
-          "when": "extension:jacobdufault.fuzzy-search"
-        },
-        "when": "whichkeyVisible && extension:jacobdufault.fuzzy-search"
-      },
-      {
         "key": "p",
         "command": "whichkey.triggerKey",
         "args": {
@@ -1869,51 +1848,51 @@
         "command": "workbench.action.acceptSelectedQuickOpenItem",
         "when": "inQuickInput && !whichkeyVisible"
       },
-      { // Open find widget
+      {
         "key": "ctrl+s",
         "command": "actions.find",
         "when": "(editorTextFocus && !findWidgetVisible) || (findWidgetVisible && !(findInputFocussed || replaceInputFocussed))"
       },
-      { // Go to next find match
+      {
         "key": "ctrl+s",
         "command": "editor.action.nextMatchFindAction",
         "when": "findWidgetVisible && (findInputFocussed || replaceInputFocussed)"
       },
-      { // Unbind default open recent
+      {
         "key": "ctrl+r",
         "command": "-workbench.action.openRecent"
       },
-      { // Go to previous find match
+      {
         "key": "ctrl+r",
         "command": "editor.action.previousMatchFindAction",
         "when": "findWidgetVisible && (findInputFocussed || replaceInputFocussed)"
       },
-      { // Close find widget with Enter
+      {
         "key": "enter",
         "command": "closeFindWidget",
         "when": "findWidgetVisible"
       },
-      { // Close find widget with Escape
+      {
         "key": "escape",
         "command": "closeFindWidget",
         "when": "findWidgetVisible"
       },
-      { // Workaround refocus search to detect where the search view is placed to close it with escape
+      {
         "key": "escape",
         "command": "workbench.action.findInFiles",
         "when": "searchViewletVisible || viewletVisible && activeViewlet == 'workbench.view.search' || focusedView == 'workbench.view.search'"
       },
-      { // Close search window placed in auxiliary bar
+      {
         "key": "escape",
         "command": "workbench.action.toggleAuxiliaryBar",
         "when": "focusedView == 'workbench.view.search' && auxiliaryBarVisible && !explorerViewletVisible"
       },
-      { // Close search window placed in panel
+      {
         "key": "escape",
         "command": "workbench.action.togglePanel",
         "when": "focusedView == 'workbench.view.search' && panelVisible"
       },
-      { // Close search window placed in sidebar
+      {
         "key": "escape",
         "command": "workbench.action.toggleSidebarVisibility",
         "when": "focusedView == 'workbench.view.search' && sideBarVisible && !explorerViewletVisible"

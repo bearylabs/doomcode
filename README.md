@@ -47,7 +47,7 @@ This configuration includes:
 
 ### Search
 
-- **Search in file** (`SPC s s`) – Find in current editor (uses [fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) if installed, falls back to normal find)
+- **Search in file** (`SPC s s`) – Find in current editor using [fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) (required dependency)
 - **Search project** (`SPC s p`) – Find across all files in project
 - **Find symbol** (`SPC s j`) – Jump to symbol in current file
 - **Find symbol workspace** (`SPC s J`) – Find symbol across all files
@@ -113,11 +113,11 @@ The spacer provides additional context-aware bindings for Open Editors and other
 
 ## 📋 Requirements
 
-This configuration **requires** two essential extensions:
+This configuration **requires** three essential extensions:
 
 ### Core Dependencies
 
-Both dependencies are declared as `extensionDependencies` and are installed automatically when you install Doom Code:
+All dependencies are declared as `extensionDependencies` and are installed automatically when you install Doom Code:
 
 1. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
    - Provides modal editing (normal, insert, visual modes)
@@ -126,6 +126,9 @@ Both dependencies are declared as `extensionDependencies` and are installed auto
    - Displays keyboard command menus (like Doom's prefix menu)
    - The entire custom configuration is built on which-key's binding system
    - Standard VS Code command menus have been extended to match Doom Emacs' style as closely as possible
+3. **[fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search)** – Fuzzy in-file search
+   - Required for `SPC s s` (Search in file)
+   - Provides a fuzzy-matching find experience similar to Doom Emacs' `swiper`
 
 ## 🚀 Installation
 

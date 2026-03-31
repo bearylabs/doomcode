@@ -4,13 +4,13 @@
 ## [0.0.3] - 2026-03-31
 
 ### Added
-- Conditional fuzzy-search support with [jacobdufault.fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) extension
+- [fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) as a hard dependency for `SPC s s` (Search in file)
 - Enhanced find/replace keybindings (`Ctrl+S` to open/navigate, `Ctrl+R` for previous match)
 - Global keybindings for find widget control (Enter/Escape to close)
 - Search view closure handling for sidebar, panel, and auxiliary bar contexts
 
 ### Changed
-- Improved "Search in current file" (`SPC s s`) to conditionally use fuzzy-search when available, falls back to normal editor find
+- `SPC s s` (Search in file) now requires fuzzy-search — fallback to native find removed
 - Fixed "Search Project" (`SPC s p`) command to use correct `workbench.action.findInFiles`
 
 ### Fixed
