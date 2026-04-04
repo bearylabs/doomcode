@@ -124,7 +124,7 @@ function containsStaleCommand(value: unknown): boolean {
 
 /**
  * Scan vim keybinding arrays in user settings for stale commands.
- * If found, remove the setting entirely so doomInstallDefaults can re-apply.
+ * Only removes individual stale entries, preserving all user-defined bindings.
  * Returns the list of setting keys that were cleaned.
  */
 async function cleanStaleSettings(): Promise<string[]> {
@@ -140,8 +140,14 @@ async function cleanStaleSettings(): Promise<string[]> {
 
 	for (const key of keysToCheck) {
 		const inspected = config.inspect(key);
-		if (inspected?.globalValue !== undefined && containsStaleCommand(inspected.globalValue)) {
-			await config.update(key, undefined, vscode.ConfigurationTarget.Global);
+		const currentValue = inspected?.globalValue;
+		if (!Array.isArray(currentValue)) {
+			continue;
+		}
+
+		const filtered = currentValue.filter((entry) => !containsStaleCommand(entry));
+		if (filtered.length !== currentValue.length) {
+			await config.update(key, filtered, vscode.ConfigurationTarget.Global);
 			cleaned.push(key);
 		}
 	}
