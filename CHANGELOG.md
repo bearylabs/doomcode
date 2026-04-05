@@ -1,6 +1,18 @@
 # Change Log
 
 
+## [0.0.4] - 2026-04-05
+
+### Added
+- `doom.cleanup` command to detect and remove stale settings and conflicting entries (surgical per-entry removal, requires explicit user confirmation)
+
+### Fixed
+- Added editor-specific `Space` keybinding and explicit `vim.leader` default to fix `SPC` in focused editor context
+
+### Known Issues
+- `doom.cleanup` only affects the default profile — settings in non-default VS Code profiles are not scanned or modified
+
+
 ## [0.0.3] - 2026-03-31
 
 ### Added
@@ -40,17 +52,3 @@
 - Which-key menu system with 40+ configured bindings
 - `doom.install` command to apply settings
 - Full documentation and MIT license
-
-
-## [0.0.2] - 2026-03-30
-
-### Added
-- Automatic one-time application of Doom defaults on first activation
-
-### Changed
-- Updated extension icon in `assets/icon.png`
-- Reordered and cleaned up `whichkey.bindings` entries in configuration defaults
-
-### Fixed
-- Fixed terminal popup toggle behavior
-- Changed the alternative leader key from `Alt+Shift+Space` to `Ctrl+Space`
