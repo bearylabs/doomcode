@@ -160,8 +160,8 @@ async function cleanStaleSettings(): Promise<string[]> {
  * with a stale prefix, and write back if anything changed.
  * Returns the number of entries removed.
  */
-async function cleanStaleKeybindings(): Promise<number> {
-	const keybindingsPath = getKeybindingsPath();
+async function cleanStaleKeybindings(context: vscode.ExtensionContext): Promise<number> {
+	const keybindingsPath = getKeybindingsPath(context);
 	if (!keybindingsPath || !fs.existsSync(keybindingsPath)) {
 		return 0;
 	}
@@ -216,13 +216,13 @@ async function cleanStaleKeybindings(): Promise<number> {
 	return removed;
 }
 
-function getKeybindingsPath(): string | undefined {
-	const appData = process.env.APPDATA
-		?? (process.platform === 'darwin'
-			? path.join(process.env.HOME ?? '', 'Library', 'Application Support')
-			: path.join(process.env.HOME ?? '', '.config'));
-
-	return path.join(appData, 'Code', 'User', 'keybindings.json');
+function getKeybindingsPath(context: vscode.ExtensionContext): string | undefined {
+	// globalStorageUri points to:
+	//   <userData>/User/globalStorage/<ext-id>       (default profile)
+	//   <userData>/User/profiles/<id>/globalStorage/<ext-id>  (named profile)
+	// Go up 2 levels to reach the active profile's User directory.
+	const profileDir = path.dirname(path.dirname(context.globalStorageUri.fsPath));
+	return path.join(profileDir, 'keybindings.json');
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ interface StaleDetectionResult {
 	hasStaleKeybindings: boolean;
 }
 
-function detectStaleState(): StaleDetectionResult {
+function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResult {
 	const conflicts = detectConflictingExtensions();
 
 	const config = vscode.workspace.getConfiguration();
@@ -253,7 +253,7 @@ function detectStaleState(): StaleDetectionResult {
 	});
 
 	let hasStaleKeybindings = false;
-	const keybindingsPath = getKeybindingsPath();
+	const keybindingsPath = getKeybindingsPath(context);
 	if (keybindingsPath && fs.existsSync(keybindingsPath)) {
 		try {
 			const raw = fs.readFileSync(keybindingsPath, 'utf-8');
@@ -281,7 +281,7 @@ function detectStaleState(): StaleDetectionResult {
 // ---------------------------------------------------------------------------
 
 async function promptForCleanup(context: vscode.ExtensionContext): Promise<void> {
-	const { conflicts, hasStaleSettings, hasStaleKeybindings } = detectStaleState();
+	const { conflicts, hasStaleSettings, hasStaleKeybindings } = detectStaleState(context);
 
 	if (conflicts.length > 0) {
 		await warnAboutConflicts(conflicts);
@@ -305,7 +305,7 @@ async function promptForCleanup(context: vscode.ExtensionContext): Promise<void>
 
 async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	const cleanedSettings = await cleanStaleSettings();
-	const removedKeybindings = await cleanStaleKeybindings();
+	const removedKeybindings = await cleanStaleKeybindings(context);
 
 	const didClean = cleanedSettings.length > 0 || removedKeybindings > 0;
 

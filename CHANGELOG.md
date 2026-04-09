@@ -9,9 +9,6 @@
 ### Fixed
 - Added editor-specific `Space` keybinding and explicit `vim.leader` default to fix `SPC` in focused editor context
 
-### Known Issues
-- `doom.cleanup` only affects the default profile — settings in non-default VS Code profiles are not scanned or modified
-
 
 ## [0.0.3] - 2026-03-31
 

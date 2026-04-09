@@ -186,10 +186,6 @@ The main customization happens through **which-key bindings** in the VS Code set
 
 Refer to the [VSpaceCode documentation](https://github.com/VSpaceCode/vscode-which-key) for advanced configuration options.
 
-## ⚠️ Known Issues
-
-- **`doom.cleanup` only affects the default profile** – When using VS Code profiles, the cleanup command currently reads and writes settings from the default profile only. Settings in non-default profiles are not scanned or modified.
-
 ## 🙏 Credits & Inspiration
 
 This configuration stands on the shoulders of amazing projects:
