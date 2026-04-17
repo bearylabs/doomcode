@@ -3,7 +3,7 @@
   "displayName": "Doom Code",
   "description": "Doom Code makes Visual Studio Code feel like Doom Emacs by applying a curated, opinionated set of settings that emphasize a fast, keyboard-first workflow and a clean, distraction-free editor.",
   "icon": "assets/icon.png",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "publisher": "bearylabs",
   "repository": {
@@ -536,9 +536,15 @@
             },
             {
               "key": "y",
-              "name": "Copy path of active file",
+              "name": "Yank file path",
               "type": "command",
               "command": "workbench.action.files.copyPathOfActiveFile"
+            },
+            {
+              "key": "Y",
+              "name": "Yank file path from project",
+              "type": "command",
+              "command": "copyRelativeFilePath"
             },
             {
               "key": "o",
@@ -1004,9 +1010,9 @@
             },
             {
               "key": "w",
-              "name": "Toggle ignore trim whitespace in diff",
+              "name": "Soft line wrapping",
               "type": "command",
-              "command": "toggle.diff.ignoreTrimWhitespace"
+              "command": "editor.action.toggleWordWrap"
             },
             {
               "key": "W",
@@ -1906,6 +1912,16 @@
         "key": "escape",
         "command": "workbench.action.toggleSidebarVisibility",
         "when": "focusedView == 'workbench.view.search' && sideBarVisible && !explorerViewletVisible"
+      },
+      {
+        "key": "ctrl+c",
+        "command": "workbench.action.terminal.copySelection",
+        "when": "terminalFocus && terminalTextSelected"
+      },
+      {
+        "key": "ctrl+v",
+        "command": "workbench.action.terminal.paste",
+        "when": "terminalFocus"
       }
     ]
   },

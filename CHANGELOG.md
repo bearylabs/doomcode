@@ -1,6 +1,18 @@
 # Change Log
 
 
+## [0.0.5] - 2026-04-17
+
+### Changed
+- Aligned local TypeScript tooling by setting explicit `node16` module resolution, declaring Node/VS Code/Mocha types
+- Added integrated terminal keybindings so `Ctrl+C` copies when text is selected and `Ctrl+V` pastes while terminal focus is active
+- Added `SPC t w` as a toggle for soft line wrapping in the current editor
+- Added `SPC f Y` to copy the active file path relative to the project root
+
+### Fixed
+- Restored `whichkey.show` for `Alt+Space` and `Ctrl+Space` when focus is in VS Code auxiliary bar views
+
+
 ## [0.0.4] - 2026-04-05
 
 ### Added

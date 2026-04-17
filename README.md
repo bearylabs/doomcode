@@ -44,6 +44,7 @@ This configuration includes:
 - **List errors** (`SPC c x`) – Show all diagnostics in Problems panel
 - **Trim trailing whitespace** (`SPC c w`) – Clean up whitespace
 - **Compile/Build** (`SPC c c`) – Run build tasks
+- **Soft line wrapping** (`SPC t w`) – Toggle word wrap in the current editor
 
 ### Search
 
@@ -59,6 +60,7 @@ This configuration includes:
 ### Project & Sidebar
 
 - **Toggle project sidebar** (`SPC o p`) – Show/hide file explorer
+- **Copy project-relative file path** (`SPC f Y`) – Copy the active file path relative to the workspace/project root
 - **New file** (`c f` in explorer) – Create new file
 - **New folder** (`c d` in explorer) – Create new folder
 - **Rename file** (`Shift+R` in explorer) – Rename selection
@@ -67,6 +69,7 @@ This configuration includes:
 ### Terminal & Debug
 
 - **Toggle terminal** (`SPC o t`) – Open/close integrated terminal
+- **Terminal clipboard** (`Ctrl+C` / `Ctrl+V`) – In the integrated terminal, `Ctrl+C` copies when text is selected and `Ctrl+V` pastes
 - **Start debugger** (`SPC o d`) – Open debug sidebar
 - **Debug console** (`SPC o D`) – Open REPL/debug console
 
