@@ -1,10 +1,16 @@
 {
 	"compilerOptions": {
 		"module": "Node16",
+		"moduleResolution": "node16",
 		"target": "ES2022",
 		"outDir": "out",
 		"lib": [
 			"ES2022"
+		],
+		"types": [
+			"node",
+			"vscode",
+			"mocha"
 		],
 		"sourceMap": true,
 		"rootDir": "src",
