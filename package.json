@@ -1627,12 +1627,12 @@
       {
         "key": "alt+space",
         "command": "whichkey.show",
-        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert'"
+        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
       },
       {
         "key": "ctrl+space",
         "command": "whichkey.show",
-        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert'"
+        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
       },
       {
         "key": "t",
