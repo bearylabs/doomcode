@@ -1,6 +1,21 @@
 # Change Log
 
 
+## [Unreleased]
+
+### Added
+- Added `SPC t b` as a "big mode" toggle that zooms the workbench in and resets back to normal on repeat
+- Added [Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight) as a hard dependency for `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` annotations
+
+### Changed
+- Added default Todo Highlight styling and overview ruler colors for supported annotation keywords
+- Remapped `Ctrl+=` and `Ctrl+-` to editor font zoom in/out while editor focus is active
+- Removed the duplicate word-wrap toggle entry from the which-key menu
+
+### Fixed
+- Added `Escape` support to close the Problems panel
+
+
 ## [0.0.5] - 2026-04-17
 
 ### Changed
