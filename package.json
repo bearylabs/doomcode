@@ -37,13 +37,55 @@
   "extensionDependencies": [
     "vscodevim.vim",
     "VSpaceCode.whichkey",
-    "jacobdufault.fuzzy-search"
+    "jacobdufault.fuzzy-search",
+    "wayou.vscode-todo-highlight"
   ],
   "activationEvents": [
     "onStartupFinished"
   ],
   "doomInstallDefaults": {
     "vim.leader": "<space>",
+    "todohighlight.defaultStyle": {
+      "backgroundColor": "transparent",
+      "fontWeight": "bold"
+    },
+    "todohighlight.keywords": [
+      {
+        "text": "TODO:",
+        "color": "#eed49f",
+        "backgroundColor": "transparent",
+        "overviewRulerColor": "rgba(238,212,159,0.8)",
+        "fontWeight": "bold"
+      },
+      {
+        "text": "FIXME:",
+        "color": "#ed8796",
+        "backgroundColor": "transparent",
+        "overviewRulerColor": "rgba(237,135,150,0.8)",
+        "fontWeight": "bold"
+      },
+      {
+        "text": "NOTE:",
+        "color": "#a6da95",
+        "backgroundColor": "transparent",
+        "overviewRulerColor": "rgba(166,218,149,0.8)",
+        "fontWeight": "bold"
+      },
+      {
+        "text": "REVIEW:",
+        "color": "#c6a0f6",
+        "backgroundColor": "transparent",
+        "overviewRulerColor": "rgba(198,160,246,0.8)",
+        "fontWeight": "bold"
+      },
+      {
+        "text": "HACK:",
+        "color": "#f5a97f",
+        "backgroundColor": "transparent",
+        "overviewRulerColor": "rgba(245,169,127,0.8)",
+        "fontWeight": "bold"
+      }
+    ],
     "vim.normalModeKeyBindingsNonRecursive": [
       {
         "before": [
@@ -71,6 +113,47 @@
   "contributes": {
     "configurationDefaults": {
       "vim.leader": "<space>",
+      "todohighlight.defaultStyle": {
+        "backgroundColor": "transparent",
+        "fontWeight": "bold"
+      },
+      "todohighlight.keywords": [
+        {
+          "text": "TODO:",
+          "color": "#eed49f",
+          "backgroundColor": "transparent",
+          "overviewRulerColor": "rgba(238,212,159,0.8)",
+          "fontWeight": "bold"
+        },
+        {
+          "text": "FIXME:",
+          "color": "#ed8796",
+          "backgroundColor": "transparent",
+          "overviewRulerColor": "rgba(237,135,150,0.8)",
+          "fontWeight": "bold"
+        },
+        {
+          "text": "NOTE:",
+          "color": "#a6da95",
+          "backgroundColor": "transparent",
+          "overviewRulerColor": "rgba(166,218,149,0.8)",
+          "fontWeight": "bold"
+        },
+        {
+          "text": "REVIEW:",
+          "color": "#c6a0f6",
+          "backgroundColor": "transparent",
+          "overviewRulerColor": "rgba(198,160,246,0.8)",
+          "fontWeight": "bold"
+        },
+        {
+          "text": "HACK:",
+          "color": "#f5a97f",
+          "backgroundColor": "transparent",
+          "overviewRulerColor": "rgba(245,169,127,0.8)",
+          "fontWeight": "bold"
+        }
+      ],
       "vim.useSystemClipboard": true,
       "vim.hlsearch": true,
       "vim.incsearch": true,

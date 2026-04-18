@@ -116,7 +116,7 @@ The spacer provides additional context-aware bindings for Open Editors and other
 
 ## 📋 Requirements
 
-This configuration **requires** three essential extensions:
+This configuration **requires** four essential extensions:
 
 ### Core Dependencies
 
@@ -132,6 +132,9 @@ All dependencies are declared as `extensionDependencies` and are installed autom
 3. **[fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search)** – Fuzzy in-file search
    - Required for `SPC s s` (Search in file)
    - Provides a fuzzy-matching find experience similar to Doom Emacs' `swiper`
+4. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
+   - Required for Doom Code's default `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` comment highlighting
+   - Adds matching overview ruler markers with Doom Code's color palette
 
 ## 🚀 Installation
 
