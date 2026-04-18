@@ -1003,6 +1003,45 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "b",
+              "name": "Big mode",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "Enable big mode",
+                  "type": "commands",
+                  "commands": [
+                    "workbench.action.zoomIn",
+                    "setContext"
+                  ],
+                  "args": [
+                    null,
+                    [
+                      "doom.bigModeEnabled",
+                      true
+                    ]
+                  ]
+                },
+                {
+                  "key": "when:doom.bigModeEnabled",
+                  "name": "Reset big mode",
+                  "type": "commands",
+                  "commands": [
+                    "workbench.action.zoomReset",
+                    "setContext"
+                  ],
+                  "args": [
+                    null,
+                    [
+                      "doom.bigModeEnabled",
+                      false
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
               "key": "c",
               "name": "Toggle find case sensitive",
               "type": "command",
@@ -1725,6 +1764,15 @@
         "when": "whichkeyVisible && view.workbench.panel.chat.view.copilot.visible"
       },
       {
+        "key": "b",
+        "command": "whichkey.triggerKey",
+        "args": {
+          "key": "b",
+          "when": "doom.bigModeEnabled"
+        },
+        "when": "whichkeyVisible && doom.bigModeEnabled"
+      },
+      {
         "key": "x",
         "command": "whichkey.triggerKey",
         "args": {
@@ -1876,6 +1924,24 @@
       {
         "key": "ctrl+r",
         "command": "-workbench.action.openRecent"
+      },
+      {
+        "key": "ctrl+=",
+        "command": "-workbench.action.zoomIn"
+      },
+      {
+        "key": "ctrl+-",
+        "command": "-workbench.action.zoomOut"
+      },
+      {
+        "key": "ctrl+=",
+        "command": "editor.action.fontZoomIn",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+-",
+        "command": "editor.action.fontZoomOut",
+        "when": "editorTextFocus"
       },
       {
         "key": "ctrl+r",
