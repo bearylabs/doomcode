@@ -1013,12 +1013,6 @@
               "name": "Soft line wrapping",
               "type": "command",
               "command": "editor.action.toggleWordWrap"
-            },
-            {
-              "key": "W",
-              "name": "Toggle word wrap",
-              "type": "command",
-              "command": "editor.action.toggleWordWrap"
             }
           ]
         },
@@ -1810,6 +1804,11 @@
         "key": "escape",
         "command": "workbench.action.closeAuxiliaryBar",
         "when": "auxiliaryBarVisible && !inputFocus"
+      },
+      {
+        "key": "escape",
+        "command": "workbench.action.closePanel",
+        "when": "panelVisible && view.workbench.panel.markers.view.visible"
       },
       {
         "key": "q",
