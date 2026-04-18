@@ -3,6 +3,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-19
+
 ### Added
 - Added `SPC t b` as a "big mode" toggle that zooms the workbench in and resets back to normal on repeat
 - Added [Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight) as a hard dependency for `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` annotations
