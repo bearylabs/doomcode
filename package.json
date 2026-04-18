@@ -1942,6 +1942,11 @@
         "when": "panelVisible && view.workbench.panel.markers.view.visible"
       },
       {
+        "key": "escape",
+        "command": "workbench.action.closePanel",
+        "when": "panelVisible && view.workbench.panel.repl.view.visible"
+      },
+      {
         "key": "q",
         "command": "workbench.action.toggleSidebarVisibility",
         "when": "filesExplorerFocus && !inputFocus"

@@ -13,7 +13,7 @@
 - Removed the duplicate word-wrap toggle entry from the which-key menu
 
 ### Fixed
-- Added `Escape` support to close the Problems panel
+- Added `Escape` support to close the Problems panel and Debug Console panel
 
 
 ## [0.0.5] - 2026-04-17

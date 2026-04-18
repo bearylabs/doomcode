@@ -72,6 +72,7 @@ This configuration includes:
 - **Terminal clipboard** (`Ctrl+C` / `Ctrl+V`) – In the integrated terminal, `Ctrl+C` copies when text is selected and `Ctrl+V` pastes
 - **Start debugger** (`SPC o d`) – Open debug sidebar
 - **Debug console** (`SPC o D`) – Open REPL/debug console
+- **Close debug/problem panel** (`Escape`) – Close the Debug Console or Problems panel when either is visible
 
 ### AI Assistants
 
