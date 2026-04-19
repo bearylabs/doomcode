@@ -241,6 +241,18 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "[",
+              "name": "Previous buffer",
+              "type": "command",
+              "command": "workbench.action.previousEditor"
+            },
+            {
+              "key": "]",
+              "name": "Next buffer",
+              "type": "command",
+              "command": "workbench.action.nextEditor"
+            },
+            {
               "key": "b",
               "name": "Switch workspace buffer",
               "type": "command",
@@ -251,6 +263,12 @@
               "name": "Switch buffer",
               "type": "command",
               "command": "workbench.action.showAllEditors"
+            },
+            {
+              "key": "c",
+              "name": "Clone buffer",
+              "type": "command",
+              "command": "workbench.action.splitEditorRight"
             },
             {
               "key": "d",
@@ -289,6 +307,18 @@
               }
             },
             {
+              "key": "l",
+              "name": "switch to last buffer",
+              "type": "command",
+              "command": "runCommands",
+              "args": {
+                "commands": [
+                  "workbench.action.quickOpenPreviousRecentlyUsedEditorInGroup",
+                  "list.select"
+                ]
+              }
+            },
+            {
               "key": "M",
               "name": "Close other editors",
               "type": "command",
@@ -296,15 +326,30 @@
             },
             {
               "key": "n",
-              "name": "Next editor",
+              "name": "Next buffer",
               "type": "command",
               "command": "workbench.action.nextEditor"
             },
             {
               "key": "p",
-              "name": "Previous editor",
+              "name": "Previous buffer",
               "type": "command",
               "command": "workbench.action.previousEditor"
+            },
+            {
+              "key": "r",
+              "name": "Revert buffer",
+              "type": "command",
+              "command": "workbench.action.files.revert"
+            },
+            {
+              "key": "R",
+              "name": "Rename buffer",
+              "type": "commands",
+              "commands": [
+                "workbench.files.action.showActiveFileInExplorer",
+                "renameFile"
+              ]
             },
             {
               "key": "N",
@@ -329,7 +374,7 @@
             },
             {
               "key": "Y",
-              "name": "Copy buffer to clipboard",
+              "name": "Yank buffer",
               "type": "commands",
               "commands": [
                 "editor.action.selectAll",

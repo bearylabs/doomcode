@@ -3,6 +3,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Adjusted the `SPC b` buffer menu to better replicate Doom Emacs buffer behavior
+
 ## [0.1.0] - 2026-04-19
 
 ### Added

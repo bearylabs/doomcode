@@ -32,6 +32,8 @@ This configuration includes:
 - **File finder** (`SPC .` / `SPC SPC`) – Quick file navigation
 - **Buffer switcher** (`SPC <`) – Switch between open editors
 - **Show all buffers** (`SPC b B`) – View all open editors/buffers
+- **Previous / next buffer** (`SPC b [` / `SPC b ]`) – Move between open editors quickly
+- **Buffer actions** (`SPC b c`, `SPC b l`, `SPC b r`, `SPC b R`) – Clone the current buffer to the right, jump to the last buffer, revert unsaved changes, or rename the current file
 - **File history** (`SPC s u`) – Access timeline/file history
 
 ### Code Intelligence
