@@ -49,10 +49,42 @@ jobs:
                   npx @vscode/vsce package --out "$VSIX_NAME"
                   echo "VSIX_NAME=$VSIX_NAME" >> "$GITHUB_ENV"
 
+            - name: Extract release notes from changelog
+              run: |
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  NOTES_FILE="release-notes.md"
+
+                  awk -v version="$VERSION" '
+                    BEGIN { in_section = 0; found = 0 }
+                    $0 ~ "^## \\[" version "\\]" {
+                      in_section = 1
+                      found = 1
+                      next
+                    }
+                    in_section && $0 ~ "^## \\[" {
+                      exit
+                    }
+                    in_section {
+                      print
+                    }
+                    END {
+                      if (!found) {
+                        exit 2
+                      }
+                    }
+                  ' CHANGELOG.md > "$NOTES_FILE"
+
+                  if [ ! -s "$NOTES_FILE" ]; then
+                    echo "No release notes found for $GITHUB_REF_NAME in CHANGELOG.md"
+                    exit 1
+                  fi
+
+                  echo "RELEASE_NOTES_FILE=$NOTES_FILE" >> "$GITHUB_ENV"
+
             - name: Create GitHub Release
               run: |
                   gh release create "$GITHUB_REF_NAME" "$VSIX_NAME" \
-                    --generate-notes \
+                    --notes-file "$RELEASE_NOTES_FILE" \
                     --title "$GITHUB_REF_NAME"
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
