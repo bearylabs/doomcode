@@ -3,8 +3,13 @@
 
 ## [Unreleased]
 
+- Nothing yet.
+
+## [0.1.1] - 2026-04-19
+
 ### Changed
 - Adjusted the `SPC b` buffer menu to better replicate Doom Emacs buffer behavior
+- Refreshed README keybinding highlights and release notes so documentation matches shipped bindings more closely
 
 ## [0.1.0] - 2026-04-19
 

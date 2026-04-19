@@ -7,7 +7,7 @@
 
 Bring the power and elegance of **Doom Emacs** to VS Code. This configuration transforms VS Code into a modal, keyboard-driven editor that closely mirrors Doom Emacs' workflows and philosophy – designed for developers who either want to learn Doom Emacs or are forced to use VS Code but prefer an Emacs-like experience.
 
-> **How it works:** This project is packaged as a **VS Code extension** that builds on top of the excellent **[VSCodeVim](https://github.com/vscodevim/vim)** and **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** extensions, which provide the core modal editing and which-key menu system. The primary contribution of this extension is a **carefully crafted which-key configuration** that extends VSpaceCode's standard bindings and organizes them to closely match **Doom Emacs' command structure and philosophy**. Both dependencies are installed automatically alongside this extension.
+> **How it works:** This project is packaged as a **VS Code extension** that builds on top of the excellent **[VSCodeVim](https://github.com/vscodevim/vim)** and **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** extensions, which provide the core modal editing and which-key menu system. The primary contribution of this extension is a **carefully crafted which-key configuration** that extends VSpaceCode's standard bindings and organizes them to closely match **Doom Emacs' command structure and philosophy**. Required dependencies are installed automatically alongside this extension.
 
 ## 🎯 Purpose
 
@@ -27,75 +27,14 @@ This configuration works best for developers who value **efficiency over mouse u
 
 This configuration includes:
 
-### Navigation & Buffers
+- Doom-style leader-key navigation centered around `SPC`, with the live which-key menu as the source of truth for available bindings
+- Fast file, buffer, project, and symbol navigation with representative entry points like `SPC .`, `SPC SPC`, `SPC s p`, and `SPC c d`
+- Modal code actions for formatting, references, imports, rename, quick fixes, and refactors through grouped menus instead of scattered shortcuts
+- Integrated terminal, debug, AI assistant, and window-management menus exposed through which-key
+- Opinionated editor defaults for a cleaner layout, including hidden activity bar, hidden tabs, disabled breadcrumbs, and a hidden command center
+- Required companion extensions for modal editing, which-key, fuzzy in-file search, and TODO highlighting
 
-- **File finder** (`SPC .` / `SPC SPC`) – Quick file navigation
-- **Buffer switcher** (`SPC <`) – Switch between open editors
-- **Show all buffers** (`SPC b B`) – View all open editors/buffers
-- **Previous / next buffer** (`SPC b [` / `SPC b ]`) – Move between open editors quickly
-- **Buffer actions** (`SPC b c`, `SPC b l`, `SPC b r`, `SPC b R`) – Clone the current buffer to the right, jump to the last buffer, revert unsaved changes, or rename the current file
-- **File history** (`SPC s u`) – Access timeline/file history
-
-### Code Intelligence
-
-- **Jump to definition** (`SPC c d`) – Go to function/class definition
-- **Jump to references** (`SPC c D`) – Find all references
-- **Find implementations** (`SPC c i`) – Locate implementations
-- **Find type definition** (`SPC c t`) – Jump to type definition
-- **Format code** (`SPC c f`) – Format document or selection
-- **List errors** (`SPC c x`) – Show all diagnostics in Problems panel
-- **Trim trailing whitespace** (`SPC c w`) – Clean up whitespace
-- **Compile/Build** (`SPC c c`) – Run build tasks
-- **Soft line wrapping** (`SPC t w`) – Toggle word wrap in the current editor
-
-### Search
-
-- **Search in file** (`SPC s s`) – Find in current editor using [fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search) (required dependency)
-- **Search project** (`SPC s p`) – Find across all files in project
-- **Find symbol** (`SPC s j`) – Jump to symbol in current file
-- **Find symbol workspace** (`SPC s J`) – Find symbol across all files
-- **Find all references** (`SPC s r`) – Show all usages (in side panel)
-- **Find all references (side view)** (`SPC s R`) – Open references in references panel
-- **Search and replace** (`Ctrl+S`) – Open find widget with multi-state navigation
-- **File history** (`SPC s u`) – Access timeline/file history
-
-### Project & Sidebar
-
-- **Toggle project sidebar** (`SPC o p`) – Show/hide file explorer
-- **Copy project-relative file path** (`SPC f Y`) – Copy the active file path relative to the workspace/project root
-- **New file** (`c f` in explorer) – Create new file
-- **New folder** (`c d` in explorer) – Create new folder
-- **Rename file** (`Shift+R` in explorer) – Rename selection
-- **Delete file** (`d` in explorer) – Delete selection
-
-### Terminal & Debug
-
-- **Toggle terminal** (`SPC o t`) – Open/close integrated terminal
-- **Terminal clipboard** (`Ctrl+C` / `Ctrl+V`) – In the integrated terminal, `Ctrl+C` copies when text is selected and `Ctrl+V` pastes
-- **Start debugger** (`SPC o d`) – Open debug sidebar
-- **Debug console** (`SPC o D`) – Open REPL/debug console
-- **Close debug/problem panel** (`Escape`) – Close the Debug Console or Problems panel when either is visible
-
-### AI Assistants
-
-- **Copilot Chat** (`SPC o a a`) – Toggle Copilot Chat
-- **Codex Chat** (`SPC o a c`) – Open Codex Chat
-- **Gemini Chat** (`SPC o a g`) – Open Gemini Chat
-
-### Window Management
-
-- **Close editor group** (`SPC w c`) – Close current editor group
-- **New workspace** (`SPC Tab n`) – Create new VS Code window
-- **Switch workspaces** (`SPC Tab Tab`) – Switch between windows
-- **Command palette** (`SPC :`) – M-x equivalent for VS Code
-
-### UI Cleanliness
-
-- Activity bar hidden for minimal distractions
-- Tab bar disabled – modal navigation replaces tab clicking
-- Breadcrumbs disabled – cleaner editor view
-- Command center hidden
-- Menu bar in compact mode
+If a binding shown in the README ever disagrees with what you see in which-key, trust which-key. The shipped configuration in `whichkey.bindings` is authoritative.
 
 ## 🎮 Modal Editing
 
@@ -106,16 +45,7 @@ All keybindings follow **Vim/Evil conventions**:
 - Which-key menus activate automatically with a short delay
 - All standard movement keys work in modal contexts
 
-**File Explorer bindings:**
-
-- `c f` – New file
-- `c d` – New folder
-- `r` – Refresh
-- `Shift+R` – Rename
-- `d` – Delete
-- `q` – Close sidebar
-
-The spacer provides additional context-aware bindings for Open Editors and other panels.
+Explorer, Open Editors, Timeline, terminal, and other focused views also get context-aware bindings where VS Code allows them.
 
 ## 📋 Requirements
 
@@ -157,7 +87,7 @@ If you want to run the setup again later, open the Command Palette, run **Instal
 
 For the configuration to work optimally:
 
-1. **Open the Explorer panel** (`SPC o p`)
+1. **Open the Explorer panel** (`SPC o p` or from the sidebar)
 2. **Drag "Timeline"** from the top to the bottom panel
 3. **Drag "Open Editors"** to make it its own tab inside the primary side bar for a cleaner UI
 
@@ -169,6 +99,8 @@ The configuration assumes a **clean UI**. For best results:
 
 - Hide the Activity bar (already configured)
 - Disable tab bars (already configured)
+- Breadcrumbs are disabled (already configured)
+- Command Center is hidden (already configured)
 - Remove unnecessary sidebar icons
 - Keep only essential panels visible
 
@@ -178,7 +110,7 @@ A minimal UI reduces distractions and makes keyboard-driven navigation more effe
 
 This configuration emphasizes:
 
-- **Keyboard-first workflow** – Everything accessible via leader key
+- **Keyboard-first workflow** – Everything centers on leader-key navigation
 - **Minimal visual noise** – Hidden tabs, breadcrumbs, and command center
 - **Modal paradigm** – Use Vim modes instead of mouse-based selection
 - **Consistent keybindings** – Doom Emacs conventions throughout
@@ -192,6 +124,8 @@ The main customization happens through **which-key bindings** in the VS Code set
 - Add new leader-key shortcuts
 - Modify existing bindings
 - Create nested command groups
+
+Treat the README as orientation and `whichkey.bindings` plus the in-editor which-key menu as the authoritative map.
 
 Refer to the [VSpaceCode documentation](https://github.com/VSpaceCode/vscode-which-key) for advanced configuration options.
 
@@ -215,10 +149,8 @@ MIT License – Feel free to use, modify, and share this extension.
 
 ## 💡 Tips
 
-- Use `SPC :` to access the VS Code command palette with a Doom-like menu
-- Press `SPC` once to see all available commands (the which-key menu)
-- Combine `SPC` commands with Vim motions for powerful editing
-- Explore different language servers for enhanced code intelligence
+- Press `SPC` once to see available commands in which-key
+- Use `SPC :` for the VS Code command palette
 - Customize the theme and icon theme to match your own preferences
 
 ## 🤝 Contributing
@@ -235,7 +167,7 @@ Releases are automated with GitHub Actions.
 
 1. Bump `package.json` version and update `CHANGELOG.md`
 2. Push changes to `main`
-3. Push a matching version tag (example: `v0.0.3`)
+3. Push a matching version tag (example: `v0.1.1`)
 
 That tag triggers a workflow that runs checks, creates a GitHub Release with a `.vsix` asset, and publishes the same package to the VS Code Marketplace.
 
