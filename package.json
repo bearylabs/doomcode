@@ -847,77 +847,8 @@
           "type": "bindings",
           "bindings": [
             {
-              "key": "t",
-              "name": "Open terminal",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.action.terminal.focus"
-                },
-                {
-                  "key": "when:activePanel == 'terminal'",
-                  "name": "Hide panel",
-                  "type": "command",
-                  "command": "workbench.action.togglePanel"
-                }
-              ]
-            },
-            {
-              "key": "T",
-              "name": "Open terminal here",
-              "type": "command",
-              "command": "workbench.action.createTerminalEditor"
-            },
-            {
-              "key": "p",
-              "name": "Project sidebar",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.view.explorer"
-                },
-                {
-                  "key": "when:explorerViewletVisible",
-                  "name": "Hide sidebar",
-                  "type": "command",
-                  "command": "workbench.action.toggleSidebarVisibility"
-                }
-              ]
-            },
-            {
-              "key": "d",
-              "name": "Start a debugger",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.view.debug"
-                },
-                {
-                  "key": "when:activeViewlet == 'workbench.view.debug'",
-                  "name": "Hide sidebar",
-                  "type": "command",
-                  "command": "workbench.action.toggleSidebarVisibility"
-                }
-              ]
-            },
-            {
-              "key": "D",
-              "name": "Open debug console",
-              "type": "command",
-              "command": "workbench.debug.action.toggleRepl"
-            },
-            {
               "key": "a",
-              "name": "+aI",
+              "name": "+ai",
               "type": "bindings",
               "bindings": [
                 {
@@ -950,6 +881,136 @@
                   "name": "Open Gemini Chat",
                   "type": "command",
                   "command": "cloudcode.gemini.chatView.focus"
+                }
+              ]
+            },
+            {
+              "key": "d",
+              "name": "Start a debugger",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.view.debug"
+                },
+                {
+                  "key": "when:activeViewlet == 'workbench.view.debug'",
+                  "name": "Hide sidebar",
+                  "type": "command",
+                  "command": "workbench.action.toggleSidebarVisibility"
+                }
+              ]
+            },
+            {
+              "key": "D",
+              "name": "Open debug console",
+              "type": "command",
+              "command": "workbench.debug.action.toggleRepl"
+            },
+            {
+              "key": "p",
+              "name": "Project sidebar",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.view.explorer"
+                },
+                {
+                  "key": "when:explorerViewletVisible",
+                  "name": "Hide sidebar",
+                  "type": "command",
+                  "command": "workbench.action.toggleSidebarVisibility"
+                }
+              ]
+            },
+            {
+              "key": "t",
+              "name": "Open terminal",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.action.terminal.focus"
+                },
+                {
+                  "key": "when:activePanel == 'terminal'",
+                  "name": "Hide panel",
+                  "type": "command",
+                  "command": "workbench.action.togglePanel"
+                }
+              ]
+            },
+            {
+              "key": "T",
+              "name": "Open terminal here",
+              "type": "command",
+              "command": "workbench.action.createTerminalEditor"
+            },
+            {
+              "key": "u",
+              "name": "+ui",
+              "type": "bindings",
+              "bindings": [
+                {
+                  "key": "e",
+                  "name": "Show explorer",
+                  "type": "command",
+                  "command": "workbench.view.explorer"
+                },
+                {
+                  "key": "s",
+                  "name": "Show search",
+                  "type": "command",
+                  "command": "workbench.view.search"
+                },
+                {
+                  "key": "g",
+                  "name": "Show source control",
+                  "type": "command",
+                  "command": "workbench.view.scm"
+                },
+                {
+                  "key": "t",
+                  "name": "Show test",
+                  "type": "command",
+                  "command": "workbench.view.extension.test"
+                },
+                {
+                  "key": "r",
+                  "name": "Show remote explorer",
+                  "type": "command",
+                  "command": "workbench.view.remote"
+                },
+                {
+                  "key": "x",
+                  "name": "Show extensions",
+                  "type": "command",
+                  "command": "workbench.view.extensions"
+                },
+                {
+                  "key": "p",
+                  "name": "Show problem",
+                  "type": "command",
+                  "command": "workbench.actions.view.problems"
+                },
+                {
+                  "key": "o",
+                  "name": "Show output",
+                  "type": "command",
+                  "command": "workbench.action.output.toggleOutput"
+                },
+                {
+                  "key": "d",
+                  "name": "Show debug console",
+                  "type": "command",
+                  "command": "workbench.debug.action.toggleRepl"
                 }
               ]
             }
@@ -988,7 +1049,7 @@
         },
         {
           "key": "s",
-          "name": "+search/Symbol",
+          "name": "+search",
           "type": "bindings",
           "bindings": [
             {
@@ -1064,67 +1125,6 @@
           ]
         },
         {
-          "key": "S",
-          "name": "+show",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "e",
-              "name": "Show explorer",
-              "type": "command",
-              "command": "workbench.view.explorer"
-            },
-            {
-              "key": "s",
-              "name": "Show search",
-              "type": "command",
-              "command": "workbench.view.search"
-            },
-            {
-              "key": "g",
-              "name": "Show source control",
-              "type": "command",
-              "command": "workbench.view.scm"
-            },
-            {
-              "key": "t",
-              "name": "Show test",
-              "type": "command",
-              "command": "workbench.view.extension.test"
-            },
-            {
-              "key": "r",
-              "name": "Show remote explorer",
-              "type": "command",
-              "command": "workbench.view.remote"
-            },
-            {
-              "key": "x",
-              "name": "Show extensions",
-              "type": "command",
-              "command": "workbench.view.extensions"
-            },
-            {
-              "key": "p",
-              "name": "Show problem",
-              "type": "command",
-              "command": "workbench.actions.view.problems"
-            },
-            {
-              "key": "o",
-              "name": "Show output",
-              "type": "command",
-              "command": "workbench.action.output.toggleOutput"
-            },
-            {
-              "key": "d",
-              "name": "Show debug console",
-              "type": "command",
-              "command": "workbench.debug.action.toggleRepl"
-            }
-          ]
-        },
-        {
           "key": "t",
           "name": "+toggles",
           "type": "bindings",
@@ -1179,61 +1179,6 @@
               "name": "Soft line wrapping",
               "type": "command",
               "command": "editor.action.toggleWordWrap"
-            }
-          ]
-        },
-        {
-          "key": "T",
-          "name": "+uI toggles",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "b",
-              "name": "Toggle side bar visibility",
-              "type": "command",
-              "command": "workbench.action.toggleSidebarVisibility"
-            },
-            {
-              "key": "j",
-              "name": "Toggle panel visibility",
-              "type": "command",
-              "command": "workbench.action.togglePanel"
-            },
-            {
-              "key": "F",
-              "name": "Toggle full screen",
-              "type": "command",
-              "command": "workbench.action.toggleFullScreen"
-            },
-            {
-              "key": "s",
-              "name": "Select theme",
-              "type": "command",
-              "command": "workbench.action.selectTheme"
-            },
-            {
-              "key": "m",
-              "name": "Toggle maximized panel",
-              "type": "command",
-              "command": "workbench.action.toggleMaximizedPanel"
-            },
-            {
-              "key": "t",
-              "name": "Toggle tool/activity bar visibility",
-              "type": "command",
-              "command": "workbench.action.toggleActivityBarVisibility"
-            },
-            {
-              "key": "T",
-              "name": "Toggle tab visibility",
-              "type": "command",
-              "command": "workbench.action.toggleTabsVisibility"
-            },
-            {
-              "key": "z",
-              "name": "Toggle zen mode",
-              "type": "command",
-              "command": "workbench.action.toggleZenMode"
             }
           ]
         },
@@ -1436,294 +1381,6 @@
                 }
               ]
             }
-          ]
-        },
-        {
-          "key": "x",
-          "name": "+text",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "i",
-              "name": "Organize Imports",
-              "type": "command",
-              "command": "editor.action.organizeImports"
-            },
-            {
-              "key": "r",
-              "name": "Rename symbol",
-              "type": "command",
-              "command": "editor.action.rename"
-            },
-            {
-              "key": "R",
-              "name": "Refactor",
-              "type": "command",
-              "command": "editor.action.refactor"
-            },
-            {
-              "key": ".",
-              "name": "Quick fix",
-              "type": "command",
-              "command": "editor.action.quickFix"
-            },
-            {
-              "key": "a",
-              "name": "Find all references",
-              "type": "command",
-              "command": "editor.action.referenceSearch.trigger"
-            },
-            {
-              "key": "u",
-              "name": "To lower case",
-              "type": "command",
-              "command": "editor.action.transformToLowercase"
-            },
-            {
-              "key": "U",
-              "name": "To upper case",
-              "type": "command",
-              "command": "editor.action.transformToUppercase"
-            },
-            {
-              "key": "J",
-              "name": "Move lines down transient",
-              "type": "commands",
-              "commands": [
-                "editor.action.moveLinesDownAction",
-                "whichkey.showTransient"
-              ],
-              "args": [
-                null,
-                "whichkey.transient.lineMoving"
-              ]
-            },
-            {
-              "key": "K",
-              "name": "Move lines up transient",
-              "type": "commands",
-              "commands": [
-                "editor.action.moveLinesUpAction",
-                "whichkey.showTransient"
-              ],
-              "args": [
-                null,
-                "whichkey.transient.lineMoving"
-              ]
-            },
-            {
-              "key": "l",
-              "name": "+lines",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "s",
-                  "name": "Sort lines in ascending order",
-                  "type": "command",
-                  "command": "editor.action.sortLinesAscending"
-                },
-                {
-                  "key": "S",
-                  "name": "Sort lines in descending order",
-                  "type": "command",
-                  "command": "editor.action.sortLinesDescending"
-                },
-                {
-                  "key": "d",
-                  "name": "Duplicate lines down",
-                  "type": "command",
-                  "command": "editor.action.copyLinesDownAction"
-                },
-                {
-                  "key": "D",
-                  "name": "Duplicate lines up",
-                  "type": "command",
-                  "command": "editor.action.copyLinesUpAction"
-                }
-              ]
-            },
-            {
-              "key": "d",
-              "name": "+delete",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "w",
-                  "name": "Delete trailing whitespace",
-                  "type": "command",
-                  "command": "editor.action.trimTrailingWhitespace"
-                }
-              ]
-            },
-            {
-              "key": "m",
-              "name": "+merge conflict",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "b",
-                  "name": "Accept both",
-                  "type": "command",
-                  "command": "merge-conflict.accept.both"
-                },
-                {
-                  "key": "c",
-                  "name": "Accept current",
-                  "type": "command",
-                  "command": "merge-conflict.accept.current"
-                },
-                {
-                  "key": "i",
-                  "name": "Accept incoming",
-                  "type": "command",
-                  "command": "merge-conflict.accept.incoming"
-                },
-                {
-                  "key": "B",
-                  "name": "Accept all both",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-both"
-                },
-                {
-                  "key": "C",
-                  "name": "Accept all current",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-current"
-                },
-                {
-                  "key": "I",
-                  "name": "Accept all incoming",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-incoming"
-                },
-                {
-                  "key": "s",
-                  "name": "Accept selection",
-                  "type": "command",
-                  "command": "merge-conflict.accept.selection"
-                },
-                {
-                  "key": "k",
-                  "name": "Compare current conflict",
-                  "type": "command",
-                  "command": "merge-conflict.compare"
-                },
-                {
-                  "key": "n",
-                  "name": "Next Conflict",
-                  "type": "command",
-                  "command": "merge-conflict.next"
-                },
-                {
-                  "key": "N",
-                  "name": "Previous Conflict",
-                  "type": "command",
-                  "command": "merge-conflict.previous"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "key": "z",
-          "name": "+zoom/Fold",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": ".",
-              "name": "+fold",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "a",
-                  "name": "Toggle: around a point",
-                  "type": "command",
-                  "command": "editor.toggleFold"
-                },
-                {
-                  "key": "c",
-                  "name": "Close: at a point",
-                  "type": "command",
-                  "command": "editor.fold"
-                },
-                {
-                  "key": "b",
-                  "name": "Close: all block comments",
-                  "type": "command",
-                  "command": "editor.foldAllBlockComments"
-                },
-                {
-                  "key": "g",
-                  "name": "Close: all regions",
-                  "type": "command",
-                  "command": "editor.foldAllMarkerRegions"
-                },
-                {
-                  "key": "m",
-                  "name": "Close: all",
-                  "type": "command",
-                  "command": "editor.foldAll"
-                },
-                {
-                  "key": "o",
-                  "name": "Open: at a point",
-                  "type": "command",
-                  "command": "editor.unfold"
-                },
-                {
-                  "key": "O",
-                  "name": "Open: recursively",
-                  "type": "command",
-                  "command": "editor.unfoldRecursively"
-                },
-                {
-                  "key": "G",
-                  "name": "Open: all regions",
-                  "type": "command",
-                  "command": "editor.unfoldAllMarkerRegions"
-                },
-                {
-                  "key": "r",
-                  "name": "Open: all",
-                  "type": "command",
-                  "command": "editor.unfoldAll"
-                }
-              ]
-            },
-            {
-              "key": "f",
-              "name": "Frame zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.frameZooming"
-            },
-            {
-              "key": "x",
-              "name": "Font zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.fontZooming"
-            },
-            {
-              "key": "i",
-              "name": "Image zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.imageZooming"
-            }
-          ]
-        },
-        {
-          "key": "v",
-          "name": "Smart select/expand region transient",
-          "type": "commands",
-          "commands": [
-            "editor.action.smartSelect.grow",
-            "whichkey.showTransient"
-          ],
-          "args": [
-            null,
-            "whichkey.transient.smartExpand"
           ]
         }
       ],
