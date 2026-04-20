@@ -457,10 +457,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		}
 
 		.grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-			gap: 0 12px;
-			align-content: start;
+			column-width: 220px;
+			column-gap: 12px;
 			flex: 1 1 auto;
 			overflow: auto;
 		}
@@ -478,6 +476,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			text-align: left;
 			cursor: pointer;
 			font: inherit;
+			margin: 0 0 1px;
+			break-inside: avoid;
 		}
 
 		.item:hover,
@@ -523,8 +523,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			}
 
 			.grid {
-				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-				gap: 0 10px;
+				column-width: 180px;
+				column-gap: 10px;
 			}
 		}
 	</style>
