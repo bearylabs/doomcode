@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
 ### Fixed
 - `doom.cleanup` now operates on the active VS Code profile's keybindings, not just the default profile
 

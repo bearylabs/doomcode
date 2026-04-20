@@ -97,7 +97,7 @@
           "<space>"
         ],
         "commands": [
-          "whichkey.show"
+          "doom.whichKeyShow"
         ]
       }
     ],
@@ -107,7 +107,7 @@
           "<space>"
         ],
         "commands": [
-          "whichkey.show"
+          "doom.whichKeyShow"
         ]
       }
     ],
@@ -1399,7 +1399,7 @@
       "explorer.confirmDragAndDrop": false,
       "files.simpleDialog.enable": true,
       "terminal.integrated.commandsToSkipShell": [
-        "whichkey.show"
+        "doom.whichKeyShow"
       ],
       "workbench.activityBar.location": "hidden",
       "workbench.editor.autoLockGroups": {
@@ -1413,6 +1413,24 @@
       "workbench.startupEditor": "none",
       "window.commandCenter": false
     },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "doomWhichKeyPanel",
+          "title": "Doom",
+          "icon": "assets/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "doomWhichKeyPanel": [
+        {
+          "id": "doom.whichKeyView",
+          "type": "webview",
+          "name": "Which Key"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "doom.install",
@@ -1425,6 +1443,10 @@
       {
         "command": "doom.windowMru",
         "title": "Doom Code: Toggle Last Editor Group"
+      },
+      {
+        "command": "doom.whichKeyShow",
+        "title": "Doom Code: Show Which Key"
       }
     ],
     "keybindings": [
@@ -1442,27 +1464,27 @@
       },
       {
         "key": "space",
-        "command": "whichkey.show",
+        "command": "doom.whichKeyShow",
         "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
-        "command": "whichkey.show",
+        "command": "doom.whichKeyShow",
         "when": "focusedView == '' && !whichkeyActive && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
-        "command": "whichkey.show",
+        "command": "doom.whichKeyShow",
         "when": "(sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)"
       },
       {
         "key": "alt+space",
-        "command": "whichkey.show",
+        "command": "doom.whichKeyShow",
         "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
       },
       {
         "key": "ctrl+space",
-        "command": "whichkey.show",
+        "command": "doom.whichKeyShow",
         "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
       },
       {

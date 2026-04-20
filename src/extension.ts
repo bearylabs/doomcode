@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DoomWhichKeyMenu } from './whichkey/menu';
 import { registerWindowMru } from './window/mru';
 
 // ---------------------------------------------------------------------------
@@ -343,6 +344,62 @@ async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Which-key migration
+// ---------------------------------------------------------------------------
+
+async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
+	const config = vscode.workspace.getConfiguration();
+	const keysToCheck = [
+		"vim.normalModeKeyBindingsNonRecursive",
+		"vim.visualModeKeyBindingsNonRecursive",
+	];
+
+	for (const key of keysToCheck) {
+		const inspected = config.inspect(key);
+		const currentValue = inspected?.globalValue;
+		if (!Array.isArray(currentValue)) {
+			continue;
+		}
+
+		let changed = false;
+		const migrated = currentValue.map((entry) => {
+			if (
+				entry !== null
+				&& typeof entry === 'object'
+				&& 'before' in entry
+				&& 'commands' in entry
+			) {
+				const binding = entry as {
+					before?: unknown;
+					commands?: unknown;
+				};
+
+				if (
+					Array.isArray(binding.before)
+					&& binding.before.length === 1
+					&& binding.before[0] === '<space>'
+					&& Array.isArray(binding.commands)
+					&& binding.commands.length === 1
+					&& binding.commands[0] === 'whichkey.show'
+				) {
+					changed = true;
+					return {
+						...entry,
+						commands: ['doom.whichKeyShow'],
+					};
+				}
+			}
+
+			return entry;
+		});
+
+		if (changed) {
+			await config.update(key, migrated, vscode.ConfigurationTarget.Global);
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Extension lifecycle
 // ---------------------------------------------------------------------------
 
@@ -355,6 +412,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const installDefaults = getInstallDefaults(context);
 	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
+	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
+	const whichKeyMenu = new DoomWhichKeyMenu(context.extensionUri);
 	registerWindowMru(context);
 
 	// First-activation: apply defaults then detect stale state.
@@ -362,6 +421,10 @@ export function activate(context: vscode.ExtensionContext) {
 		void applyDefaultsToUserSettings(installDefaults, false)
 			.then(async () => {
 				await context.globalState.update(defaultsAppliedKey, true);
+				if (!context.globalState.get<boolean>(whichKeyMigratedKey)) {
+					await migrateLegacyWhichKeyShowBindings();
+					await context.globalState.update(whichKeyMigratedKey, true);
+				}
 				await promptForCleanup(context);
 			})
 			.catch((error) => {
@@ -369,7 +432,13 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 	} else {
 		// Subsequent activations: detect and prompt, never mutate silently.
-		void promptForCleanup(context);
+		void (async () => {
+			if (!context.globalState.get<boolean>(whichKeyMigratedKey)) {
+				await migrateLegacyWhichKeyShowBindings();
+				await context.globalState.update(whichKeyMigratedKey, true);
+			}
+			await promptForCleanup(context);
+		})();
 	}
 
 	// Manual install command
@@ -399,7 +468,24 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	context.subscriptions.push(installCmd, cleanupCmd);
+	const whichKeyCmd = vscode.commands.registerCommand(
+		"doom.whichKeyShow",
+		() => {
+			void whichKeyMenu.show();
+		}
+	);
+
+	const whichKeyViewProvider = vscode.window.registerWebviewViewProvider(
+		DoomWhichKeyMenu.viewId,
+		whichKeyMenu,
+		{
+			webviewOptions: {
+				retainContextWhenHidden: true,
+			},
+		}
+	);
+
+	context.subscriptions.push(installCmd, cleanupCmd, whichKeyCmd, whichKeyViewProvider);
 }
 
 // This method is called when your extension is deactivated
