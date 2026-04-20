@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { registerWindowMru } from './window/mru';
 
@@ -413,6 +414,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const installDefaults = getInstallDefaults(context);
 	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
 	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
+	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu(context.extensionUri);
 	registerWindowMru(context);
 
@@ -475,6 +477,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const fuzzySearchCmd = vscode.commands.registerCommand(
+		"doom.fuzzySearchActiveTextEditor",
+		() => {
+			void fuzzySearchPanel.show();
+		}
+	);
+
 	const whichKeyViewProvider = vscode.window.registerWebviewViewProvider(
 		DoomWhichKeyMenu.viewId,
 		whichKeyMenu,
@@ -485,7 +494,24 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	context.subscriptions.push(installCmd, cleanupCmd, whichKeyCmd, whichKeyViewProvider);
+	const fuzzySearchViewProvider = vscode.window.registerWebviewViewProvider(
+		DoomFuzzySearchPanel.viewId,
+		fuzzySearchPanel,
+		{
+			webviewOptions: {
+				retainContextWhenHidden: true,
+			},
+		}
+	);
+
+	context.subscriptions.push(
+		installCmd,
+		cleanupCmd,
+		whichKeyCmd,
+		fuzzySearchCmd,
+		whichKeyViewProvider,
+		fuzzySearchViewProvider
+	);
 }
 
 // This method is called when your extension is deactivated

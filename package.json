@@ -1114,7 +1114,7 @@
               "key": "s",
               "name": "Search in current file",
               "type": "command",
-              "command": "fuzzySearch.activeTextEditor"
+              "command": "doom.fuzzySearchActiveTextEditor"
             },
             {
               "key": "u",
@@ -1419,6 +1419,11 @@
           "id": "doomWhichKeyPanel",
           "title": "Which-Key",
           "icon": "assets/icon.png"
+        },
+        {
+          "id": "doomFuzzySearchPanel",
+          "title": "Search",
+          "icon": "assets/icon.png"
         }
       ]
     },
@@ -1428,6 +1433,13 @@
           "id": "doom.whichKeyView",
           "type": "webview",
           "name": "Which Key"
+        }
+      ],
+      "doomFuzzySearchPanel": [
+        {
+          "id": "doom.fuzzySearchView",
+          "type": "webview",
+          "name": "Fuzzy Search"
         }
       ]
     },
@@ -1447,6 +1459,10 @@
       {
         "command": "doom.whichKeyShow",
         "title": "Doom Code: Show Which Key"
+      },
+      {
+        "command": "doom.fuzzySearchActiveTextEditor",
+        "title": "Doom Code: Fuzzy Search in Current File"
       }
     ],
     "keybindings": [
@@ -1742,6 +1758,10 @@
         "key": "ctrl+k",
         "command": "workbench.action.quickOpenSelectPrevious",
         "when": "inQuickInput && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "-workbench.action.togglePanel"
       },
       {
         "key": "ctrl+l",
