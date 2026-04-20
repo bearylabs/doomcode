@@ -1244,80 +1244,32 @@
           "type": "bindings",
           "bindings": [
             {
-              "key": "w",
-              "name": "window-next",
+              "key": "=",
+              "name": "balance-windows",
               "type": "command",
-              "command": "workbench.action.focusNextGroup"
-            },
-            {
-              "key": "W",
-              "name": "window-prev",
-              "type": "command",
-              "command": "workbench.action.focusPreviousGroup"
-            },
-            {
-              "key": "-",
-              "name": "Split editor below",
-              "type": "command",
-              "command": "workbench.action.splitEditorDown"
-            },
-            {
-              "key": "/",
-              "name": "Split editor right",
-              "type": "command",
-              "command": "workbench.action.splitEditor"
+              "command": "workbench.action.evenEditorWidths"
             },
             {
               "key": "c",
-              "name": "Close window",
+              "name": "evil-window-delete",
               "type": "command",
               "command": "workbench.action.closeGroup"
             },
             {
               "key": "d",
-              "name": "Close window",
+              "name": "evil-window-delete",
               "type": "command",
               "command": "workbench.action.closeGroup"
             },
             {
-              "key": "s",
-              "name": "Split editor below",
-              "type": "command",
-              "command": "workbench.action.splitEditorDown"
-            },
-            {
-              "key": "v",
-              "name": "Split editor right",
-              "type": "command",
-              "command": "workbench.action.splitEditor"
-            },
-            {
               "key": "h",
-              "name": "Focus editor group left",
+              "name": "evil-window-left",
               "type": "command",
               "command": "workbench.action.focusLeftGroup"
             },
             {
-              "key": "j",
-              "name": "Focus editor group down",
-              "type": "command",
-              "command": "workbench.action.focusBelowGroup"
-            },
-            {
-              "key": "k",
-              "name": "Focus editor group up",
-              "type": "command",
-              "command": "workbench.action.focusAboveGroup"
-            },
-            {
-              "key": "l",
-              "name": "Focus editor group right",
-              "type": "command",
-              "command": "workbench.action.focusRightGroup"
-            },
-            {
               "key": "H",
-              "name": "window-move-left",
+              "name": "+evil/window-move-left",
               "type": "conditional",
               "bindings": [
                 {
@@ -1335,8 +1287,14 @@
               ]
             },
             {
+              "key": "j",
+              "name": "evil-window-down",
+              "type": "command",
+              "command": "workbench.action.focusBelowGroup"
+            },
+            {
               "key": "J",
-              "name": "window-move-down",
+              "name": "+evil/window-move-down",
               "type": "conditional",
               "bindings": [
                 {
@@ -1354,8 +1312,14 @@
               ]
             },
             {
+              "key": "k",
+              "name": "evil-window-up",
+              "type": "command",
+              "command": "workbench.action.focusAboveGroup"
+            },
+            {
               "key": "K",
-              "name": "window-move-up",
+              "name": "+evil/window-move-up",
               "type": "conditional",
               "bindings": [
                 {
@@ -1373,8 +1337,14 @@
               ]
             },
             {
+              "key": "l",
+              "name": "evil-window-right",
+              "type": "command",
+              "command": "workbench.action.focusRightGroup"
+            },
+            {
               "key": "L",
-              "name": "window-move-right",
+              "name": "+evil/window-move-right",
               "type": "conditional",
               "bindings": [
                 {
@@ -1392,46 +1362,80 @@
               ]
             },
             {
-              "key": "t",
-              "name": "Toggle editor group sizes",
+              "key": "n",
+              "name": "evil-window-new",
               "type": "command",
-              "command": "workbench.action.toggleEditorWidths"
+              "command": "workbench.action.newGroupRight"
             },
             {
-              "key": "m",
-              "name": "Maximize editor group",
+              "key": "o",
+              "name": "doom/window-enlargen",
               "type": "command",
               "command": "workbench.action.minimizeOtherEditors"
             },
             {
-              "key": "M",
-              "name": "Maximize editor group and hide side bar",
+              "key": "p",
+              "name": "evil-window-mru",
               "type": "command",
-              "command": "workbench.action.maximizeEditor"
+              "command": "workbench.action.focusPreviousGroup"
             },
             {
-              "key": "=",
-              "name": "Reset editor group sizes",
+              "key": "s",
+              "name": "evil-window-split",
               "type": "command",
-              "command": "workbench.action.evenEditorWidths"
+              "command": "workbench.action.splitEditorDown"
             },
             {
-              "key": "z",
-              "name": "Combine all editors",
+              "key": "v",
+              "name": "evil-window-vsplit",
               "type": "command",
-              "command": "workbench.action.joinAllGroups"
+              "command": "workbench.action.splitEditor"
             },
             {
-              "key": "d",
-              "name": "Close editor group",
+              "key": "w",
+              "name": "evil-window-next",
               "type": "command",
-              "command": "workbench.action.closeEditorsInGroup"
+              "command": "workbench.action.focusNextGroup"
+            },
+            {
+              "key": "W",
+              "name": "evil-window-prev",
+              "type": "command",
+              "command": "workbench.action.focusPreviousGroup"
             },
             {
               "key": "x",
-              "name": "Close all editor groups",
+              "name": "evil-window-exchange",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "when:multipleEditorGroups",
+                  "name": "Swap neighboring editor groups",
+                  "type": "commands",
+                  "commands": [
+                    "workbench.action.focusLeftGroupWithoutWrap",
+                    "workbench.action.moveActiveEditorGroupRight"
+                  ]
+                },
+                {
+                  "key": "when:activeEditorLastInGroup",
+                  "name": "Swap tab with left tab",
+                  "type": "command",
+                  "command": "workbench.action.moveEditorLeftInGroup"
+                },
+                {
+                  "key": "",
+                  "name": "Swap tab with right tab",
+                  "type": "command",
+                  "command": "workbench.action.moveEditorRightInGroup"
+                }
+              ]
+            },
+            {
+              "key": "z",
+              "name": "evil-window-combine",
               "type": "command",
-              "command": "workbench.action.closeAllGroups"
+              "command": "workbench.action.joinAllGroups"
             }
           ]
         },
@@ -1899,6 +1903,24 @@
           "when": "doom.bigModeEnabled"
         },
         "when": "whichkeyVisible && doom.bigModeEnabled"
+      },
+      {
+        "key": "x",
+        "command": "whichkey.triggerKey",
+        "args": {
+          "key": "x",
+          "when": "multipleEditorGroups"
+        },
+        "when": "whichkeyVisible && multipleEditorGroups"
+      },
+      {
+        "key": "x",
+        "command": "whichkey.triggerKey",
+        "args": {
+          "key": "x",
+          "when": "activeEditorLastInGroup"
+        },
+        "when": "whichkeyVisible && activeEditorLastInGroup && !multipleEditorGroups"
       },
       {
         "key": "x",
