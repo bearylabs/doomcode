@@ -1417,7 +1417,7 @@
       "panel": [
         {
           "id": "doomWhichKeyPanel",
-          "title": "Doom",
+          "title": "Which-Key",
           "icon": "assets/icon.png"
         }
       ]
