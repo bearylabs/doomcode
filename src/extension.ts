@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { registerWindowMru } from './window/mru';
 
 // ---------------------------------------------------------------------------
 // Conflicting extensions that override the same settings Doom Code manages.
@@ -354,6 +355,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const installDefaults = getInstallDefaults(context);
 	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
+	registerWindowMru(context);
 
 	// First-activation: apply defaults then detect stale state.
 	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {

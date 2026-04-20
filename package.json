@@ -1377,7 +1377,7 @@
               "key": "p",
               "name": "evil-window-mru",
               "type": "command",
-              "command": "workbench.action.focusPreviousGroup"
+              "command": "doom.windowMru"
             },
             {
               "key": "s",
@@ -1765,6 +1765,10 @@
       {
         "command": "doom.cleanup",
         "title": "Doom Code: Clean Up Stale Settings"
+      },
+      {
+        "command": "doom.windowMru",
+        "title": "Doom Code: Toggle Last Editor Group"
       }
     ],
     "keybindings": [
