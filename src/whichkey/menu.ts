@@ -31,9 +31,9 @@ interface RenderItem {
 }
 
 interface ViewState {
-	breadcrumbs: string[];
+	footerLabel: string;
+	footerPath: string;
 	items: RenderItem[];
-	title: string;
 }
 
 interface WebviewMessage {
@@ -368,14 +368,16 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			.map((binding) => toRenderItem(this, binding))
 			.filter((item): item is RenderItem => item !== undefined);
 
-		const breadcrumbs = this.stack.map((binding) => binding.name.replace(/^\+/, ''));
 		const current = this.stack[this.stack.length - 1];
-		const title = current?.name.replace(/^\+/, '') ?? 'Leader';
+		const footerPath = current
+			? `SPC ${this.stack.map((binding) => binding.key).join(' ')}-`
+			: 'SPC-';
+		const footerLabel = current?.name.replace(/^\+/, '') ?? '<leader>';
 
 		const state: ViewState = {
-			breadcrumbs,
+			footerLabel,
+			footerPath,
 			items: this.currentItems,
-			title,
 		};
 
 		void this.view.webview.postMessage({
@@ -451,11 +453,6 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			height: calc(100vh - 8px);
 		}
 
-		.header {
-			color: var(--muted);
-			white-space: nowrap;
-		}
-
 		.grid {
 			column-width: 220px;
 			column-gap: 12px;
@@ -513,7 +510,26 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		}
 
 		.footer {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			align-items: center;
+			column-gap: 12px;
 			color: var(--muted);
+		}
+
+		.path {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.path-label {
+			color: var(--text);
+		}
+
+		.hint {
+			justify-self: end;
+			text-align: right;
 			white-space: nowrap;
 		}
 
@@ -526,15 +542,27 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 				column-width: 180px;
 				column-gap: 10px;
 			}
+
+			.footer {
+				grid-template-columns: minmax(0, 1fr);
+				row-gap: 2px;
+			}
+
+			.hint {
+				justify-self: start;
+				text-align: left;
+			}
 		}
 	</style>
 </head>
 <body>
 	<div class="shell">
-		<div class="header" id="path">SPC- &lt;leader&gt;</div>
 		<div class="grid" id="grid"></div>
 		<div class="empty" id="empty" hidden>No bindings here.</div>
-		<div class="footer">Type key. Backspace go back. Esc close.</div>
+		<div class="footer">
+			<div class="path" id="path">SPC- &lt;leader&gt;</div>
+			<div class="hint">Type key. Backspace go back. Esc close.</div>
+		</div>
 	</div>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
@@ -545,9 +573,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 
 		function render(state) {
 			items = state.items;
-			path.textContent = state.breadcrumbs.length > 0
-				? state.breadcrumbs.join(' / ')
-				: 'SPC- <leader>';
+			path.innerHTML = \`<span>\${state.footerPath}</span> <span class="path-label">\${state.footerLabel}</span>\`;
 			grid.innerHTML = '';
 
 			if (items.length === 0) {
