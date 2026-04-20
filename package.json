@@ -980,19 +980,6 @@
           ]
         },
         {
-          "key": "r",
-          "name": "+Repeat",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": ".",
-              "name": "Repeat recent actions",
-              "type": "command",
-              "command": "whichkey.repeatRecent"
-            }
-          ]
-        },
-        {
           "key": "s",
           "name": "+Search/Symbol",
           "type": "bindings",
