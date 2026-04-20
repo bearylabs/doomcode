@@ -1,10 +1,16 @@
-# Change Log
+# Changelog
+
+All notable changes to this project will be documented in this file.
 
 
 ## [Unreleased]
 
 ### Changed
 - Aligned the `SPC w` window menu to better replicate Doom Emacs window behavior
+- Todo Highlight and fuzzy-search now install as bundled companion extensions instead of hard requirements
+
+### Fixed
+- Improved WSL and remote-window activation so Doom Code no longer fails when required UI extensions are unavailable in the remote extension host
 
 ## [0.1.1] - 2026-04-19
 
