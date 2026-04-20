@@ -3,7 +3,8 @@
 
 ## [Unreleased]
 
-- Nothing yet.
+### Changed
+- Aligned the `SPC w` window menu to better replicate Doom Emacs window behavior
 
 ## [0.1.1] - 2026-04-19
 
