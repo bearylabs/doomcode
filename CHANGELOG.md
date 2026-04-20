@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- `doom.cleanup` now operates on the active VS Code profile's keybindings, not just the default profile
+
 ## [0.1.2] - 2026-04-20
 
 ### Changed
@@ -54,6 +57,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Added editor-specific `Space` keybinding and explicit `vim.leader` default to fix `SPC` in focused editor context
+
+### Known Issues
+- `doom.cleanup` only affects the default profile — settings in non-default VS Code profiles are not scanned or modified
 
 
 ## [0.0.3] - 2026-03-31
