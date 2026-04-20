@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-20
+
 ### Changed
 - Aligned the `SPC w` window menu to better replicate Doom Emacs window behavior
 - Todo Highlight and fuzzy-search now install as bundled companion extensions instead of hard requirements
