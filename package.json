@@ -803,19 +803,6 @@
           ]
         },
         {
-          "key": "h",
-          "name": "+help",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "b",
-              "name": "describe-bindings",
-              "type": "command",
-              "command": "whichkey.searchBindings"
-            }
-          ]
-        },
-        {
           "key": "i",
           "name": "+insert",
           "type": "bindings",
