@@ -203,6 +203,7 @@ function getNonce(): string {
 export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	static readonly containerId = 'doomWhichKeyPanel';
 	static readonly viewId = 'doom.whichKeyView';
+	static readonly visibleContextKey = 'whichkeyVisible';
 
 	private readonly extensionUri: vscode.Uri;
 	private bigModeEnabled = false;
@@ -236,6 +237,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
 		await vscode.commands.executeCommand(`workbench.view.extension.${DoomWhichKeyMenu.containerId}`);
 		await vscode.commands.executeCommand(`${DoomWhichKeyMenu.viewId}.focus`);
+		await this.updateVisibilityContext(true);
 		this.render();
 	}
 
@@ -256,9 +258,11 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 					this.view = undefined;
 					this.ready = false;
 					this.currentItems = [];
+					void this.updateVisibilityContext(false);
 				}
 			}),
 			webviewView.onDidChangeVisibility(() => {
+				void this.updateVisibilityContext(webviewView.visible);
 				if (webviewView.visible) {
 					this.render();
 				}
@@ -398,7 +402,12 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	}
 
 	private async close(): Promise<void> {
+		await this.updateVisibilityContext(false);
 		await vscode.commands.executeCommand('workbench.action.closePanel');
+	}
+
+	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
+		await vscode.commands.executeCommand('setContext', DoomWhichKeyMenu.visibleContextKey, isVisible);
 	}
 
 	private getHtml(webview: vscode.Webview): string {
