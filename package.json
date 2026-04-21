@@ -1418,12 +1418,12 @@
         {
           "id": "doomWhichKeyPanel",
           "title": "Which-Key",
-          "icon": "assets/icon.png"
+          "icon": "assets/which-key.svg"
         },
         {
           "id": "doomFuzzySearchPanel",
           "title": "Search",
-          "icon": "assets/icon.png"
+          "icon": "assets/fuzzy-search.svg"
         }
       ]
     },
@@ -1432,14 +1432,16 @@
         {
           "id": "doom.whichKeyView",
           "type": "webview",
-          "name": "Which Key"
+          "name": "Which Key",
+          "icon": "assets/which-key.svg"
         }
       ],
       "doomFuzzySearchPanel": [
         {
           "id": "doom.fuzzySearchView",
           "type": "webview",
-          "name": "Fuzzy Search"
+          "name": "Fuzzy Search",
+          "icon": "assets/fuzzy-search.svg"
         }
       ]
     },
