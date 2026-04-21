@@ -508,6 +508,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const whichKeyHideCmd = vscode.commands.registerCommand(
+		"doom.whichKeyHide",
+		() => {
+			void whichKeyMenu.hide();
+		}
+	);
+
 	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
 		if (!event.affectsConfiguration(WHICH_KEY_MENU_SETTING)) {
 			return;
@@ -570,6 +577,7 @@ export function activate(context: vscode.ExtensionContext) {
 		installCmd,
 		cleanupCmd,
 		whichKeyCmd,
+		whichKeyHideCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,

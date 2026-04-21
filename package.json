@@ -1498,6 +1498,11 @@
         "when": "whichkeyVisible"
       },
       {
+        "key": "escape",
+        "command": "doom.whichKeyHide",
+        "when": "whichkeyVisible"
+      },
+      {
         "key": "space",
         "command": "doom.whichKeyShow",
         "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
