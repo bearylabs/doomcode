@@ -463,10 +463,16 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		}
 
 		.grid {
-			column-width: 220px;
+			--row-count: 1;
+			display: grid;
+			grid-auto-columns: 248px;
+			grid-auto-flow: column;
+			grid-template-rows: repeat(var(--row-count), max-content);
 			column-gap: 12px;
+			row-gap: 1px;
 			flex: 1 1 auto;
 			overflow: auto;
+			align-content: start;
 		}
 
 		.item {
@@ -482,8 +488,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			text-align: left;
 			cursor: pointer;
 			font: inherit;
-			margin: 0 0 1px;
-			break-inside: avoid;
+			margin: 0;
 		}
 
 		.item:hover,
@@ -548,7 +553,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			}
 
 			.grid {
-				column-width: 180px;
+				grid-auto-columns: 208px;
 				column-gap: 10px;
 			}
 
@@ -580,6 +585,25 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		const path = document.getElementById('path');
 		let items = [];
 
+		function updateGridRowCount() {
+			if (items.length === 0) {
+				grid.style.setProperty('--row-count', '1');
+				return;
+			}
+
+			const firstItem = grid.querySelector('.item');
+			if (!(firstItem instanceof HTMLElement)) {
+				grid.style.setProperty('--row-count', String(items.length));
+				return;
+			}
+
+			const itemHeight = firstItem.offsetHeight || 1;
+			const rowGap = Number.parseFloat(getComputedStyle(grid).rowGap || '0') || 0;
+			const availableHeight = grid.clientHeight || itemHeight;
+			const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (itemHeight + rowGap)));
+			grid.style.setProperty('--row-count', String(Math.min(rows, items.length)));
+		}
+
 		function render(state) {
 			items = state.items;
 			path.innerHTML = \`<span>\${state.footerPath}</span> <span class="path-label">\${state.footerLabel}</span>\`;
@@ -606,6 +630,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 					\`;
 					grid.appendChild(button);
 			});
+
+			updateGridRowCount();
 		}
 
 		function toBindingKey(event) {
@@ -658,6 +684,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 				vscode.postMessage({ type: 'activate', index });
 			}
 		});
+
+		window.addEventListener('resize', updateGridRowCount);
 
 		vscode.postMessage({ type: 'ready' });
 	</script>
