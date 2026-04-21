@@ -440,8 +440,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			--bg: var(--vscode-panel-background);
 			--muted: var(--vscode-descriptionForeground);
 			--text: var(--vscode-editor-foreground);
-			--key: #f38ba8;
-			--group: #cba6f7;
+			--key: var(--vscode-errorForeground);
+			--group: var(--vscode-focusBorder);
 			--font-family: var(--vscode-editor-font-family, monospace);
 			--font-size: var(--vscode-editor-font-size, 13px);
 			--line-height: var(--vscode-editor-line-height, 20px);
