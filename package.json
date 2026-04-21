@@ -1779,11 +1779,6 @@
         "when": "doom.fuzzySearchVisible"
       },
       {
-        "key": "enter",
-        "command": "doom.fuzzySearchAcceptSelection",
-        "when": "doom.fuzzySearchVisible"
-      },
-      {
         "key": "ctrl+j",
         "command": "workbench.action.quickOpenSelectNext",
         "when": "inQuickInput && !whichkeyVisible"

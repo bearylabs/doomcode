@@ -546,13 +546,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const fuzzySearchAcceptCmd = vscode.commands.registerCommand(
-		"doom.fuzzySearchAcceptSelection",
-		() => {
-			void fuzzySearchPanel.activateSelection();
-		}
-	);
-
 	const whichKeyViewProvider = vscode.window.registerWebviewViewProvider(
 		DoomWhichKeyMenu.viewId,
 		whichKeyMenu,
@@ -582,7 +575,6 @@ export function activate(context: vscode.ExtensionContext) {
 		workspaceFuzzySearchCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
-		fuzzySearchAcceptCmd,
 		whichKeyViewProvider,
 		fuzzySearchViewProvider
 	);
