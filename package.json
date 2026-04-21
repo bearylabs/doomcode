@@ -254,7 +254,7 @@
               "key": "b",
               "name": "Switch workspace buffer",
               "type": "command",
-              "command": "workbench.action.showEditorsInActiveGroup"
+              "command": "doom.showOpenEditors"
             },
             {
               "key": "B",
@@ -1437,6 +1437,11 @@
           "id": "doomFuzzySearchPanel",
           "title": "Search",
           "icon": "assets/fuzzy-search.svg"
+        },
+        {
+          "id": "doomOpenEditorsPanel",
+          "title": "Buffers",
+          "icon": "assets/fuzzy-search.svg"
         }
       ]
     },
@@ -1454,6 +1459,14 @@
           "id": "doom.fuzzySearchView",
           "type": "webview",
           "name": "Fuzzy Search",
+          "icon": "assets/fuzzy-search.svg"
+        }
+      ],
+      "doomOpenEditorsPanel": [
+        {
+          "id": "doom.openEditorsView",
+          "type": "webview",
+          "name": "Open Editors",
           "icon": "assets/fuzzy-search.svg"
         }
       ]
@@ -1486,6 +1499,10 @@
       {
         "command": "doom.fuzzySearchWorkspace",
         "title": "Doom Code: Fuzzy Search in Project"
+      },
+      {
+        "command": "doom.showOpenEditors",
+        "title": "Doom Code: Switch Workspace Buffer"
       }
     ],
     "keybindings": [

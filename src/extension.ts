@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DoomOpenEditorsPanel } from './buffers/openEditors';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -449,6 +450,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu(context.extensionUri);
 	registerWindowMru(context);
+	const openEditorsPanel = new DoomOpenEditorsPanel();
 
 	// First-activation: apply defaults then detect stale state.
 	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {
@@ -547,6 +549,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const openEditorsCmd = vscode.commands.registerCommand(
+		"doom.showOpenEditors",
+		() => {
+			void openEditorsPanel.show();
+		}
+	);
+
 	const fuzzySearchMoveDownCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchMoveDown",
 		() => {
@@ -581,6 +590,16 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const openEditorsViewProvider = vscode.window.registerWebviewViewProvider(
+		DoomOpenEditorsPanel.viewId,
+		openEditorsPanel,
+		{
+			webviewOptions: {
+				retainContextWhenHidden: true,
+			},
+		}
+	);
+
 	context.subscriptions.push(
 		installCmd,
 		cleanupCmd,
@@ -590,10 +609,12 @@ export function activate(context: vscode.ExtensionContext) {
 		configurationChangeListener,
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,
+		openEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		whichKeyViewProvider,
-		fuzzySearchViewProvider
+		fuzzySearchViewProvider,
+		openEditorsViewProvider
 	);
 }
 
