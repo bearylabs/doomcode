@@ -7,6 +7,37 @@ import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { registerWindowMru } from './window/mru';
 
+type WhichKeyMenuStyle = 'doom' | 'vspacecode';
+
+const WHICH_KEY_MENU_SETTING = 'doom.whichKey.menuStyle';
+const DEFAULT_WHICH_KEY_MENU_STYLE: WhichKeyMenuStyle = 'doom';
+
+function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
+	const configuredStyle = vscode.workspace
+		.getConfiguration()
+		.get<WhichKeyMenuStyle>(WHICH_KEY_MENU_SETTING, DEFAULT_WHICH_KEY_MENU_STYLE);
+
+	return configuredStyle === 'vspacecode' ? configuredStyle : DEFAULT_WHICH_KEY_MENU_STYLE;
+}
+
+async function showConfiguredWhichKeyMenu(whichKeyMenu: DoomWhichKeyMenu): Promise<void> {
+	if (getWhichKeyMenuStyle() === 'vspacecode') {
+		await whichKeyMenu.hide();
+
+		try {
+			await vscode.commands.executeCommand('whichkey.show');
+			return;
+		} catch (error) {
+			console.warn("Failed to show VSpaceCode WhichKey menu, falling back to Doom menu:", error);
+			void vscode.window.showWarningMessage(
+				"Unable to open the VSpaceCode WhichKey menu. Falling back to Doom Code's menu for this session."
+			);
+		}
+	}
+
+	await whichKeyMenu.show();
+}
+
 // ---------------------------------------------------------------------------
 // Conflicting extensions that override the same settings Doom Code manages.
 // ---------------------------------------------------------------------------
@@ -473,9 +504,19 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShow",
 		() => {
-			void whichKeyMenu.show();
+			void showConfiguredWhichKeyMenu(whichKeyMenu);
 		}
 	);
+
+	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
+		if (!event.affectsConfiguration(WHICH_KEY_MENU_SETTING)) {
+			return;
+		}
+
+		if (getWhichKeyMenuStyle() === 'vspacecode') {
+			void whichKeyMenu.hide();
+		}
+	});
 
 	const fuzzySearchCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchActiveTextEditor",
@@ -508,6 +549,7 @@ export function activate(context: vscode.ExtensionContext) {
 		installCmd,
 		cleanupCmd,
 		whichKeyCmd,
+		configurationChangeListener,
 		fuzzySearchCmd,
 		whichKeyViewProvider,
 		fuzzySearchViewProvider

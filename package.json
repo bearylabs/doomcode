@@ -1412,6 +1412,20 @@
       "workbench.startupEditor": "none",
       "window.commandCenter": false
     },
+    "configuration": {
+      "title": "Doom Code",
+      "properties": {
+        "doom.whichKey.menuStyle": {
+          "type": "string",
+          "enum": [
+            "doom",
+            "vspacecode"
+          ],
+          "default": "doom",
+          "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom panel UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
+        }
+      }
+    },
     "viewsContainers": {
       "panel": [
         {

@@ -241,6 +241,15 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		this.render();
 	}
 
+	async hide(): Promise<void> {
+		if (!this.view?.visible) {
+			await this.updateVisibilityContext(false);
+			return;
+		}
+
+		await this.close();
+	}
+
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
