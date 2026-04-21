@@ -79,19 +79,9 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	private viewDisposables: vscode.Disposable[] = [];
 
 	async show(): Promise<void> {
-		const activeEditor = vscode.window.activeTextEditor;
-		if (!activeEditor) {
-			void vscode.window.showInformationMessage('Open a file first to use fuzzy search.');
+		if (!this.initializeFromActiveEditor({ notifyWhenMissing: true, resetQuery: true })) {
 			return;
 		}
-
-		this.targetEditor = activeEditor;
-		this.startingSelection = activeEditor.selection;
-		this.accepted = false;
-		this.activeIndex = 0;
-		this.query = '';
-		this.currentItems = this.buildItems(activeEditor.document);
-		this.filteredItems = this.currentItems.slice(0, 200);
 
 		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
 		await vscode.commands.executeCommand(`workbench.view.extension.${DoomFuzzySearchPanel.containerId}`);
@@ -109,6 +99,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			enableScripts: true,
 		};
 		webviewView.webview.html = this.getHtml(webviewView.webview);
+		this.initializeFromActiveEditor({ resetQuery: true });
 
 		this.viewDisposables.push(
 			webviewView.onDidDispose(() => {
@@ -120,6 +111,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			}),
 			webviewView.onDidChangeVisibility(() => {
 				if (webviewView.visible) {
+					this.initializeFromActiveEditor({ resetQuery: true });
 					this.render();
 					return;
 				}
@@ -130,6 +122,39 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 				void this.handleMessage(message);
 			})
 		);
+	}
+
+	private initializeFromActiveEditor(options: {
+		notifyWhenMissing?: boolean;
+		resetQuery?: boolean;
+	} = {}): boolean {
+		const activeEditor = vscode.window.activeTextEditor;
+		if (!activeEditor) {
+			this.accepted = false;
+			this.activeIndex = 0;
+			this.currentItems = [];
+			this.filteredItems = [];
+			this.startingSelection = undefined;
+			this.targetEditor = undefined;
+			if (options.resetQuery) {
+				this.query = '';
+			}
+			if (options.notifyWhenMissing) {
+				void vscode.window.showInformationMessage('Open a file first to use fuzzy search.');
+			}
+			return false;
+		}
+
+		this.accepted = false;
+		this.activeIndex = 0;
+		this.startingSelection = activeEditor.selection;
+		this.targetEditor = activeEditor;
+		if (options.resetQuery) {
+			this.query = '';
+		}
+		this.currentItems = this.buildItems(activeEditor.document);
+		this.filterItems();
+		return true;
 	}
 
 	private buildItems(document: vscode.TextDocument): SearchItem[] {
