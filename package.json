@@ -1086,7 +1086,7 @@
               "key": "p",
               "name": "Search Project",
               "type": "command",
-              "command": "workbench.action.findInFiles"
+              "command": "doom.fuzzySearchWorkspace"
             },
             {
               "key": "P",
@@ -1478,6 +1478,10 @@
       {
         "command": "doom.fuzzySearchActiveTextEditor",
         "title": "Doom Code: Fuzzy Search in Current File"
+      },
+      {
+        "command": "doom.fuzzySearchWorkspace",
+        "title": "Doom Code: Fuzzy Search in Project"
       }
     ],
     "keybindings": [

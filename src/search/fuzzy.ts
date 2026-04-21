@@ -1,24 +1,45 @@
 import * as vscode from 'vscode';
 
 interface SearchItem {
+	fileLabel?: string;
 	line: number;
 	lineLabel: string;
 	searchText: string;
 	text: string;
+	uri?: vscode.Uri;
 }
 
-interface SearchRenderItem {
-	line: number;
-	lineLabel: string;
-	text: string;
+interface SearchMatch {
+	item: SearchItem;
+	matches: number[];
+	score: number;
 }
+
+interface SearchRenderHeaderItem {
+	fileLabel: string;
+	type: 'header';
+}
+
+interface SearchRenderResultItem {
+	index: number;
+	lineLabel: string;
+	matches: number[];
+	text: string;
+	type: 'result';
+}
+
+type SearchRenderItem = SearchRenderHeaderItem | SearchRenderResultItem;
 
 interface SearchState {
 	activeIndex: number;
-	activeLine?: number;
+	emptyText: string;
 	items: SearchRenderItem[];
+	placeholder: string;
+	promptLabel: string;
 	query: string;
-	totalLines: number;
+	statusLabel: string;
+	statusWidthCh: number;
+	title: string;
 }
 
 interface SearchMessage {
@@ -27,19 +48,35 @@ interface SearchMessage {
 	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
 }
 
+interface SearchOptions {
+	notifyWhenMissing?: boolean;
+	resetQuery?: boolean;
+}
+
+interface FuzzyMatch {
+	indices: number[];
+	score: number;
+}
+
+type SearchMode = 'editor' | 'workspace';
+
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
 
-function fuzzyScore(text: string, query: string): number | undefined {
+function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 	if (query.length === 0) {
-		return 0;
+		return {
+			indices: [],
+			score: 0,
+		};
 	}
 
 	let score = 0;
 	let queryIndex = 0;
 	let streak = 0;
 	let firstMatch = -1;
+	const indices: number[] = [];
 
 	for (let textIndex = 0; textIndex < text.length && queryIndex < query.length; textIndex++) {
 		if (text[textIndex] !== query[queryIndex]) {
@@ -53,6 +90,7 @@ function fuzzyScore(text: string, query: string): number | undefined {
 
 		queryIndex++;
 		streak++;
+		indices.push(textIndex);
 		score += 8 + streak * 4;
 	}
 
@@ -60,17 +98,26 @@ function fuzzyScore(text: string, query: string): number | undefined {
 		return undefined;
 	}
 
-	return score - Math.max(firstMatch, 0);
+	return {
+		indices,
+		score: score - Math.max(firstMatch, 0),
+	};
 }
 
 export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	static readonly containerId = 'doomFuzzySearchPanel';
 	static readonly viewId = 'doom.fuzzySearchView';
 
+	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
+	private static readonly workspaceFileSizeLimit = 1024 * 1024;
+
 	private accepted = false;
 	private activeIndex = 0;
 	private currentItems: SearchItem[] = [];
-	private filteredItems: SearchItem[] = [];
+	private filteredItems: SearchMatch[] = [];
+	private loadSequence = 0;
+	private loading = false;
+	private mode: SearchMode = 'editor';
 	private query = '';
 	private ready = false;
 	private startingSelection: vscode.Selection | undefined;
@@ -79,27 +126,35 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	private viewDisposables: vscode.Disposable[] = [];
 
 	async show(): Promise<void> {
+		this.mode = 'editor';
 		if (!this.initializeFromActiveEditor({ notifyWhenMissing: true, resetQuery: true })) {
 			return;
 		}
 
-		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
-		await vscode.commands.executeCommand(`workbench.view.extension.${DoomFuzzySearchPanel.containerId}`);
-		await vscode.commands.executeCommand(`${DoomFuzzySearchPanel.viewId}.focus`);
+		await this.openPanel();
 		this.render();
+	}
+
+	async showWorkspace(): Promise<void> {
+		this.mode = 'workspace';
+		if (!this.initializeWorkspaceSearch({ notifyWhenMissing: true, resetQuery: true })) {
+			return;
+		}
+
+		await this.openPanel();
+		this.render();
+		await this.loadWorkspaceItems();
 	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
 		this.view = webviewView;
-		webviewView.title = 'Fuzzy Search';
-		webviewView.description = 'Search current file';
 		webviewView.webview.options = {
 			enableScripts: true,
 		};
 		webviewView.webview.html = this.getHtml(webviewView.webview);
-		this.initializeFromActiveEditor({ resetQuery: true });
+		this.updateViewMetadata();
 
 		this.viewDisposables.push(
 			webviewView.onDidDispose(() => {
@@ -111,8 +166,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			}),
 			webviewView.onDidChangeVisibility(() => {
 				if (webviewView.visible) {
-					this.initializeFromActiveEditor({ resetQuery: true });
-					this.render();
+					void this.refreshVisibleSearch();
 					return;
 				}
 
@@ -124,10 +178,48 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		);
 	}
 
-	private initializeFromActiveEditor(options: {
-		notifyWhenMissing?: boolean;
-		resetQuery?: boolean;
-	} = {}): boolean {
+	private async openPanel(): Promise<void> {
+		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
+		await vscode.commands.executeCommand(`workbench.view.extension.${DoomFuzzySearchPanel.containerId}`);
+		await vscode.commands.executeCommand(`${DoomFuzzySearchPanel.viewId}.focus`);
+		this.updateViewMetadata();
+	}
+
+	private async refreshVisibleSearch(): Promise<void> {
+		this.updateViewMetadata();
+		if (this.mode === 'workspace') {
+			if (!this.initializeWorkspaceSearch({ resetQuery: true })) {
+				return;
+			}
+
+			this.render();
+			await this.loadWorkspaceItems();
+			return;
+		}
+
+		if (!this.initializeFromActiveEditor({ resetQuery: true })) {
+			return;
+		}
+
+		this.render();
+	}
+
+	private updateViewMetadata(): void {
+		if (!this.view) {
+			return;
+		}
+
+		if (this.mode === 'workspace') {
+			this.view.title = 'Project Search';
+			this.view.description = `Search project ${this.getWorkspaceLabel()}`;
+			return;
+		}
+
+		this.view.title = 'Fuzzy Search';
+		this.view.description = 'Search current file';
+	}
+
+	private initializeFromActiveEditor(options: SearchOptions = {}): boolean {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor) {
 			this.accepted = false;
@@ -136,6 +228,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			this.filteredItems = [];
 			this.startingSelection = undefined;
 			this.targetEditor = undefined;
+			this.loading = false;
 			if (options.resetQuery) {
 				this.query = '';
 			}
@@ -147,17 +240,49 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 
 		this.accepted = false;
 		this.activeIndex = 0;
+		this.loading = false;
 		this.startingSelection = activeEditor.selection;
 		this.targetEditor = activeEditor;
 		if (options.resetQuery) {
 			this.query = '';
 		}
-		this.currentItems = this.buildItems(activeEditor.document);
+		this.currentItems = this.buildDocumentItems(activeEditor.document);
 		this.filterItems();
 		return true;
 	}
 
-	private buildItems(document: vscode.TextDocument): SearchItem[] {
+	private initializeWorkspaceSearch(options: SearchOptions = {}): boolean {
+		if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+			this.accepted = false;
+			this.activeIndex = 0;
+			this.currentItems = [];
+			this.filteredItems = [];
+			this.startingSelection = undefined;
+			this.targetEditor = undefined;
+			this.loading = false;
+			if (options.resetQuery) {
+				this.query = '';
+			}
+			if (options.notifyWhenMissing) {
+				void vscode.window.showInformationMessage('Open a folder or workspace first to use project search.');
+			}
+			return false;
+		}
+
+		this.accepted = false;
+		this.activeIndex = 0;
+		this.currentItems = [];
+		this.filteredItems = [];
+		this.loading = true;
+		this.startingSelection = undefined;
+		this.targetEditor = undefined;
+		if (options.resetQuery) {
+			this.query = '';
+		}
+		return true;
+	}
+
+	private buildDocumentItems(document: vscode.TextDocument): SearchItem[] {
 		const lines = document.getText().split(/\r?\n/);
 		const lineCountWidth = lines.length.toString().length;
 
@@ -165,28 +290,140 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			.map((text, index) => ({
 				line: index,
 				lineLabel: String(index + 1).padStart(lineCountWidth, '0'),
-				searchText: text.toLowerCase(),
+				searchText: text.trim().toLowerCase(),
 				text: text.trim(),
 			}))
 			.filter((item) => item.text.length > 0);
 	}
 
-	private filterItems(): void {
-		const query = this.query.trim().toLowerCase();
-		if (query.length === 0) {
-			this.filteredItems = this.currentItems.slice(0, 200);
+	private async loadWorkspaceItems(): Promise<void> {
+		const loadId = ++this.loadSequence;
+		this.loading = true;
+		this.render();
+
+		const files = await vscode.workspace.findFiles('**/*', DoomFuzzySearchPanel.workspaceExcludeGlob);
+		const items: SearchItem[] = [];
+
+		for (const uri of files) {
+			if (loadId !== this.loadSequence || this.mode !== 'workspace') {
+				return;
+			}
+
+			let stat: vscode.FileStat | undefined;
+			try {
+				stat = await vscode.workspace.fs.stat(uri);
+			} catch {
+				stat = undefined;
+			}
+			if (!stat || stat.size > DoomFuzzySearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
+				continue;
+			}
+
+			try {
+				const document = await vscode.workspace.openTextDocument(uri);
+				const fileItems = this.buildWorkspaceItems(document);
+				items.push(...fileItems);
+			} catch {
+				continue;
+			}
+		}
+
+		if (loadId !== this.loadSequence || this.mode !== 'workspace') {
 			return;
 		}
 
-		this.filteredItems = this.currentItems
-			.map((item) => ({
-				item,
-				score: fuzzyScore(item.searchText, query),
+		this.loading = false;
+		this.currentItems = items;
+		this.filterItems();
+		this.render();
+	}
+
+	private buildWorkspaceItems(document: vscode.TextDocument): SearchItem[] {
+		const lines = document.getText().split(/\r?\n/);
+		const lineCountWidth = lines.length.toString().length;
+		const fileLabel = vscode.workspace.asRelativePath(document.uri, false);
+
+		return lines
+			.map((text, index) => ({
+				fileLabel,
+				line: index,
+				lineLabel: String(index + 1).padStart(lineCountWidth, '0'),
+				searchText: text.trim().toLowerCase(),
+				text: text.trim(),
+				uri: document.uri,
 			}))
-			.filter((entry): entry is { item: SearchItem; score: number } => entry.score !== undefined)
-			.sort((left, right) => right.score - left.score || left.item.line - right.item.line)
-			.slice(0, 200)
-			.map((entry) => entry.item);
+			.filter((item) => item.text.length > 0);
+	}
+
+	private filterItems(): void {
+		this.activeIndex = 0;
+		const query = this.query.trim().toLowerCase();
+
+		if (this.loading) {
+			this.filteredItems = [];
+			return;
+		}
+
+		if (query.length === 0) {
+			if (this.mode === 'workspace') {
+				this.filteredItems = [];
+				return;
+			}
+
+			this.filteredItems = this.currentItems
+				.slice(0, 200)
+				.map((item) => ({
+					item,
+					matches: [],
+					score: 0,
+				}));
+			return;
+		}
+
+		const matches = this.currentItems
+			.map((item) => {
+				const match = fuzzyMatch(item.searchText, query);
+				if (!match) {
+					return undefined;
+				}
+
+				return {
+					item,
+					matches: match.indices,
+					score: match.score,
+				};
+			})
+			.filter((entry): entry is SearchMatch => entry !== undefined);
+
+		this.filteredItems = this.mode === 'workspace'
+			? this.groupWorkspaceMatches(matches).slice(0, 200)
+			: matches
+				.sort((left, right) => right.score - left.score || left.item.line - right.item.line)
+				.slice(0, 200);
+	}
+
+	private groupWorkspaceMatches(matches: SearchMatch[]): SearchMatch[] {
+		const groups = new Map<string, { fileLabel: string; matches: SearchMatch[]; topScore: number }>();
+
+		for (const match of matches) {
+			const fileLabel = match.item.fileLabel ?? '';
+			const existing = groups.get(fileLabel);
+			if (existing) {
+				existing.matches.push(match);
+				existing.topScore = Math.max(existing.topScore, match.score);
+				continue;
+			}
+
+			groups.set(fileLabel, {
+				fileLabel,
+				matches: [match],
+				topScore: match.score,
+			});
+		}
+
+		return Array.from(groups.values())
+			.sort((left, right) => right.topScore - left.topScore || left.fileLabel.localeCompare(right.fileLabel))
+			.flatMap((group) => group.matches.sort((left, right) => right.score - left.score || left.item.line - right.item.line));
 	}
 
 	private async handleMessage(message: SearchMessage): Promise<void> {
@@ -198,10 +435,9 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		case 'query':
 			this.query = message.query ?? '';
 			this.filterItems();
-			this.activeIndex = 0;
 			this.render();
-			if (this.filteredItems.length > 0) {
-				await this.revealLine(this.filteredItems[0].line);
+			if (this.mode === 'editor' && this.filteredItems.length > 0) {
+				await this.revealEditorLine(this.filteredItems[0].item.line);
 			}
 			return;
 		case 'move': {
@@ -215,7 +451,9 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			}
 
 			this.activeIndex = message.index;
-			await this.revealLine(item.line);
+			if (this.mode === 'editor') {
+				await this.revealEditorLine(item.item.line);
+			}
 			this.render();
 			return;
 		}
@@ -230,7 +468,11 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			}
 
 			this.accepted = true;
-			await this.revealLine(item.line);
+			if (this.mode === 'workspace') {
+				await this.openWorkspaceItem(item.item);
+			} else {
+				await this.revealEditorLine(item.item.line);
+			}
 			await this.close();
 			return;
 		}
@@ -242,7 +484,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		}
 	}
 
-	private async revealLine(line: number): Promise<void> {
+	private async revealEditorLine(line: number): Promise<void> {
 		const editor = this.targetEditor;
 		if (!editor) {
 			return;
@@ -254,22 +496,46 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		editor.selection = new vscode.Selection(position, position);
 	}
 
+	private async openWorkspaceItem(item: SearchItem): Promise<void> {
+		if (!item.uri) {
+			return;
+		}
+
+		const document = await vscode.workspace.openTextDocument(item.uri);
+		const editor = await vscode.window.showTextDocument(document, {
+			preview: false,
+			preserveFocus: false,
+		});
+		const position = new vscode.Position(item.line, 0);
+		const range = new vscode.Range(position, position);
+		editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+		editor.selection = new vscode.Selection(position, position);
+	}
+
 	private render(): void {
 		if (!this.view || !this.ready || !this.view.visible) {
 			return;
 		}
 
-		const activeItem = this.filteredItems[this.activeIndex];
+		const activeIndex = this.filteredItems.length === 0
+			? 0
+			: Math.min(this.activeIndex, this.filteredItems.length - 1);
+		this.activeIndex = activeIndex;
+
 		const state: SearchState = {
-			activeIndex: this.activeIndex,
-			items: this.filteredItems.map((item) => ({
-				line: item.line,
-				lineLabel: item.lineLabel,
-				text: item.text,
-			})),
+			activeIndex,
+			emptyText: this.getEmptyText(),
+			items: this.toRenderItems(),
+			placeholder: this.mode === 'workspace'
+				? 'Type to fuzzy search project'
+				: 'Type to fuzzy search current file',
+			promptLabel: this.mode === 'workspace'
+				? `Search (Project ${this.getWorkspaceLabel()}):`
+				: 'Go to line:',
 			query: this.query,
-			activeLine: activeItem?.line,
-			totalLines: this.targetEditor?.document.lineCount ?? 0,
+			statusLabel: this.getStatusLabel(),
+			statusWidthCh: this.getStatusWidthCh(),
+			title: this.mode === 'workspace' ? 'Project Search' : 'Fuzzy Search',
 		};
 
 		void this.view.webview.postMessage({
@@ -278,8 +544,87 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		});
 	}
 
+	private toRenderItems(): SearchRenderItem[] {
+		if (this.mode !== 'workspace') {
+			return this.filteredItems.map((entry, index) => ({
+				index,
+				lineLabel: entry.item.lineLabel,
+				matches: entry.matches,
+				text: entry.item.text,
+				type: 'result',
+			}));
+		}
+
+		const items: SearchRenderItem[] = [];
+		let currentFile = '';
+
+		this.filteredItems.forEach((entry, index) => {
+			const fileLabel = entry.item.fileLabel ?? '';
+			if (fileLabel !== currentFile) {
+				currentFile = fileLabel;
+				items.push({
+					fileLabel,
+					type: 'header',
+				});
+			}
+
+			items.push({
+				index,
+				lineLabel: entry.item.lineLabel,
+				matches: entry.matches,
+				text: entry.item.text,
+				type: 'result',
+			});
+		});
+
+		return items;
+	}
+
+	private getStatusLabel(): string {
+		if (this.mode === 'workspace') {
+			const total = this.filteredItems.length;
+			if (total === 0) {
+				return '0/0';
+			}
+
+			return `${this.activeIndex + 1}/${total}`;
+		}
+
+		const totalLines = this.targetEditor?.document.lineCount ?? 0;
+		const activeItem = this.filteredItems[this.activeIndex]?.item;
+		return activeItem ? `${activeItem.line + 1}/${totalLines}` : `0/${totalLines}`;
+	}
+
+	private getStatusWidthCh(): number {
+		if (this.mode === 'workspace') {
+			const total = Math.max(this.filteredItems.length, 0);
+			const digits = Math.max(String(total).length, 1);
+			return digits * 2 + 1;
+		}
+
+		const totalLines = Math.max(this.targetEditor?.document.lineCount ?? 0, 0);
+		const digits = Math.max(String(totalLines).length, 1);
+		return digits * 2 + 1;
+	}
+
+	private getEmptyText(): string {
+		if (this.loading) {
+			return 'Loading project files...';
+		}
+
+		if (this.mode === 'workspace' && this.query.trim().length === 0) {
+			return 'Type to fuzzy search project.';
+		}
+
+		return 'No matches.';
+	}
+
+	private getWorkspaceLabel(): string {
+		return vscode.workspace.name ?? 'workspace';
+	}
+
 	private restoreSelectionIfNeeded(): void {
-		if (this.accepted || !this.startingSelection || !this.targetEditor) {
+		if (this.mode !== 'editor' || this.accepted || !this.startingSelection || !this.targetEditor) {
 			return;
 		}
 
@@ -323,6 +668,8 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
 			--selected-text: var(--vscode-editor-foreground);
 			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
+			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
+			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
 			--font-family: var(--vscode-editor-font-family, monospace);
 			--font-size: var(--vscode-editor-font-size, 13px);
 			--line-height: var(--vscode-editor-line-height, 20px);
@@ -422,6 +769,28 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			outline-offset: -1px;
 		}
 
+		.group {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 4px 8px 0;
+			color: var(--muted);
+			font-style: italic;
+		}
+
+		.group::before,
+		.group::after {
+			content: '';
+			flex: 1 1 auto;
+			border-top: 1px solid var(--border);
+			opacity: 0.8;
+		}
+
+		.group-label {
+			white-space: nowrap;
+			color: color-mix(in srgb, var(--accent) 65%, var(--text));
+		}
+
 		.line {
 			color: var(--muted);
 			font-variant-numeric: tabular-nums;
@@ -432,6 +801,11 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			min-width: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;
+		}
+
+		.match {
+			background: var(--match-bg);
+			color: var(--match-fg);
 		}
 
 		.empty {
@@ -445,7 +819,7 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	<div class="shell">
 		<div class="promptbar">
 			<div class="status" id="status">0/0</div>
-			<label class="prompt" for="query">Go to line:</label>
+			<label class="prompt" id="prompt" for="query">Go to line:</label>
 			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to fuzzy search current file" />
 		</div>
 		<div class="results" id="results"></div>
@@ -453,46 +827,93 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	</div>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
+		const empty = document.getElementById('empty');
+		const prompt = document.getElementById('prompt');
 		const query = document.getElementById('query');
 		const results = document.getElementById('results');
-		const empty = document.getElementById('empty');
 		const status = document.getElementById('status');
 		let items = [];
 
+		function appendHighlightedText(container, text, matches) {
+			if (!matches || matches.length === 0) {
+				container.textContent = text;
+				return;
+			}
+
+			let cursor = 0;
+			let matchCursor = 0;
+			while (cursor < text.length) {
+				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
+					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
+					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
+					cursor = nextMatch;
+					continue;
+				}
+
+				let end = cursor;
+				while (matchCursor < matches.length && matches[matchCursor] === end) {
+					end++;
+					matchCursor++;
+				}
+
+				const mark = document.createElement('span');
+				mark.className = 'match';
+				mark.textContent = text.slice(cursor, end);
+				container.append(mark);
+				cursor = end;
+			}
+		}
+
 		function render(state) {
 			items = state.items;
+			document.title = state.title;
+			prompt.textContent = state.promptLabel;
+			query.placeholder = state.placeholder;
+			empty.textContent = state.emptyText;
+
 			if (document.activeElement !== query) {
 				query.value = state.query;
 			}
 
 			results.innerHTML = '';
 			empty.hidden = items.length > 0;
-			status.style.width = (String(state.totalLines).length * 2 + 1) + 'ch';
-			status.textContent = state.activeLine === undefined
-				? '0/' + state.totalLines
-				: (state.activeLine + 1) + '/' + state.totalLines;
+			status.style.width = state.statusWidthCh + 'ch';
+			status.textContent = state.statusLabel;
 
-			items.forEach((item, index) => {
+			items.forEach((item) => {
+				if (item.type === 'header') {
+					const header = document.createElement('div');
+					header.className = 'group';
+
+					const label = document.createElement('span');
+					label.className = 'group-label';
+					label.textContent = item.fileLabel;
+					header.append(label);
+					results.appendChild(header);
+					return;
+				}
+
 				const button = document.createElement('button');
 				button.type = 'button';
-				button.className = index === state.activeIndex ? 'item active' : 'item';
+				button.className = item.index === state.activeIndex ? 'item active' : 'item';
+				button.dataset.index = String(item.index);
 
 				const line = document.createElement('span');
 				line.className = 'line';
-				line.textContent = item.lineLabel;
+				line.textContent = item.lineLabel + ':';
 
 				const content = document.createElement('span');
 				content.className = 'content';
-				content.textContent = item.text;
+				appendHighlightedText(content, item.text, item.matches);
 
 				button.append(line, content);
 				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index });
+					vscode.postMessage({ type: 'activate', index: item.index });
 				});
 				results.appendChild(button);
 			});
 
-			const activeButton = results.children[state.activeIndex];
+			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
 			if (activeButton instanceof HTMLElement) {
 				activeButton.scrollIntoView({ block: 'nearest' });
 			}
@@ -526,34 +947,37 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			}
 
 			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
-				if (items.length === 0) {
+				const resultItems = items.filter((item) => item.type === 'result');
+				if (resultItems.length === 0) {
 					return;
 				}
 
 				event.preventDefault();
-				const activeIndex = Array.from(results.children).findIndex((item) => item.classList.contains('active'));
-				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, items.length - 1) });
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
+				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, resultItems.length - 1) });
 				return;
 			}
 
 			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
-				if (items.length === 0) {
+				const resultItems = items.filter((item) => item.type === 'result');
+				if (resultItems.length === 0) {
 					return;
 				}
 
 				event.preventDefault();
-				const activeIndex = Array.from(results.children).findIndex((item) => item.classList.contains('active'));
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
 				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
 				return;
 			}
 
 			if (event.key === 'Enter') {
-				if (items.length === 0) {
+				const resultItems = items.filter((item) => item.type === 'result');
+				if (resultItems.length === 0) {
 					return;
 				}
 
 				event.preventDefault();
-				const activeIndex = Array.from(results.children).findIndex((item) => item.classList.contains('active'));
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
 				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
 			}
 		});
