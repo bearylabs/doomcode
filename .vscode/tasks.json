@@ -22,6 +22,70 @@
 			"presentation": {
 				"reveal": "never"
 			}
+		},
+		{
+			"label": "compile (local)",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"compile"
+			],
+			"options": {
+				"shell": {
+					"executable": "C:\\Windows\\System32\\cmd.exe",
+					"args": [
+						"/d",
+						"/c"
+					]
+				}
+			},
+			"problemMatcher": "$tsc",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "watch (local)",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"watch"
+			],
+			"options": {
+				"shell": {
+					"executable": "C:\\Windows\\System32\\cmd.exe",
+					"args": [
+						"/d",
+						"/c"
+					]
+				}
+			},
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			}
+		},
+		{
+			"label": "install deps (local)",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"install"
+			],
+			"options": {
+				"shell": {
+					"executable": "C:\\Windows\\System32\\cmd.exe",
+					"args": [
+						"/d",
+						"/c"
+					]
+				}
+			},
+			"problemMatcher": []
 		}
 	]
 }
