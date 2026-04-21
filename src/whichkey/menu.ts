@@ -537,6 +537,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 			align-items: center;
 			column-gap: 12px;
+			margin-top: 6px;
 			color: var(--muted);
 		}
 
