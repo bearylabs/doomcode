@@ -42,8 +42,7 @@
     "VSpaceCode.whichkey"
   ],
   "extensionPack": [
-    "wayou.vscode-todo-highlight",
-    "jacobdufault.fuzzy-search"
+    "wayou.vscode-todo-highlight"
   ],
   "activationEvents": [
     "onStartupFinished"
