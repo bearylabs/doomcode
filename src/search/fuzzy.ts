@@ -1,20 +1,24 @@
 import * as vscode from 'vscode';
 
 interface SearchItem {
-	label: string;
 	line: number;
+	lineLabel: string;
 	searchText: string;
+	text: string;
 }
 
 interface SearchRenderItem {
-	label: string;
 	line: number;
+	lineLabel: string;
+	text: string;
 }
 
 interface SearchState {
 	activeIndex: number;
+	activeLine?: number;
 	items: SearchRenderItem[];
 	query: string;
+	totalLines: number;
 }
 
 interface SearchMessage {
@@ -134,11 +138,12 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 
 		return lines
 			.map((text, index) => ({
-				label: `${String(index + 1).padStart(lineCountWidth, '0')}: ${text.trim()}`,
 				line: index,
+				lineLabel: String(index + 1).padStart(lineCountWidth, '0'),
 				searchText: text.toLowerCase(),
+				text: text.trim(),
 			}))
-			.filter((item) => item.label.trim().length > lineCountWidth + 1);
+			.filter((item) => item.text.length > 0);
 	}
 
 	private filterItems(): void {
@@ -229,13 +234,17 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			return;
 		}
 
+		const activeItem = this.filteredItems[this.activeIndex];
 		const state: SearchState = {
 			activeIndex: this.activeIndex,
 			items: this.filteredItems.map((item) => ({
-				label: item.label,
 				line: item.line,
+				lineLabel: item.lineLabel,
+				text: item.text,
 			})),
 			query: this.query,
+			activeLine: activeItem?.line,
+			totalLines: this.targetEditor?.document.lineCount ?? 0,
 		};
 
 		void this.view.webview.postMessage({
@@ -280,14 +289,15 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 
 		:root {
 			color-scheme: dark;
-			--bg: var(--vscode-panel-background);
-			--border: var(--vscode-panel-border, transparent);
-			--input-bg: var(--vscode-input-background);
-			--input-fg: var(--vscode-input-foreground);
-			--muted: var(--vscode-descriptionForeground);
+			--bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+			--chrome: color-mix(in srgb, var(--bg) 92%, white 8%);
+			--border: var(--vscode-panel-border, color-mix(in srgb, var(--bg) 82%, white 18%));
+			--input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground));
+			--muted: var(--vscode-editorLineNumber-foreground, var(--vscode-descriptionForeground));
 			--text: var(--vscode-editor-foreground);
-			--selected: var(--vscode-list-activeSelectionBackground);
-			--selected-text: var(--vscode-list-activeSelectionForeground);
+			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
+			--selected-text: var(--vscode-editor-foreground);
+			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
 			--font-family: var(--vscode-editor-font-family, monospace);
 			--font-size: var(--vscode-editor-font-size, 13px);
 			--line-height: var(--vscode-editor-line-height, 20px);
@@ -299,7 +309,6 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 
 		body {
 			margin: 0;
-			padding: 6px 8px 2px;
 			height: 100%;
 			background: var(--bg);
 			color: var(--text);
@@ -313,19 +322,45 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		.shell {
 			display: flex;
 			flex-direction: column;
-			gap: 6px;
 			flex: 1 1 auto;
 			min-height: 0;
 			overflow: hidden;
 		}
 
+		.promptbar {
+			display: grid;
+			grid-template-columns: auto auto 1fr;
+			align-items: center;
+			gap: 8px;
+			min-height: calc(var(--line-height) + 8px);
+			padding: 2px 8px;
+			background: var(--bg);
+		}
+
+		.status,
+		.prompt {
+			color: var(--muted);
+			white-space: nowrap;
+		}
+
+		.status {
+			font-variant-numeric: tabular-nums;
+			text-align: right;
+		}
+
 		.input {
 			width: 100%;
-			padding: 2px 6px;
-			border: 1px solid var(--border);
-			background: var(--input-bg);
+			padding: 0;
+			border: none;
+			outline: none;
+			background: transparent;
 			color: var(--input-fg);
 			font: inherit;
+			caret-color: var(--accent);
+		}
+
+		.input::placeholder {
+			color: color-mix(in srgb, var(--muted) 72%, transparent);
 		}
 
 		.results {
@@ -334,12 +369,16 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			overflow: auto;
 			display: flex;
 			flex-direction: column;
-			gap: 1px;
+			padding: 2px 0 0;
 		}
 
 		.item {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			align-items: baseline;
+			gap: 12px;
 			flex: 0 0 auto;
-			padding: 0;
+			padding: 0 10px;
 			border: none;
 			background: transparent;
 			color: inherit;
@@ -354,36 +393,45 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		.item.active {
 			background: var(--selected);
 			color: var(--selected-text);
+			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+			outline-offset: -1px;
 		}
 
-		.empty,
-		.footer {
+		.line {
+			color: var(--muted);
+			font-variant-numeric: tabular-nums;
+			opacity: 0.95;
+		}
+
+		.content {
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.empty {
 			color: var(--muted);
 			white-space: nowrap;
-		}
-
-		.footer {
-			display: flex;
-			justify-content: space-between;
-			gap: 12px;
+			padding: 0 10px;
 		}
 	</style>
 </head>
 <body>
 	<div class="shell">
-		<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to fuzzy search current file" />
+		<div class="promptbar">
+			<div class="status" id="status">0/0</div>
+			<label class="prompt" for="query">Go to line:</label>
+			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to fuzzy search current file" />
+		</div>
 		<div class="results" id="results"></div>
 		<div class="empty" id="empty" hidden>No matches.</div>
-		<div class="footer">
-			<div>Current file</div>
-			<div>Enter jump. Esc close.</div>
-		</div>
 	</div>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
 		const query = document.getElementById('query');
 		const results = document.getElementById('results');
 		const empty = document.getElementById('empty');
+		const status = document.getElementById('status');
 		let items = [];
 
 		function render(state) {
@@ -394,12 +442,25 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 
 			results.innerHTML = '';
 			empty.hidden = items.length > 0;
+			status.style.width = (String(state.totalLines).length * 2 + 1) + 'ch';
+			status.textContent = state.activeLine === undefined
+				? '0/' + state.totalLines
+				: (state.activeLine + 1) + '/' + state.totalLines;
 
 			items.forEach((item, index) => {
 				const button = document.createElement('button');
 				button.type = 'button';
 				button.className = index === state.activeIndex ? 'item active' : 'item';
-				button.textContent = item.label;
+
+				const line = document.createElement('span');
+				line.className = 'line';
+				line.textContent = item.lineLabel;
+
+				const content = document.createElement('span');
+				content.className = 'content';
+				content.textContent = item.text;
+
+				button.append(line, content);
 				button.addEventListener('click', () => {
 					vscode.postMessage({ type: 'activate', index });
 				});
