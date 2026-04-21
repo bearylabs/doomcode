@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyMenu } from './whichkey/menu';
+import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
 import { registerWindowMru } from './window/mru';
 
 type WhichKeyMenuStyle = 'doom' | 'vspacecode';
@@ -508,6 +509,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const whichKeyBindingsCmd = vscode.commands.registerCommand(
+		"doom.whichKeyShowBindings",
+		() => {
+			void showWhichKeyBindingsQuickPick();
+		}
+	);
+
 	const whichKeyHideCmd = vscode.commands.registerCommand(
 		"doom.whichKeyHide",
 		() => {
@@ -577,6 +585,7 @@ export function activate(context: vscode.ExtensionContext) {
 		installCmd,
 		cleanupCmd,
 		whichKeyCmd,
+		whichKeyBindingsCmd,
 		whichKeyHideCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,

@@ -803,6 +803,19 @@
           ]
         },
         {
+          "key": "h",
+          "name": "+help",
+          "type": "bindings",
+          "bindings": [
+            {
+              "key": "b",
+              "name": "Show bindings",
+              "type": "command",
+              "command": "doom.whichKeyShowBindings"
+            }
+          ]
+        },
+        {
           "key": "i",
           "name": "+insert",
           "type": "bindings",
@@ -1461,6 +1474,10 @@
       {
         "command": "doom.whichKeyShow",
         "title": "Doom Code: Show Which Key"
+      },
+      {
+        "command": "doom.whichKeyShowBindings",
+        "title": "Doom Code: Show Which-Key Bindings"
       },
       {
         "command": "doom.fuzzySearchActiveTextEditor",

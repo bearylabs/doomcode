@@ -1,16 +1,9 @@
 import * as vscode from 'vscode';
-
-type WhichKeyBindingType = 'bindings' | 'command' | 'commands' | 'conditional';
-
-interface WhichKeyBinding {
-	key: string;
-	name: string;
-	type: WhichKeyBindingType;
-	command?: string;
-	commands?: string[];
-	args?: unknown;
-	bindings?: WhichKeyBinding[];
-}
+import {
+	executeWhichKeyBindingCommands,
+	getConfiguredWhichKeyBindings,
+	type WhichKeyBinding,
+} from './bindings';
 
 interface ContextSnapshot {
 	activeEditorLastInGroup: boolean;
@@ -39,42 +32,6 @@ interface ViewState {
 interface WebviewMessage {
 	index?: number;
 	type: 'activate' | 'back' | 'close' | 'ready';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object';
-}
-
-function isWhichKeyBinding(value: unknown): value is WhichKeyBinding {
-	if (!isRecord(value)) {
-		return false;
-	}
-
-	return typeof value.key === 'string'
-		&& typeof value.name === 'string'
-		&& typeof value.type === 'string';
-}
-
-function getConfiguredBindings(): WhichKeyBinding[] {
-	const configured = vscode.workspace.getConfiguration().get<unknown>('whichkey.bindings', []);
-
-	if (!Array.isArray(configured)) {
-		return [];
-	}
-
-	return configured.filter(isWhichKeyBinding);
-}
-
-function executeCommand(command: string, arg?: unknown): Thenable<unknown> {
-	if (Array.isArray(arg)) {
-		return vscode.commands.executeCommand(command, ...arg);
-	}
-
-	if (arg !== undefined && arg !== null) {
-		return vscode.commands.executeCommand(command, arg);
-	}
-
-	return vscode.commands.executeCommand(command);
 }
 
 function getContextValue(state: DoomWhichKeyMenu, rawCondition: string): boolean {
@@ -232,7 +189,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	}
 
 	async show(): Promise<void> {
-		this.currentBindings = getConfiguredBindings();
+		this.currentBindings = getConfiguredWhichKeyBindings();
 		this.stack = [];
 		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
 		await vscode.commands.executeCommand(`workbench.view.extension.${DoomWhichKeyMenu.containerId}`);
@@ -285,21 +242,9 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	async executeBinding(binding: WhichKeyBinding): Promise<void> {
 		await this.close();
 
-		if (binding.type === 'command' && binding.command) {
-			await executeCommand(binding.command, binding.args);
-			this.trackContextCommand(binding.command, binding.args);
-			return;
-		}
-
-		if (binding.type === 'commands' && binding.commands) {
-			const args = Array.isArray(binding.args) ? binding.args : [];
-			for (let index = 0; index < binding.commands.length; index++) {
-				const command = binding.commands[index];
-				const arg = args[index];
-				await executeCommand(command, arg);
-				this.trackContextCommand(command, arg);
-			}
-		}
+		await executeWhichKeyBindingCommands(binding, (command, arg) => {
+			this.trackContextCommand(command, arg);
+		});
 	}
 
 	private async handleMessage(message: WebviewMessage): Promise<void> {
