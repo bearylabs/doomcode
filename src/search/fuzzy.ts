@@ -107,6 +107,7 @@ function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	static readonly containerId = 'doomFuzzySearchPanel';
 	static readonly viewId = 'doom.fuzzySearchView';
+	static readonly visibleContextKey = 'doom.fuzzySearchVisible';
 
 	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
 	private static readonly workspaceFileSizeLimit = 1024 * 1024;
@@ -146,6 +147,46 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		await this.loadWorkspaceItems();
 	}
 
+	async moveSelection(delta: number): Promise<void> {
+		if (!this.view?.visible || this.filteredItems.length === 0) {
+			return;
+		}
+
+		const nextIndex = Math.min(
+			Math.max(this.activeIndex + delta, 0),
+			this.filteredItems.length - 1
+		);
+
+		if (nextIndex === this.activeIndex) {
+			return;
+		}
+
+		this.activeIndex = nextIndex;
+		if (this.mode === 'editor') {
+			await this.revealEditorLine(this.filteredItems[nextIndex].item.line);
+		}
+		this.render();
+	}
+
+	async activateSelection(): Promise<void> {
+		if (!this.view?.visible || this.filteredItems.length === 0) {
+			return;
+		}
+
+		const item = this.filteredItems[this.activeIndex];
+		if (!item) {
+			return;
+		}
+
+		this.accepted = true;
+		if (this.mode === 'workspace') {
+			await this.openWorkspaceItem(item.item);
+		} else {
+			await this.revealEditorLine(item.item.line);
+		}
+		await this.close();
+	}
+
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -162,9 +203,11 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 					this.restoreSelectionIfNeeded();
 					this.view = undefined;
 					this.ready = false;
+					void this.updateVisibilityContext(false);
 				}
 			}),
 			webviewView.onDidChangeVisibility(() => {
+				void this.updateVisibilityContext(webviewView.visible);
 				if (webviewView.visible) {
 					void this.refreshVisibleSearch();
 					return;
@@ -182,7 +225,12 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
 		await vscode.commands.executeCommand(`workbench.view.extension.${DoomFuzzySearchPanel.containerId}`);
 		await vscode.commands.executeCommand(`${DoomFuzzySearchPanel.viewId}.focus`);
+		await this.updateVisibilityContext(true);
 		this.updateViewMetadata();
+	}
+
+	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
+		await vscode.commands.executeCommand('setContext', DoomFuzzySearchPanel.visibleContextKey, isVisible);
 	}
 
 	private async refreshVisibleSearch(): Promise<void> {
@@ -458,22 +506,10 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 			return;
 		}
 		case 'activate': {
-			if (message.index === undefined) {
-				return;
+			if (message.index !== undefined) {
+				this.activeIndex = message.index;
 			}
-
-			const item = this.filteredItems[message.index];
-			if (!item) {
-				return;
-			}
-
-			this.accepted = true;
-			if (this.mode === 'workspace') {
-				await this.openWorkspaceItem(item.item);
-			} else {
-				await this.revealEditorLine(item.item.line);
-			}
-			await this.close();
+			await this.activateSelection();
 			return;
 		}
 		case 'close':

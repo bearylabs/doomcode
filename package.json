@@ -1770,6 +1770,21 @@
       },
       {
         "key": "ctrl+j",
+        "command": "doom.fuzzySearchMoveDown",
+        "when": "doom.fuzzySearchVisible"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "doom.fuzzySearchMoveUp",
+        "when": "doom.fuzzySearchVisible"
+      },
+      {
+        "key": "enter",
+        "command": "doom.fuzzySearchAcceptSelection",
+        "when": "doom.fuzzySearchVisible"
+      },
+      {
+        "key": "ctrl+j",
         "command": "workbench.action.quickOpenSelectNext",
         "when": "inQuickInput && !whichkeyVisible"
       },
