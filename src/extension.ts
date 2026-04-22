@@ -267,8 +267,18 @@ async function applyDefaultsToUserSettings(
 			return result;
 		}
 
+		const parts: string[] = [
+			`${result.applied} applied`,
+			`${result.skipped} skipped (already customized by you)`,
+		];
+		if (result.unsupported > 0) {
+			parts.push(`${result.unsupported} not recognized by VS Code`);
+		}
+		if (result.failed > 0) {
+			parts.push(`${result.failed} failed`);
+		}
 		void vscode.window.showInformationMessage(
-			`Doom defaults: applied ${result.applied}, skipped ${result.skipped} (already set), unsupported ${result.unsupported}, failed ${result.failed}.`
+			`Doom defaults applied to your global User settings: ${parts.join(', ')}.`
 		);
 	}
 
@@ -661,6 +671,14 @@ export function activate(context: vscode.ExtensionContext) {
 	const cleanupCmd = vscode.commands.registerCommand(
 		"doom.cleanup",
 		async () => {
+			const choice = await vscode.window.showWarningMessage(
+				"This will remove stale settings and keybindings left behind by conflicting extensions (e.g. vspacecode.* commands) from your User settings.json and keybindings.json. Note: keybindings.json will be rewritten — all comments and custom formatting will be lost. This cannot be undone.",
+				{ modal: true },
+				"Clean Up"
+			);
+			if (choice !== "Clean Up") {
+				return;
+			}
 			const conflicts = detectConflictingExtensions();
 			if (conflicts.length > 0) {
 				await warnAboutConflicts(conflicts);
