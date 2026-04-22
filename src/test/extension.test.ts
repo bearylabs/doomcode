@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
     computeWorkspaceHistoryUpdate,
+    resolveWindowDeleteAction,
     selectReloadWorkspaceTarget,
     type StoredWorkspaceTarget,
 } from '../extension';
@@ -209,6 +210,13 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(detectStartPageMode(undefined, '0.2.0'), 'welcome');
 		assert.strictEqual(detectStartPageMode('0.1.2', '0.2.0'), 'update');
 		assert.strictEqual(detectStartPageMode('0.2.0', '0.2.0'), 'startup');
+	});
+
+	test('routes window delete by active terminal mode', () => {
+		assert.strictEqual(resolveWindowDeleteAction(false, false), 'closeGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
 	});
 
 	test('extracts only the current release notes from changelog markdown', () => {

@@ -19,6 +19,11 @@ interface ContextSnapshot {
 	explorerViewletVisible: boolean;
 	markersVisible: boolean;
 	multipleEditorGroups: boolean;
+	terminalFocus: boolean;
+}
+
+interface ShowContext {
+	terminalFocus: boolean;
 }
 
 interface RenderItem {
@@ -69,6 +74,10 @@ function getContextValue(state: DoomWhichKeyMenu, rawCondition: string): boolean
 		break;
 	}
 
+	if (condition === 'terminalFocus') {
+		return state.snapshot.terminalFocus;
+	}
+
 	const equalsMatch = condition.match(/^([A-Za-z0-9._]+)\s*==\s*'([^']+)'$/);
 	if (equalsMatch) {
 		const [, left, right] = equalsMatch;
@@ -102,6 +111,7 @@ function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 		explorerViewletVisible: false,
 		markersVisible: false,
 		multipleEditorGroups: vscode.window.tabGroups.all.length > 1,
+		terminalFocus: state.showContext.terminalFocus,
 	};
 }
 
@@ -175,6 +185,9 @@ export class DoomWhichKeyMenu {
 	private bigModeEnabled = false;
 	private currentBindings: WhichKeyBinding[] = [];
 	private currentItems: RenderItem[] = [];
+	private currentShowContext: ShowContext = {
+		terminalFocus: false,
+	};
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
 	private view: vscode.WebviewView | undefined;
@@ -188,7 +201,14 @@ export class DoomWhichKeyMenu {
 		return buildContextSnapshot(this);
 	}
 
-	prepareShow(): void {
+	get showContext(): ShowContext {
+		return this.currentShowContext;
+	}
+
+	prepareShow(showContext?: Partial<ShowContext>): void {
+		this.currentShowContext = {
+			terminalFocus: showContext?.terminalFocus === true,
+		};
 		this.currentBindings = getConfiguredWhichKeyBindings();
 		this.stack = [];
 	}

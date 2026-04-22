@@ -1216,13 +1216,13 @@
               "key": "c",
               "name": "evil-window-delete",
               "type": "command",
-              "command": "workbench.action.closeGroup"
+              "command": "doom.windowDelete"
             },
             {
               "key": "d",
               "name": "evil-window-delete",
               "type": "command",
-              "command": "workbench.action.closeGroup"
+              "command": "doom.windowDelete"
             },
             {
               "key": "h",
@@ -1548,12 +1548,28 @@
       {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
+        "args": {
+          "terminalFocus": true
+        },
+        "when": "terminalFocus && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
+        "args": {
+          "terminalFocus": true
+        },
+        "when": "terminalFocus && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "t",
