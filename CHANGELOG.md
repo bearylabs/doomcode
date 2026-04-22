@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-22
+
+### Fixed
+
+- Which-key alternative trigger works correctly when Claude chat window is open
+- Buffer switcher works correctly for terminal editors
+
 ## [0.2.1] - 2026-04-22
 
 ### Fixed
