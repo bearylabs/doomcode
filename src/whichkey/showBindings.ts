@@ -5,6 +5,10 @@ import {
 	type WhichKeyBinding,
 } from './bindings';
 
+// ---------------------------------------------------------------------------
+// Flattened binding model
+// ---------------------------------------------------------------------------
+
 export interface WhichKeyExecutableBinding {
 	binding: Pick<WhichKeyBinding, 'args' | 'command' | 'commands'>;
 	detail: string;
@@ -12,6 +16,10 @@ export interface WhichKeyExecutableBinding {
 	path: string;
 	searchText: string;
 }
+
+// ---------------------------------------------------------------------------
+// Flattening helpers
+// ---------------------------------------------------------------------------
 
 function formatConditionalLabel(rawKey: string): string {
 	const trimmed = rawKey.trim();
@@ -115,6 +123,10 @@ function flattenWhichKeyBindings(
 
 	return flattened;
 }
+
+// ---------------------------------------------------------------------------
+// Binding pickers
+// ---------------------------------------------------------------------------
 
 export function getFlattenedWhichKeyBindings(): WhichKeyExecutableBinding[] {
 	return flattenWhichKeyBindings(getConfiguredWhichKeyBindings());

@@ -4,12 +4,20 @@ import { DoomFuzzySearchPanel } from '../search/fuzzy';
 import { DoomWhichKeyBindingsPanel } from '../whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
 
+// ---------------------------------------------------------------------------
+// Shared panel modes
+// ---------------------------------------------------------------------------
+
 type SharedPanelMode = 'bindings' | 'buffers' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
 	detachFromView(): void;
 }
+
+// ---------------------------------------------------------------------------
+// Shared panel host
+// ---------------------------------------------------------------------------
 
 export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	static readonly containerId = 'doomPanel';

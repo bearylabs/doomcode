@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 import {
-	executeWhichKeyBindingCommands,
-	getConfiguredWhichKeyBindings,
-	type WhichKeyBinding,
+    executeWhichKeyBindingCommands,
+    getConfiguredWhichKeyBindings,
+    type WhichKeyBinding,
 } from './bindings';
+
+// ---------------------------------------------------------------------------
+// Which-key menu models
+// ---------------------------------------------------------------------------
 
 interface ContextSnapshot {
 	activeEditorLastInGroup: boolean;
@@ -33,6 +37,10 @@ interface WebviewMessage {
 	index?: number;
 	type: 'activate' | 'back' | 'close' | 'ready';
 }
+
+// ---------------------------------------------------------------------------
+// Context and render helpers
+// ---------------------------------------------------------------------------
 
 function getContextValue(state: DoomWhichKeyMenu, rawCondition: string): boolean {
 	const condition = rawCondition.trim();
@@ -156,6 +164,10 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
+
+// ---------------------------------------------------------------------------
+// Which-key panel controller
+// ---------------------------------------------------------------------------
 
 export class DoomWhichKeyMenu {
 	static readonly visibleContextKey = 'whichkeyVisible';

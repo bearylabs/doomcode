@@ -5,6 +5,10 @@ import {
     type WhichKeyExecutableBinding,
 } from './showBindings';
 
+// ---------------------------------------------------------------------------
+// Which-key binding picker models
+// ---------------------------------------------------------------------------
+
 interface WhichKeyBindingMatch {
 	index: number;
 	item: WhichKeyExecutableBinding;
@@ -39,6 +43,10 @@ interface FuzzyMatch {
 	indices: number[];
 	score: number;
 }
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
@@ -83,6 +91,10 @@ function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 		score: score - Math.max(firstMatch, 0),
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Which-key bindings panel
+// ---------------------------------------------------------------------------
 
 export class DoomWhichKeyBindingsPanel {
 	private activeIndex = 0;

@@ -2,6 +2,10 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { focusEditorGroup } from '../window/mru';
 
+// ---------------------------------------------------------------------------
+// Open editor models
+// ---------------------------------------------------------------------------
+
 interface OpenEditorItem {
 	description: string;
 	kind: string;
@@ -53,6 +57,10 @@ interface FuzzyMatch {
 	score: number;
 }
 
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
@@ -100,6 +108,10 @@ function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 function viewColumnToGroupLabel(viewColumn: vscode.ViewColumn): string {
 	return `G${viewColumn}`;
 }
+
+// ---------------------------------------------------------------------------
+// Tab metadata helpers
+// ---------------------------------------------------------------------------
 
 function getRelativeLabel(uri: vscode.Uri): string {
 	if (uri.scheme === 'file') {
@@ -290,6 +302,10 @@ function getBufferFlags(item: Pick<OpenEditorItem, 'isDirty' | 'isReadonly' | 'i
 	return `${primaryFlag}${modifiedFlag}${remoteFlag}`;
 }
 
+// ---------------------------------------------------------------------------
+// Tab navigation helpers
+// ---------------------------------------------------------------------------
+
 function getTabDedupKey(tab: vscode.Tab): string {
 	const input = tab.input;
 
@@ -450,6 +466,10 @@ async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): 
 
 	return false;
 }
+
+// ---------------------------------------------------------------------------
+// Open editors panel
+// ---------------------------------------------------------------------------
 
 export class DoomOpenEditorsPanel {
 	private activeIndex = 0;

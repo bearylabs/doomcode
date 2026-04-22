@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+// ---------------------------------------------------------------------------
+// Editor group focus commands
+// ---------------------------------------------------------------------------
+
 const FOCUS_GROUP_COMMANDS: Partial<Record<vscode.ViewColumn, string>> = {
 	[vscode.ViewColumn.One]: "workbench.action.focusFirstEditorGroup",
 	[vscode.ViewColumn.Two]: "workbench.action.focusSecondEditorGroup",
@@ -11,6 +15,10 @@ const FOCUS_GROUP_COMMANDS: Partial<Record<vscode.ViewColumn, string>> = {
 	[vscode.ViewColumn.Eight]: "workbench.action.focusEighthEditorGroup",
 	[vscode.ViewColumn.Nine]: "workbench.action.focusNinthEditorGroup",
 };
+
+// ---------------------------------------------------------------------------
+// MRU controller
+// ---------------------------------------------------------------------------
 
 export async function focusEditorGroup(viewColumn: vscode.ViewColumn): Promise<boolean> {
 	const focusCommand = FOCUS_GROUP_COMMANDS[viewColumn];
@@ -89,6 +97,10 @@ function createEditorGroupMruToggle(): WindowMruController {
 		},
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Extension registration
+// ---------------------------------------------------------------------------
 
 export function registerWindowMru(context: vscode.ExtensionContext): WindowMruController {
 	const windowMru = createEditorGroupMruToggle();

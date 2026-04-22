@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+// ---------------------------------------------------------------------------
+// Search models
+// ---------------------------------------------------------------------------
+
 interface SearchItem {
 	fileLabel?: string;
 	line: number;
@@ -59,6 +63,10 @@ interface FuzzyMatch {
 }
 
 type SearchMode = 'editor' | 'workspace';
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);

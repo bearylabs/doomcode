@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+// ---------------------------------------------------------------------------
+// Which-key binding model
+// ---------------------------------------------------------------------------
+
 export type WhichKeyBindingType = 'bindings' | 'command' | 'commands' | 'conditional';
 
 export interface WhichKeyBinding {
@@ -11,6 +15,10 @@ export interface WhichKeyBinding {
 	args?: unknown;
 	bindings?: WhichKeyBinding[];
 }
+
+// ---------------------------------------------------------------------------
+// Binding validation and lookup
+// ---------------------------------------------------------------------------
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
@@ -35,6 +43,10 @@ export function getConfiguredWhichKeyBindings(): WhichKeyBinding[] {
 
 	return configured.filter(isWhichKeyBinding);
 }
+
+// ---------------------------------------------------------------------------
+// Binding execution
+// ---------------------------------------------------------------------------
 
 export function executeConfiguredCommand(command: string, arg?: unknown): Thenable<unknown> {
 	if (Array.isArray(arg)) {
