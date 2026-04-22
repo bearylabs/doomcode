@@ -104,9 +104,7 @@ function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 	};
 }
 
-export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
-	static readonly containerId = 'doomFuzzySearchPanel';
-	static readonly viewId = 'doom.fuzzySearchView';
+export class DoomFuzzySearchPanel {
 	static readonly visibleContextKey = 'doom.fuzzySearchVisible';
 
 	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
@@ -126,25 +124,30 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
-	async show(): Promise<void> {
+	prepareShow(): boolean {
 		this.mode = 'editor';
-		if (!this.initializeFromActiveEditor({ notifyWhenMissing: true, resetQuery: true })) {
-			return;
-		}
-
-		await this.openPanel();
-		this.render();
+		return this.initializeFromActiveEditor({ notifyWhenMissing: true, resetQuery: true });
 	}
 
-	async showWorkspace(): Promise<void> {
+	prepareShowWorkspace(): boolean {
 		this.mode = 'workspace';
-		if (!this.initializeWorkspaceSearch({ notifyWhenMissing: true, resetQuery: true })) {
-			return;
-		}
+		return this.initializeWorkspaceSearch({ notifyWhenMissing: true, resetQuery: true });
+	}
 
-		await this.openPanel();
-		this.render();
+	async loadPreparedWorkspaceItems(): Promise<void> {
 		await this.loadWorkspaceItems();
+	}
+
+	attachToView(webviewView: vscode.WebviewView): void {
+		this.resolveWebviewView(webviewView);
+	}
+
+	detachFromView(): void {
+		this.restoreSelectionIfNeeded();
+		this.viewDisposables.forEach((disposable) => disposable.dispose());
+		this.viewDisposables = [];
+		this.view = undefined;
+		this.ready = false;
 	}
 
 	async moveSelection(delta: number): Promise<void> {
@@ -219,14 +222,6 @@ export class DoomFuzzySearchPanel implements vscode.WebviewViewProvider {
 				void this.handleMessage(message);
 			})
 		);
-	}
-
-	private async openPanel(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
-		await vscode.commands.executeCommand(`workbench.view.extension.${DoomFuzzySearchPanel.containerId}`);
-		await vscode.commands.executeCommand(`${DoomFuzzySearchPanel.viewId}.focus`);
-		await this.updateVisibilityContext(true);
-		this.updateViewMetadata();
 	}
 
 	private async updateVisibilityContext(isVisible: boolean): Promise<void> {

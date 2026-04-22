@@ -1429,45 +1429,19 @@
     "viewsContainers": {
       "panel": [
         {
-          "id": "doomWhichKeyPanel",
-          "title": "Which-Key",
+          "id": "doomPanel",
+          "title": "Doom",
           "icon": "assets/which-key.svg"
-        },
-        {
-          "id": "doomFuzzySearchPanel",
-          "title": "Search",
-          "icon": "assets/fuzzy-search.svg"
-        },
-        {
-          "id": "doomOpenEditorsPanel",
-          "title": "Buffers",
-          "icon": "assets/fuzzy-search.svg"
         }
       ]
     },
     "views": {
-      "doomWhichKeyPanel": [
+      "doomPanel": [
         {
-          "id": "doom.whichKeyView",
+          "id": "doom.panelView",
           "type": "webview",
-          "name": "Which Key",
+          "name": "Doom",
           "icon": "assets/which-key.svg"
-        }
-      ],
-      "doomFuzzySearchPanel": [
-        {
-          "id": "doom.fuzzySearchView",
-          "type": "webview",
-          "name": "Fuzzy Search",
-          "icon": "assets/fuzzy-search.svg"
-        }
-      ],
-      "doomOpenEditorsPanel": [
-        {
-          "id": "doom.openEditorsView",
-          "type": "webview",
-          "name": "Open Editors",
-          "icon": "assets/fuzzy-search.svg"
         }
       ]
     },

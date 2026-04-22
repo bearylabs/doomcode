@@ -1,9 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
+import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -22,7 +23,10 @@ function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
 	return configuredStyle === 'vspacecode' ? configuredStyle : DEFAULT_WHICH_KEY_MENU_STYLE;
 }
 
-async function showConfiguredWhichKeyMenu(whichKeyMenu: DoomWhichKeyMenu): Promise<void> {
+async function showConfiguredWhichKeyMenu(
+	whichKeyMenu: DoomWhichKeyMenu,
+	sharedPanel: DoomSharedPanel,
+): Promise<void> {
 	if (getWhichKeyMenuStyle() === 'vspacecode') {
 		await whichKeyMenu.hide();
 
@@ -37,7 +41,7 @@ async function showConfiguredWhichKeyMenu(whichKeyMenu: DoomWhichKeyMenu): Promi
 		}
 	}
 
-	await whichKeyMenu.show();
+	await sharedPanel.showWhichKey();
 }
 
 // ---------------------------------------------------------------------------
@@ -448,9 +452,10 @@ export function activate(context: vscode.ExtensionContext) {
 	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
 	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
-	const whichKeyMenu = new DoomWhichKeyMenu(context.extensionUri);
+	const whichKeyMenu = new DoomWhichKeyMenu();
 	registerWindowMru(context);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
+	const sharedPanel = new DoomSharedPanel(whichKeyMenu, fuzzySearchPanel, openEditorsPanel);
 
 	// First-activation: apply defaults then detect stale state.
 	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {
@@ -507,7 +512,12 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShow",
 		() => {
-			void showConfiguredWhichKeyMenu(whichKeyMenu);
+			if (getWhichKeyMenuStyle() === 'vspacecode') {
+				void showConfiguredWhichKeyMenu(whichKeyMenu, sharedPanel);
+				return;
+			}
+
+			void sharedPanel.showWhichKey();
 		}
 	);
 
@@ -538,21 +548,21 @@ export function activate(context: vscode.ExtensionContext) {
 	const fuzzySearchCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchActiveTextEditor",
 		() => {
-			void fuzzySearchPanel.show();
+			void sharedPanel.showFuzzySearch();
 		}
 	);
 
 	const workspaceFuzzySearchCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchWorkspace",
 		() => {
-			void fuzzySearchPanel.showWorkspace();
+			void sharedPanel.showWorkspaceSearch();
 		}
 	);
 
 	const openEditorsCmd = vscode.commands.registerCommand(
 		"doom.showOpenEditors",
 		() => {
-			void openEditorsPanel.show();
+			void sharedPanel.showOpenEditors();
 		}
 	);
 
@@ -570,29 +580,9 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const whichKeyViewProvider = vscode.window.registerWebviewViewProvider(
-		DoomWhichKeyMenu.viewId,
-		whichKeyMenu,
-		{
-			webviewOptions: {
-				retainContextWhenHidden: true,
-			},
-		}
-	);
-
-	const fuzzySearchViewProvider = vscode.window.registerWebviewViewProvider(
-		DoomFuzzySearchPanel.viewId,
-		fuzzySearchPanel,
-		{
-			webviewOptions: {
-				retainContextWhenHidden: true,
-			},
-		}
-	);
-
-	const openEditorsViewProvider = vscode.window.registerWebviewViewProvider(
-		DoomOpenEditorsPanel.viewId,
-		openEditorsPanel,
+	const sharedPanelViewProvider = vscode.window.registerWebviewViewProvider(
+		DoomSharedPanel.viewId,
+		sharedPanel,
 		{
 			webviewOptions: {
 				retainContextWhenHidden: true,
@@ -612,9 +602,7 @@ export function activate(context: vscode.ExtensionContext) {
 		openEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
-		whichKeyViewProvider,
-		fuzzySearchViewProvider,
-		openEditorsViewProvider
+		sharedPanelViewProvider,
 	);
 }
 

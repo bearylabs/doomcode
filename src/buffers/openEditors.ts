@@ -6,7 +6,6 @@ interface OpenEditorItem {
 	kind: string;
 	groupColumn: vscode.ViewColumn;
 	groupLabel: string;
-	icon: string;
 	isDirty: boolean;
 	isPinned: boolean;
 	label: string;
@@ -132,14 +131,13 @@ function inferKindFromUri(uri: vscode.Uri, fallback = 'Text'): string {
 	return basename.slice(dotIndex + 1, dotIndex + 7).toUpperCase();
 }
 
-function getTabInputDetails(tab: vscode.Tab): { description: string; icon: string; kind: string; searchText: string } {
+function getTabInputDetails(tab: vscode.Tab): { description: string; kind: string; searchText: string } {
 	const input = tab.input;
 
 	if (input instanceof vscode.TabInputText) {
 		const description = getRelativeLabel(input.uri);
 		return {
 			description,
-			icon: 'txt',
 			kind: inferKindFromUri(input.uri),
 			searchText: `${tab.label} ${description}`,
 		};
@@ -151,7 +149,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 		const description = `${original} ↔ ${modified}`;
 		return {
 			description,
-			icon: 'diff',
 			kind: 'Diff',
 			searchText: `${tab.label} ${original} ${modified} diff`,
 		};
@@ -161,7 +158,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 		const description = getRelativeLabel(input.uri);
 		return {
 			description,
-			icon: 'custom',
 			kind: input.viewType.slice(0, 8) || 'Custom',
 			searchText: `${tab.label} ${description} ${input.viewType}`,
 		};
@@ -171,7 +167,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 		const description = getRelativeLabel(input.uri);
 		return {
 			description,
-			icon: 'nb',
 			kind: 'Notebook',
 			searchText: `${tab.label} ${description} ${input.notebookType}`,
 		};
@@ -183,7 +178,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 		const description = `${original} ↔ ${modified}`;
 		return {
 			description,
-			icon: 'ndf',
 			kind: 'NBDiff',
 			searchText: `${tab.label} ${original} ${modified} ${input.notebookType} diff`,
 		};
@@ -192,7 +186,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 	if (input instanceof vscode.TabInputWebview) {
 		return {
 			description: input.viewType,
-			icon: 'web',
 			kind: 'Webview',
 			searchText: `${tab.label} ${input.viewType} webview`,
 		};
@@ -201,7 +194,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 	if (input instanceof vscode.TabInputTerminal) {
 		return {
 			description: 'Terminal editor',
-			icon: 'term',
 			kind: 'VTerm',
 			searchText: `${tab.label} terminal`,
 		};
@@ -209,7 +201,6 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; icon: strin
 
 	return {
 		description: 'Editor',
-		icon: 'tab',
 		kind: 'Editor',
 		searchText: tab.label,
 	};
@@ -379,10 +370,7 @@ async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): 
 	return false;
 }
 
-export class DoomOpenEditorsPanel implements vscode.WebviewViewProvider {
-	static readonly containerId = 'doomOpenEditorsPanel';
-	static readonly viewId = 'doom.openEditorsView';
-
+export class DoomOpenEditorsPanel {
 	private activeIndex = 0;
 	private items: OpenEditorItem[] = [];
 	private matches: OpenEditorMatch[] = [];
@@ -392,15 +380,24 @@ export class DoomOpenEditorsPanel implements vscode.WebviewViewProvider {
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
-	async show(resetQuery = true): Promise<void> {
+	prepareShow(resetQuery = true): void {
 		this.targetGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
 		if (resetQuery) {
 			this.query = '';
 		}
 
 		this.refreshItems();
-		await this.openPanel();
-		this.render();
+	}
+
+	attachToView(webviewView: vscode.WebviewView): void {
+		this.resolveWebviewView(webviewView);
+	}
+
+	detachFromView(): void {
+		this.viewDisposables.forEach((disposable) => disposable.dispose());
+		this.viewDisposables = [];
+		this.view = undefined;
+		this.ready = false;
 	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -442,13 +439,6 @@ export class DoomOpenEditorsPanel implements vscode.WebviewViewProvider {
 		);
 	}
 
-	private async openPanel(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
-		await vscode.commands.executeCommand(`workbench.view.extension.${DoomOpenEditorsPanel.containerId}`);
-		await vscode.commands.executeCommand(`${DoomOpenEditorsPanel.viewId}.focus`);
-		this.updateViewMetadata();
-	}
-
 	private updateViewMetadata(): void {
 		if (!this.view) {
 			return;
@@ -476,7 +466,6 @@ export class DoomOpenEditorsPanel implements vscode.WebviewViewProvider {
 					kind: details.kind,
 					groupColumn: group.viewColumn,
 					groupLabel: viewColumnToGroupLabel(group.viewColumn),
-					icon: details.icon,
 					isDirty: tab.isDirty,
 					isPinned: tab.isPinned,
 					label: tab.label,

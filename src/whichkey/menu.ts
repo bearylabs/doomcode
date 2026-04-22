@@ -157,12 +157,9 @@ function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
 
-export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
-	static readonly containerId = 'doomWhichKeyPanel';
-	static readonly viewId = 'doom.whichKeyView';
+export class DoomWhichKeyMenu {
 	static readonly visibleContextKey = 'whichkeyVisible';
 
-	private readonly extensionUri: vscode.Uri;
 	private bigModeEnabled = false;
 	private currentBindings: WhichKeyBinding[] = [];
 	private currentItems: RenderItem[] = [];
@@ -170,10 +167,6 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	private stack: WhichKeyBinding[] = [];
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
-
-	constructor(extensionUri: vscode.Uri) {
-		this.extensionUri = extensionUri;
-	}
 
 	get isBigModeEnabled(): boolean {
 		return this.bigModeEnabled;
@@ -183,19 +176,26 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		return buildContextSnapshot(this);
 	}
 
+	prepareShow(): void {
+		this.currentBindings = getConfiguredWhichKeyBindings();
+		this.stack = [];
+	}
+
+	attachToView(webviewView: vscode.WebviewView): void {
+		this.resolveWebviewView(webviewView);
+	}
+
+	detachFromView(): void {
+		this.viewDisposables.forEach((disposable) => disposable.dispose());
+		this.viewDisposables = [];
+		this.view = undefined;
+		this.ready = false;
+		this.currentItems = [];
+	}
+
 	private get currentLevelBindings(): WhichKeyBinding[] {
 		const current = this.stack[this.stack.length - 1];
 		return current?.bindings ?? this.currentBindings;
-	}
-
-	async show(): Promise<void> {
-		this.currentBindings = getConfiguredWhichKeyBindings();
-		this.stack = [];
-		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
-		await vscode.commands.executeCommand(`workbench.view.extension.${DoomWhichKeyMenu.containerId}`);
-		await vscode.commands.executeCommand(`${DoomWhichKeyMenu.viewId}.focus`);
-		await this.updateVisibilityContext(true);
-		this.render();
 	}
 
 	async hide(): Promise<void> {
