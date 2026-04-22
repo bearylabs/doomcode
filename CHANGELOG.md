@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-22
+
+### Fixed
+
+- Terminal window deletion no longer causes errors when closing the last terminal
+- Toggle explorer keybinding restored to correct behavior
+- Terminal toggle keybinding restored to correct behavior
+- Claude chat which-key entry behaves correctly in Doom menu
+
+### Changed
+
+- Doom which-key menu reverted to use original which-key conditions for better compatibility
+
 ## [0.2.0] - 2026-04-22
 
 ### Added
