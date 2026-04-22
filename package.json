@@ -42,8 +42,7 @@
     "VSpaceCode.whichkey"
   ],
   "extensionPack": [
-    "wayou.vscode-todo-highlight",
-    "jacobdufault.fuzzy-search"
+    "wayou.vscode-todo-highlight"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -97,7 +96,7 @@
           "<space>"
         ],
         "commands": [
-          "whichkey.show"
+          "doom.whichKeyShow"
         ]
       }
     ],
@@ -107,12 +106,19 @@
           "<space>"
         ],
         "commands": [
-          "whichkey.show"
+          "doom.whichKeyShow"
         ]
       }
     ],
     "window.restoreWindows": "none",
     "window.menuBarVisibility": "compact"
+  },
+  "doomStartPage": {
+    "startupCommandKeyPaths": [
+      "f r",
+      "q l",
+      "p p"
+    ]
   },
   "main": "./out/extension.js",
   "contributes": {
@@ -175,7 +181,7 @@
         },
         {
           "key": "TAB",
-          "name": "+Workspace",
+          "name": "+workspace",
           "type": "bindings",
           "bindings": [
             {
@@ -199,22 +205,22 @@
           "command": "workbench.action.files.openFile"
         },
         {
-          "key": "/",
-          "name": "Search in a project",
+          "key": ",",
+          "name": "Switch workspace buffer",
           "type": "command",
-          "command": "workbench.action.findInFiles"
+          "command": "doom.showOpenEditors"
+        },
+        {
+          "key": "/",
+          "name": "Search project",
+          "type": "command",
+          "command": "doom.fuzzySearchWorkspace"
         },
         {
           "key": ":",
           "name": "M-x",
           "type": "command",
           "command": "workbench.action.showCommands"
-        },
-        {
-          "key": "?",
-          "name": "Search keybindings",
-          "type": "command",
-          "command": "whichkey.searchBindings"
         },
         {
           "key": "<",
@@ -242,7 +248,7 @@
         },
         {
           "key": "b",
-          "name": "+Buffers/Editors",
+          "name": "+buffers",
           "type": "bindings",
           "bindings": [
             {
@@ -261,13 +267,7 @@
               "key": "b",
               "name": "Switch workspace buffer",
               "type": "command",
-              "command": "workbench.action.showEditorsInActiveGroup"
-            },
-            {
-              "key": "B",
-              "name": "Switch buffer",
-              "type": "command",
-              "command": "workbench.action.showAllEditors"
+              "command": "doom.showOpenEditors"
             },
             {
               "key": "c",
@@ -277,7 +277,7 @@
             },
             {
               "key": "d",
-              "name": "Close active editor",
+              "name": "Kill buffer",
               "type": "command",
               "command": "workbench.action.closeActiveEditor"
             },
@@ -325,7 +325,7 @@
             },
             {
               "key": "M",
-              "name": "Close other editors",
+              "name": "Kill other buffers",
               "type": "command",
               "command": "workbench.action.closeOtherEditors"
             },
@@ -358,13 +358,13 @@
             },
             {
               "key": "N",
-              "name": "New untitled editor",
+              "name": "New empty buffer",
               "type": "command",
               "command": "workbench.action.files.newUntitledFile"
             },
             {
               "key": "u",
-              "name": "Reopen closed editor",
+              "name": "Reopen closed buffer",
               "type": "command",
               "command": "workbench.action.reopenClosedEditor"
             },
@@ -391,7 +391,7 @@
         },
         {
           "key": "c",
-          "name": "+Code",
+          "name": "+code",
           "type": "bindings",
           "bindings": [
             {
@@ -472,7 +472,7 @@
         },
         {
           "key": "d",
-          "name": "+Debug",
+          "name": "+debug",
           "type": "bindings",
           "bindings": [
             {
@@ -569,7 +569,7 @@
         },
         {
           "key": "e",
-          "name": "+Errors",
+          "name": "+errors",
           "type": "bindings",
           "bindings": [
             {
@@ -607,7 +607,7 @@
         },
         {
           "key": "f",
-          "name": "+File",
+          "name": "+file",
           "type": "bindings",
           "bindings": [
             {
@@ -642,7 +642,7 @@
             },
             {
               "key": "r",
-              "name": "Open recent",
+              "name": "Recently opened files",
               "type": "command",
               "command": "workbench.action.openRecent"
             },
@@ -699,7 +699,7 @@
             },
             {
               "key": "i",
-              "name": "+Indentation",
+              "name": "+indentation",
               "type": "bindings",
               "bindings": [
                 {
@@ -744,7 +744,7 @@
         },
         {
           "key": "g",
-          "name": "+Git",
+          "name": "+git",
           "type": "bindings",
           "bindings": [
             {
@@ -810,8 +810,21 @@
           ]
         },
         {
+          "key": "h",
+          "name": "+help",
+          "type": "bindings",
+          "bindings": [
+            {
+              "key": "b",
+              "name": "describe-bindings",
+              "type": "command",
+              "command": "doom.whichKeyShowBindings"
+            }
+          ]
+        },
+        {
           "key": "i",
-          "name": "+Insert",
+          "name": "+insert",
           "type": "bindings",
           "bindings": [
             {
@@ -836,81 +849,12 @@
         },
         {
           "key": "o",
-          "name": "+Open",
+          "name": "+open",
           "type": "bindings",
           "bindings": [
             {
-              "key": "t",
-              "name": "Open terminal",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.action.terminal.focus"
-                },
-                {
-                  "key": "when:activePanel == 'terminal'",
-                  "name": "Hide panel",
-                  "type": "command",
-                  "command": "workbench.action.togglePanel"
-                }
-              ]
-            },
-            {
-              "key": "T",
-              "name": "Open terminal here",
-              "type": "command",
-              "command": "workbench.action.createTerminalEditor"
-            },
-            {
-              "key": "p",
-              "name": "Project sidebar",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.view.explorer"
-                },
-                {
-                  "key": "when:explorerViewletVisible",
-                  "name": "Hide sidebar",
-                  "type": "command",
-                  "command": "workbench.action.toggleSidebarVisibility"
-                }
-              ]
-            },
-            {
-              "key": "d",
-              "name": "Start a debugger",
-              "type": "conditional",
-              "bindings": [
-                {
-                  "key": "",
-                  "name": "default",
-                  "type": "command",
-                  "command": "workbench.view.debug"
-                },
-                {
-                  "key": "when:activeViewlet == 'workbench.view.debug'",
-                  "name": "Hide sidebar",
-                  "type": "command",
-                  "command": "workbench.action.toggleSidebarVisibility"
-                }
-              ]
-            },
-            {
-              "key": "D",
-              "name": "Open debug console",
-              "type": "command",
-              "command": "workbench.debug.action.toggleRepl"
-            },
-            {
               "key": "a",
-              "name": "+AI",
+              "name": "+ai",
               "type": "bindings",
               "bindings": [
                 {
@@ -945,12 +889,142 @@
                   "command": "cloudcode.gemini.chatView.focus"
                 }
               ]
+            },
+            {
+              "key": "d",
+              "name": "Start a debugger",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.view.debug"
+                },
+                {
+                  "key": "when:activeViewlet == 'workbench.view.debug'",
+                  "name": "Hide sidebar",
+                  "type": "command",
+                  "command": "workbench.action.toggleSidebarVisibility"
+                }
+              ]
+            },
+            {
+              "key": "D",
+              "name": "Open debug console",
+              "type": "command",
+              "command": "workbench.debug.action.toggleRepl"
+            },
+            {
+              "key": "p",
+              "name": "Project sidebar",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.view.explorer"
+                },
+                {
+                  "key": "when:explorerViewletVisible",
+                  "name": "Hide sidebar",
+                  "type": "command",
+                  "command": "workbench.action.toggleSidebarVisibility"
+                }
+              ]
+            },
+            {
+              "key": "t",
+              "name": "Open terminal",
+              "type": "conditional",
+              "bindings": [
+                {
+                  "key": "",
+                  "name": "default",
+                  "type": "command",
+                  "command": "workbench.action.terminal.focus"
+                },
+                {
+                  "key": "when:activePanel == 'terminal'",
+                  "name": "Hide panel",
+                  "type": "command",
+                  "command": "workbench.action.togglePanel"
+                }
+              ]
+            },
+            {
+              "key": "T",
+              "name": "Open terminal here",
+              "type": "command",
+              "command": "workbench.action.createTerminalEditor"
+            },
+            {
+              "key": "u",
+              "name": "+ui",
+              "type": "bindings",
+              "bindings": [
+                {
+                  "key": "e",
+                  "name": "Show explorer",
+                  "type": "command",
+                  "command": "workbench.view.explorer"
+                },
+                {
+                  "key": "s",
+                  "name": "Show search",
+                  "type": "command",
+                  "command": "workbench.view.search"
+                },
+                {
+                  "key": "g",
+                  "name": "Show source control",
+                  "type": "command",
+                  "command": "workbench.view.scm"
+                },
+                {
+                  "key": "t",
+                  "name": "Show test",
+                  "type": "command",
+                  "command": "workbench.view.extension.test"
+                },
+                {
+                  "key": "r",
+                  "name": "Show remote explorer",
+                  "type": "command",
+                  "command": "workbench.view.remote"
+                },
+                {
+                  "key": "x",
+                  "name": "Show extensions",
+                  "type": "command",
+                  "command": "workbench.view.extensions"
+                },
+                {
+                  "key": "p",
+                  "name": "Show problem",
+                  "type": "command",
+                  "command": "workbench.actions.view.problems"
+                },
+                {
+                  "key": "o",
+                  "name": "Show output",
+                  "type": "command",
+                  "command": "workbench.action.output.toggleOutput"
+                },
+                {
+                  "key": "d",
+                  "name": "Show debug console",
+                  "type": "command",
+                  "command": "workbench.debug.action.toggleRepl"
+                }
+              ]
             }
           ]
         },
         {
           "key": "p",
-          "name": "+Project",
+          "name": "+project",
           "type": "bindings",
           "bindings": [
             {
@@ -967,7 +1041,7 @@
             },
             {
               "key": "p",
-              "name": "Switch project",
+              "name": "Open project",
               "type": "command",
               "command": "workbench.action.openRecent"
             },
@@ -980,8 +1054,21 @@
           ]
         },
         {
+          "key": "q",
+          "name": "+quit/session",
+          "type": "bindings",
+          "bindings": [
+            {
+              "key": "l",
+              "name": "Reload last session",
+              "type": "command",
+              "command": "doom.reloadLastSession"
+            }
+          ]
+        },
+        {
           "key": "s",
-          "name": "+Search/Symbol",
+          "name": "+search",
           "type": "bindings",
           "bindings": [
             {
@@ -1019,7 +1106,7 @@
               "key": "p",
               "name": "Search Project",
               "type": "command",
-              "command": "workbench.action.findInFiles"
+              "command": "doom.fuzzySearchWorkspace"
             },
             {
               "key": "P",
@@ -1046,7 +1133,7 @@
               "key": "s",
               "name": "Search in current file",
               "type": "command",
-              "command": "fuzzySearch.activeTextEditor"
+              "command": "doom.fuzzySearchActiveTextEditor"
             },
             {
               "key": "u",
@@ -1057,69 +1144,8 @@
           ]
         },
         {
-          "key": "S",
-          "name": "+Show",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "e",
-              "name": "Show explorer",
-              "type": "command",
-              "command": "workbench.view.explorer"
-            },
-            {
-              "key": "s",
-              "name": "Show search",
-              "type": "command",
-              "command": "workbench.view.search"
-            },
-            {
-              "key": "g",
-              "name": "Show source control",
-              "type": "command",
-              "command": "workbench.view.scm"
-            },
-            {
-              "key": "t",
-              "name": "Show test",
-              "type": "command",
-              "command": "workbench.view.extension.test"
-            },
-            {
-              "key": "r",
-              "name": "Show remote explorer",
-              "type": "command",
-              "command": "workbench.view.remote"
-            },
-            {
-              "key": "x",
-              "name": "Show extensions",
-              "type": "command",
-              "command": "workbench.view.extensions"
-            },
-            {
-              "key": "p",
-              "name": "Show problem",
-              "type": "command",
-              "command": "workbench.actions.view.problems"
-            },
-            {
-              "key": "o",
-              "name": "Show output",
-              "type": "command",
-              "command": "workbench.action.output.toggleOutput"
-            },
-            {
-              "key": "d",
-              "name": "Show debug console",
-              "type": "command",
-              "command": "workbench.debug.action.toggleRepl"
-            }
-          ]
-        },
-        {
           "key": "t",
-          "name": "+Toggles",
+          "name": "+toggles",
           "type": "bindings",
           "bindings": [
             {
@@ -1176,63 +1202,8 @@
           ]
         },
         {
-          "key": "T",
-          "name": "+UI toggles",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "b",
-              "name": "Toggle side bar visibility",
-              "type": "command",
-              "command": "workbench.action.toggleSidebarVisibility"
-            },
-            {
-              "key": "j",
-              "name": "Toggle panel visibility",
-              "type": "command",
-              "command": "workbench.action.togglePanel"
-            },
-            {
-              "key": "F",
-              "name": "Toggle full screen",
-              "type": "command",
-              "command": "workbench.action.toggleFullScreen"
-            },
-            {
-              "key": "s",
-              "name": "Select theme",
-              "type": "command",
-              "command": "workbench.action.selectTheme"
-            },
-            {
-              "key": "m",
-              "name": "Toggle maximized panel",
-              "type": "command",
-              "command": "workbench.action.toggleMaximizedPanel"
-            },
-            {
-              "key": "t",
-              "name": "Toggle tool/activity bar visibility",
-              "type": "command",
-              "command": "workbench.action.toggleActivityBarVisibility"
-            },
-            {
-              "key": "T",
-              "name": "Toggle tab visibility",
-              "type": "command",
-              "command": "workbench.action.toggleTabsVisibility"
-            },
-            {
-              "key": "z",
-              "name": "Toggle zen mode",
-              "type": "command",
-              "command": "workbench.action.toggleZenMode"
-            }
-          ]
-        },
-        {
           "key": "w",
-          "name": "+Window",
+          "name": "+window",
           "type": "bindings",
           "bindings": [
             {
@@ -1430,294 +1401,6 @@
               ]
             }
           ]
-        },
-        {
-          "key": "x",
-          "name": "+Text",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": "i",
-              "name": "Organize Imports",
-              "type": "command",
-              "command": "editor.action.organizeImports"
-            },
-            {
-              "key": "r",
-              "name": "Rename symbol",
-              "type": "command",
-              "command": "editor.action.rename"
-            },
-            {
-              "key": "R",
-              "name": "Refactor",
-              "type": "command",
-              "command": "editor.action.refactor"
-            },
-            {
-              "key": ".",
-              "name": "Quick fix",
-              "type": "command",
-              "command": "editor.action.quickFix"
-            },
-            {
-              "key": "a",
-              "name": "Find all references",
-              "type": "command",
-              "command": "editor.action.referenceSearch.trigger"
-            },
-            {
-              "key": "u",
-              "name": "To lower case",
-              "type": "command",
-              "command": "editor.action.transformToLowercase"
-            },
-            {
-              "key": "U",
-              "name": "To upper case",
-              "type": "command",
-              "command": "editor.action.transformToUppercase"
-            },
-            {
-              "key": "J",
-              "name": "Move lines down transient",
-              "type": "commands",
-              "commands": [
-                "editor.action.moveLinesDownAction",
-                "whichkey.showTransient"
-              ],
-              "args": [
-                null,
-                "whichkey.transient.lineMoving"
-              ]
-            },
-            {
-              "key": "K",
-              "name": "Move lines up transient",
-              "type": "commands",
-              "commands": [
-                "editor.action.moveLinesUpAction",
-                "whichkey.showTransient"
-              ],
-              "args": [
-                null,
-                "whichkey.transient.lineMoving"
-              ]
-            },
-            {
-              "key": "l",
-              "name": "+Lines",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "s",
-                  "name": "Sort lines in ascending order",
-                  "type": "command",
-                  "command": "editor.action.sortLinesAscending"
-                },
-                {
-                  "key": "S",
-                  "name": "Sort lines in descending order",
-                  "type": "command",
-                  "command": "editor.action.sortLinesDescending"
-                },
-                {
-                  "key": "d",
-                  "name": "Duplicate lines down",
-                  "type": "command",
-                  "command": "editor.action.copyLinesDownAction"
-                },
-                {
-                  "key": "D",
-                  "name": "Duplicate lines up",
-                  "type": "command",
-                  "command": "editor.action.copyLinesUpAction"
-                }
-              ]
-            },
-            {
-              "key": "d",
-              "name": "+Delete",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "w",
-                  "name": "Delete trailing whitespace",
-                  "type": "command",
-                  "command": "editor.action.trimTrailingWhitespace"
-                }
-              ]
-            },
-            {
-              "key": "m",
-              "name": "+Merge conflict",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "b",
-                  "name": "Accept both",
-                  "type": "command",
-                  "command": "merge-conflict.accept.both"
-                },
-                {
-                  "key": "c",
-                  "name": "Accept current",
-                  "type": "command",
-                  "command": "merge-conflict.accept.current"
-                },
-                {
-                  "key": "i",
-                  "name": "Accept incoming",
-                  "type": "command",
-                  "command": "merge-conflict.accept.incoming"
-                },
-                {
-                  "key": "B",
-                  "name": "Accept all both",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-both"
-                },
-                {
-                  "key": "C",
-                  "name": "Accept all current",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-current"
-                },
-                {
-                  "key": "I",
-                  "name": "Accept all incoming",
-                  "type": "command",
-                  "command": "merge-conflict.accept.all-incoming"
-                },
-                {
-                  "key": "s",
-                  "name": "Accept selection",
-                  "type": "command",
-                  "command": "merge-conflict.accept.selection"
-                },
-                {
-                  "key": "k",
-                  "name": "Compare current conflict",
-                  "type": "command",
-                  "command": "merge-conflict.compare"
-                },
-                {
-                  "key": "n",
-                  "name": "Next Conflict",
-                  "type": "command",
-                  "command": "merge-conflict.next"
-                },
-                {
-                  "key": "N",
-                  "name": "Previous Conflict",
-                  "type": "command",
-                  "command": "merge-conflict.previous"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "key": "z",
-          "name": "+Zoom/Fold",
-          "type": "bindings",
-          "bindings": [
-            {
-              "key": ".",
-              "name": "+Fold",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "a",
-                  "name": "Toggle: around a point",
-                  "type": "command",
-                  "command": "editor.toggleFold"
-                },
-                {
-                  "key": "c",
-                  "name": "Close: at a point",
-                  "type": "command",
-                  "command": "editor.fold"
-                },
-                {
-                  "key": "b",
-                  "name": "Close: all block comments",
-                  "type": "command",
-                  "command": "editor.foldAllBlockComments"
-                },
-                {
-                  "key": "g",
-                  "name": "Close: all regions",
-                  "type": "command",
-                  "command": "editor.foldAllMarkerRegions"
-                },
-                {
-                  "key": "m",
-                  "name": "Close: all",
-                  "type": "command",
-                  "command": "editor.foldAll"
-                },
-                {
-                  "key": "o",
-                  "name": "Open: at a point",
-                  "type": "command",
-                  "command": "editor.unfold"
-                },
-                {
-                  "key": "O",
-                  "name": "Open: recursively",
-                  "type": "command",
-                  "command": "editor.unfoldRecursively"
-                },
-                {
-                  "key": "G",
-                  "name": "Open: all regions",
-                  "type": "command",
-                  "command": "editor.unfoldAllMarkerRegions"
-                },
-                {
-                  "key": "r",
-                  "name": "Open: all",
-                  "type": "command",
-                  "command": "editor.unfoldAll"
-                }
-              ]
-            },
-            {
-              "key": "f",
-              "name": "Frame zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.frameZooming"
-            },
-            {
-              "key": "x",
-              "name": "Font zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.fontZooming"
-            },
-            {
-              "key": "i",
-              "name": "Image zooming transient",
-              "type": "command",
-              "command": "whichkey.showTransient",
-              "args": "whichkey.transient.imageZooming"
-            }
-          ]
-        },
-        {
-          "key": "v",
-          "name": "Smart select/expand region transient",
-          "type": "commands",
-          "commands": [
-            "editor.action.smartSelect.grow",
-            "whichkey.showTransient"
-          ],
-          "args": [
-            null,
-            "whichkey.transient.smartExpand"
-          ]
         }
       ],
       "breadcrumbs.enabled": false,
@@ -1735,7 +1418,7 @@
       "explorer.confirmDragAndDrop": false,
       "files.simpleDialog.enable": true,
       "terminal.integrated.commandsToSkipShell": [
-        "whichkey.show"
+        "doom.whichKeyShow"
       ],
       "workbench.activityBar.location": "hidden",
       "workbench.editor.autoLockGroups": {
@@ -1749,10 +1432,56 @@
       "workbench.startupEditor": "none",
       "window.commandCenter": false
     },
+    "configuration": {
+      "title": "Doom Code",
+      "properties": {
+        "doom.whichKey.menuStyle": {
+          "type": "string",
+          "enum": [
+            "doom",
+            "vspacecode"
+          ],
+          "default": "doom",
+          "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom panel UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
+        },
+        "doom.startPage.openOnActivation": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Open Doom Code's start page whenever the extension activates. The page contains manual install and cleanup actions, repository links, and the current changelog."
+        }
+      }
+    },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "doomPanel",
+          "title": "Doom",
+          "icon": "assets/doom-panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "doomPanel": [
+        {
+          "id": "doom.panelView",
+          "type": "webview",
+          "name": "Doom",
+          "icon": "assets/doom-panel.svg"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "doom.install",
         "title": "Install Doom Code"
+      },
+      {
+        "command": "doom.showStartPage",
+        "title": "Doom Code: Show Start Page"
+      },
+      {
+        "command": "doom.reloadLastSession",
+        "title": "Doom Code: Reload Last Session"
       },
       {
         "command": "doom.cleanup",
@@ -1761,6 +1490,26 @@
       {
         "command": "doom.windowMru",
         "title": "Doom Code: Toggle Last Editor Group"
+      },
+      {
+        "command": "doom.whichKeyShow",
+        "title": "Doom Code: Show Which Key"
+      },
+      {
+        "command": "doom.whichKeyShowBindings",
+        "title": "Doom Code: Show Which-Key Bindings"
+      },
+      {
+        "command": "doom.fuzzySearchActiveTextEditor",
+        "title": "Doom Code: Fuzzy Search in Current File"
+      },
+      {
+        "command": "doom.fuzzySearchWorkspace",
+        "title": "Doom Code: Fuzzy Search in Project"
+      },
+      {
+        "command": "doom.showOpenEditors",
+        "title": "Doom Code: Switch Workspace Buffer"
       }
     ],
     "keybindings": [
@@ -1777,29 +1526,34 @@
         "when": "whichkeyVisible"
       },
       {
-        "key": "space",
-        "command": "whichkey.show",
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "key": "escape",
+        "command": "doom.whichKeyHide",
+        "when": "whichkeyVisible"
       },
       {
         "key": "space",
-        "command": "whichkey.show",
-        "when": "focusedView == '' && !whichkeyActive && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "command": "doom.whichKeyShow",
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
-        "command": "whichkey.show",
-        "when": "(sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)"
+        "command": "doom.whichKeyShow",
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+      },
+      {
+        "key": "space",
+        "command": "doom.whichKeyShow",
+        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible"
       },
       {
         "key": "alt+space",
-        "command": "whichkey.show",
-        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
-        "command": "whichkey.show",
-        "when": "inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus"
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
       },
       {
         "key": "t",
@@ -2049,6 +1803,16 @@
       },
       {
         "key": "ctrl+j",
+        "command": "doom.fuzzySearchMoveDown",
+        "when": "doom.fuzzySearchVisible"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "doom.fuzzySearchMoveUp",
+        "when": "doom.fuzzySearchVisible"
+      },
+      {
+        "key": "ctrl+j",
         "command": "workbench.action.quickOpenSelectNext",
         "when": "inQuickInput && !whichkeyVisible"
       },
@@ -2056,6 +1820,10 @@
         "key": "ctrl+k",
         "command": "workbench.action.quickOpenSelectPrevious",
         "when": "inQuickInput && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "-workbench.action.togglePanel"
       },
       {
         "key": "ctrl+l",

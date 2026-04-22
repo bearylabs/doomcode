@@ -2,8 +2,7 @@
   <h1>Doom Code – VS Code Extension</h1>
 </div>
 
-![screenshot ](assets/screenshot.png)
----
+## ![screenshot ](assets/screenshot.png)
 
 Bring the power and elegance of **Doom Emacs** to VS Code. This configuration transforms VS Code into a modal, keyboard-driven editor that closely mirrors Doom Emacs' workflows and philosophy – designed for developers who either want to learn Doom Emacs or are forced to use VS Code but prefer an Emacs-like experience.
 
@@ -28,11 +27,12 @@ This configuration works best for developers who value **efficiency over mouse u
 This configuration includes:
 
 - Doom-style leader-key navigation centered around `SPC`, with the live which-key menu as the source of truth for available bindings
-- Fast file, buffer, project, and symbol navigation with representative entry points like `SPC .`, `SPC SPC`, `SPC s p`, and `SPC c d`
+- Fast file, buffer, project, and symbol navigation with representative entry points like `SPC .`, `SPC SPC`, `SPC /`, `SPC ,`, and `SPC c d`
 - Modal code actions for formatting, references, imports, rename, quick fixes, and refactors through grouped menus instead of scattered shortcuts
 - Integrated terminal, debug, AI assistant, and window-management menus exposed through which-key
+- Doom Code's own panel-based which-key, project search, and workspace buffer switcher
 - Opinionated editor defaults for a cleaner layout, including hidden activity bar, hidden tabs, disabled breadcrumbs, and a hidden command center
-- Required companion extensions for modal editing, which-key, fuzzy in-file search, and TODO highlighting
+- Required companion extensions for modal editing, which-key, and TODO highlighting
 
 If a binding shown in the README ever disagrees with what you see in which-key, trust which-key. The shipped configuration in `whichkey.bindings` is authoritative.
 
@@ -41,7 +41,7 @@ If a binding shown in the README ever disagrees with what you see in which-key, 
 All keybindings follow **Vim/Evil conventions**:
 
 - `leader` = `Space` (configure via leader key)
-- Alternative which-key trigger =  `Alt+Space` and `Ctrl+Space` (only where SPC is not working)
+- Alternative which-key trigger = `Alt+Space` and `Ctrl+Space` (only where SPC is not working)
 - Which-key menus activate automatically with a short delay
 - All standard movement keys work in modal contexts
 
@@ -49,11 +49,11 @@ Explorer, Open Editors, Timeline, terminal, and other focused views also get con
 
 ## 📋 Requirements
 
-This configuration **requires** four essential extensions:
+This configuration depends on three companion extensions:
 
 ### Core Dependencies
 
-All dependencies are declared as `extensionDependencies` and are installed automatically when you install Doom Code:
+Core dependencies are declared in the extension manifest and are installed automatically when you install Doom Code:
 
 1. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
    - Provides modal editing (normal, insert, visual modes)
@@ -62,12 +62,11 @@ All dependencies are declared as `extensionDependencies` and are installed autom
    - Displays keyboard command menus (like Doom's prefix menu)
    - The entire custom configuration is built on which-key's binding system
    - Standard VS Code command menus have been extended to match Doom Emacs' style as closely as possible
-3. **[fuzzy-search](https://marketplace.visualstudio.com/items?itemName=jacobdufault.fuzzy-search)** – Fuzzy in-file search
-   - Required for `SPC s s` (Search in file)
-   - Provides a fuzzy-matching find experience similar to Doom Emacs' `swiper`
-4. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
+3. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
    - Required for Doom Code's default `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` comment highlighting
    - Adds matching overview ruler markers with Doom Code's color palette
+
+Project search, in-file fuzzy search, workspace buffer switching, and the custom which-key panels are now built into Doom Code.
 
 ## 🚀 Installation
 
@@ -75,13 +74,25 @@ All dependencies are declared as `extensionDependencies` and are installed autom
 
 Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSCodeVim and VSpaceCode are declared as dependencies and will be installed automatically.
 
-### Step 2: Let Doom Code Apply Its Defaults
+### Step 2: Use the Start Page to Opt In
 
-On first activation, Doom Code automatically writes its install defaults to your user settings when those settings are not already configured.
+On activation, Doom Code opens a start page with:
 
-This gives a fresh setup the required defaults automatically while leaving any existing user-defined settings untouched.
+- a button to run **Install Doom Code**
+- a button to run **Doom Code: Clean Up Stale Settings**
+- repository and issue links
+- the current changelog
 
-If you want to run the setup again later, open the Command Palette, run **Install Doom Code**, and confirm the prompt.
+Doom Code does **not** write to your user settings automatically anymore. It only applies install defaults after you explicitly confirm the install command.
+
+When install runs, Doom Code treats any existing value in these user-owned scopes as yours and leaves it untouched:
+
+- user/global scope
+- workspace scope
+- workspace-folder scope
+- language-specific user/workspace/workspace-folder scopes
+
+If you want to reopen the page later, run **Doom Code: Show Start Page**.
 
 ### Step 3: Configure UI Layout
 
@@ -92,6 +103,8 @@ For the configuration to work optimally:
 3. **Drag "Open Editors"** to make it its own tab inside the primary side bar for a cleaner UI
 
 This creates a clean primary editor area with file navigation and history in the bottom panel, matching Doom Emacs' layout philosophy.
+
+If the start page opening on activation becomes noise, set `doom.startPage.openOnActivation` to `false`.
 
 ### Step 4: Clean Up Your UI (Recommended)
 
@@ -146,12 +159,13 @@ MIT License – Feel free to use, modify, and share this extension.
 ## 💡 Tips
 
 - Press `SPC` once to see available commands in which-key
+- Use `SPC h b` to search the full which-key binding list
 - Use `SPC :` for the VS Code command palette
 - Customize the theme and icon theme to match your own preferences
 
 ## 🤝 Contributing
 
-Found improvements or better keybindings? Contributions are welcome! 
+Found improvements or better keybindings? Contributions are welcome!
 
 **For users:** Feel free to submit issues and pull requests to enhance the doomcode experience.
 

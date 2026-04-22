@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+// ---------------------------------------------------------------------------
+// Editor group focus commands
+// ---------------------------------------------------------------------------
+
 const FOCUS_GROUP_COMMANDS: Partial<Record<vscode.ViewColumn, string>> = {
 	[vscode.ViewColumn.One]: "workbench.action.focusFirstEditorGroup",
 	[vscode.ViewColumn.Two]: "workbench.action.focusSecondEditorGroup",
@@ -12,10 +16,27 @@ const FOCUS_GROUP_COMMANDS: Partial<Record<vscode.ViewColumn, string>> = {
 	[vscode.ViewColumn.Nine]: "workbench.action.focusNinthEditorGroup",
 };
 
-function createEditorGroupMruToggle(): {
+// ---------------------------------------------------------------------------
+// MRU controller
+// ---------------------------------------------------------------------------
+
+export async function focusEditorGroup(viewColumn: vscode.ViewColumn): Promise<boolean> {
+	const focusCommand = FOCUS_GROUP_COMMANDS[viewColumn];
+	if (!focusCommand) {
+		return false;
+	}
+
+	await vscode.commands.executeCommand(focusCommand);
+	return true;
+}
+
+export interface WindowMruController {
+	getLastActiveGroup(): vscode.ViewColumn | undefined;
 	recordActiveGroup(): void;
 	toggle(): Promise<void>;
-} {
+}
+
+function createEditorGroupMruToggle(): WindowMruController {
 	const recentGroups: vscode.ViewColumn[] = [];
 
 	const recordGroup = (viewColumn: vscode.ViewColumn | undefined): void => {
@@ -36,6 +57,18 @@ function createEditorGroupMruToggle(): {
 	};
 
 	return {
+		getLastActiveGroup: () => {
+			const fallbackGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
+			const previousGroup = recentGroups.at(-2);
+			if (previousGroup === undefined) {
+				return fallbackGroup;
+			}
+
+			const targetExists = vscode.window.tabGroups.all.some(
+				(group) => group.viewColumn === previousGroup
+			);
+			return targetExists ? previousGroup : fallbackGroup;
+		},
 		recordActiveGroup: () => {
 			recordGroup(vscode.window.tabGroups.activeTabGroup.viewColumn);
 		},
@@ -65,7 +98,11 @@ function createEditorGroupMruToggle(): {
 	};
 }
 
-export function registerWindowMru(context: vscode.ExtensionContext): void {
+// ---------------------------------------------------------------------------
+// Extension registration
+// ---------------------------------------------------------------------------
+
+export function registerWindowMru(context: vscode.ExtensionContext): WindowMruController {
 	const windowMru = createEditorGroupMruToggle();
 
 	windowMru.recordActiveGroup();
@@ -73,8 +110,13 @@ export function registerWindowMru(context: vscode.ExtensionContext): void {
 		vscode.window.tabGroups.onDidChangeTabGroups(() => {
 			windowMru.recordActiveGroup();
 		}),
+		vscode.window.onDidChangeActiveTextEditor(() => {
+			windowMru.recordActiveGroup();
+		}),
 		vscode.commands.registerCommand("doom.windowMru", async () => {
 			await windowMru.toggle();
 		})
 	);
+
+	return windowMru;
 }
