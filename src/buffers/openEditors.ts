@@ -431,6 +431,7 @@ export class DoomOpenEditorsPanel {
 
 	prepareShow(resetQuery = true): void {
 		this.targetGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
+		this.activeIndex = 0;
 		if (resetQuery) {
 			this.query = '';
 		}
