@@ -942,8 +942,11 @@
                 {
                   "key": "",
                   "name": "default",
-                  "type": "command",
-                  "command": "workbench.action.terminal.focus"
+                  "type": "commands",
+                  "commands": [
+                    "workbench.action.terminal.focus",
+                    "workbench.action.terminal.moveToTerminalPanel"
+                  ]
                 },
                 {
                   "key": "when:activePanel == 'terminal'",
