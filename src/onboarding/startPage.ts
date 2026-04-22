@@ -14,7 +14,6 @@ export interface StartPageConflict {
 export interface DoomStartPageState {
 	mode: StartPageMode;
 	currentVersion: string;
-	description: string;
 	defaultCount: number;
 	installedDefaultCount: number;
 	hasInstalledDefaults: boolean;
@@ -24,9 +23,6 @@ export interface DoomStartPageState {
 	startupCommands: StartPageCommand[];
 	conflicts: StartPageConflict[];
 	repositoryUrl?: string;
-	homepageUrl?: string;
-	issuesUrl?: string;
-	changelogMarkdown: string;
 }
 
 export interface StartPageCommand {

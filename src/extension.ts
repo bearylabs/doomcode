@@ -6,11 +6,11 @@ import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import {
-    detectStartPageMode,
-    DoomStartPage,
-    evaluateInstalledDefaults,
-    resolveStartupCommandsFromBindings,
-    START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+	detectStartPageMode,
+	DoomStartPage,
+	evaluateInstalledDefaults,
+	resolveStartupCommandsFromBindings,
+	START_PAGE_OPEN_ON_ACTIVATION_SETTING,
 } from './onboarding/startPage';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
@@ -507,38 +507,18 @@ async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	}
 }
 
-async function loadChangelog(context: vscode.ExtensionContext): Promise<string> {
-	try {
-		const changelogUri = vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md');
-		const bytes = await vscode.workspace.fs.readFile(changelogUri);
-		return Buffer.from(bytes).toString('utf-8');
-	} catch (error) {
-		console.warn('Failed to load CHANGELOG.md:', error);
-		return 'Changelog unavailable.';
-	}
-}
-
 function getExtensionMetadata(context: vscode.ExtensionContext): {
 	version: string;
-	description: string;
 	repositoryUrl?: string;
-	homepageUrl?: string;
-	issuesUrl?: string;
 } {
 	const packageJson = context.extension.packageJSON as {
 		version?: string;
-		description?: string;
 		repository?: { url?: string };
-		homepage?: string;
-		bugs?: { url?: string };
 	};
 
 	return {
 		version: packageJson.version ?? '0.0.0',
-		description: packageJson.description ?? '',
 		repositoryUrl: packageJson.repository?.url,
-		homepageUrl: packageJson.homepage,
-		issuesUrl: packageJson.bugs?.url,
 	};
 }
 
@@ -551,7 +531,6 @@ async function showStartupPage(
 	const configuration = vscode.workspace.getConfiguration();
 	const staleState = detectStaleState(context);
 	const metadata = getExtensionMetadata(context);
-	const changelogMarkdown = await loadChangelog(context);
 	const installState = evaluateInstalledDefaults(installDefaults, (key) => configuration.get(key));
 	const startupCommands = resolveStartupCommandsFromBindings(
 		getPackageWhichKeyBindings(context),
@@ -561,7 +540,6 @@ async function showStartupPage(
 	startPage.show({
 		mode,
 		currentVersion: metadata.version,
-		description: metadata.description,
 		defaultCount: Object.keys(installDefaults).length,
 		installedDefaultCount: installState.matchingDefaults,
 		hasInstalledDefaults: installState.isInstalled,
@@ -574,9 +552,6 @@ async function showStartupPage(
 			reason: conflict.reason,
 		})),
 		repositoryUrl: metadata.repositoryUrl,
-		homepageUrl: metadata.homepageUrl,
-		issuesUrl: metadata.issuesUrl,
-		changelogMarkdown,
 	});
 }
 
