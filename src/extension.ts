@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
+import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
 import { registerWindowMru } from './window/mru';
@@ -455,7 +456,13 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyMenu = new DoomWhichKeyMenu();
 	registerWindowMru(context);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
-	const sharedPanel = new DoomSharedPanel(whichKeyMenu, fuzzySearchPanel, openEditorsPanel);
+	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
+	const sharedPanel = new DoomSharedPanel(
+		whichKeyMenu,
+		fuzzySearchPanel,
+		openEditorsPanel,
+		whichKeyBindingsPanel,
+	);
 
 	// First-activation: apply defaults then detect stale state.
 	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {
@@ -524,7 +531,12 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyBindingsCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShowBindings",
 		() => {
-			void showWhichKeyBindingsQuickPick();
+			if (getWhichKeyMenuStyle() === 'vspacecode') {
+				void showWhichKeyBindingsQuickPick();
+				return;
+			}
+
+			void sharedPanel.showWhichKeyBindings();
 		}
 	);
 

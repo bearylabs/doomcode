@@ -5,13 +5,12 @@ import {
 	type WhichKeyBinding,
 } from './bindings';
 
-interface WhichKeyExecutableBinding {
-	args?: unknown;
-	commands?: string[];
-	command?: string;
+export interface WhichKeyExecutableBinding {
+	binding: Pick<WhichKeyBinding, 'args' | 'command' | 'commands'>;
 	detail: string;
 	name: string;
 	path: string;
+	searchText: string;
 }
 
 function formatConditionalLabel(rawKey: string): string {
@@ -55,12 +54,15 @@ function flattenWhichKeyBindings(
 			}
 
 			flattened.push({
-				args: binding.args,
-				commands: binding.commands,
-				command: binding.command,
+				binding: {
+					args: binding.args,
+					commands: binding.commands,
+					command: binding.command,
+				},
 				detail: detailParts.join(' — '),
 				name: binding.name,
 				path: nextPath,
+				searchText: `${nextPath} ${binding.name} ${detailParts.join(' ')}`.toLowerCase(),
 			});
 			continue;
 		}
@@ -98,12 +100,15 @@ function flattenWhichKeyBindings(
 			}
 
 			flattened.push({
-				args: option.args,
-				commands: option.commands,
-				command: option.command,
+				binding: {
+					args: option.args,
+					commands: option.commands,
+					command: option.command,
+				},
 				detail: detailParts.join(' — '),
 				name: resolvedName,
 				path: nextPath,
+				searchText: `${nextPath} ${resolvedName} ${detailParts.join(' ')}`.toLowerCase(),
 			});
 		}
 	}
@@ -111,8 +116,12 @@ function flattenWhichKeyBindings(
 	return flattened;
 }
 
+export function getFlattenedWhichKeyBindings(): WhichKeyExecutableBinding[] {
+	return flattenWhichKeyBindings(getConfiguredWhichKeyBindings());
+	}
+
 export async function showWhichKeyBindingsQuickPick(): Promise<void> {
-	const flattenedBindings = flattenWhichKeyBindings(getConfiguredWhichKeyBindings());
+	const flattenedBindings = getFlattenedWhichKeyBindings();
 
 	if (flattenedBindings.length === 0) {
 		void vscode.window.showInformationMessage('No which-key bindings configured.');
@@ -138,5 +147,5 @@ export async function showWhichKeyBindingsQuickPick(): Promise<void> {
 		return;
 	}
 
-	await executeWhichKeyBindingCommands(picked.binding);
+	await executeWhichKeyBindingCommands(picked.binding.binding);
 }

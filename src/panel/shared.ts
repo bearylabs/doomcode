@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
 import { DoomFuzzySearchPanel } from '../search/fuzzy';
+import { DoomWhichKeyBindingsPanel } from '../whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
 
-type SharedPanelMode = 'buffers' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -22,6 +23,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		private readonly whichKeyMenu: DoomWhichKeyMenu,
 		private readonly fuzzySearchPanel: DoomFuzzySearchPanel,
 		private readonly openEditorsPanel: DoomOpenEditorsPanel,
+		private readonly whichKeyBindingsPanel: DoomWhichKeyBindingsPanel,
 	) {}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -80,6 +82,11 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	async showOpenEditors(): Promise<void> {
 		this.openEditorsPanel.prepareShow();
 		await this.showMode('buffers', this.openEditorsPanel);
+	}
+
+	async showWhichKeyBindings(): Promise<void> {
+		this.whichKeyBindingsPanel.prepareShow();
+		await this.showMode('bindings', this.whichKeyBindingsPanel);
 	}
 
 	private async showMode(mode: SharedPanelMode, controller: SharedPanelController): Promise<void> {
