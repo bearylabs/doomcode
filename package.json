@@ -1506,17 +1506,17 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible"
+        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible"
       },
       {
         "key": "alt+space",
