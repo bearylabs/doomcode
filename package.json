@@ -1541,7 +1541,7 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
