@@ -228,6 +228,32 @@ function getPackageWhichKeyBindings(context: vscode.ExtensionContext): unknown {
 	return packageJson.contributes?.configurationDefaults?.['whichkey.bindings'];
 }
 
+function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][] {
+	const packageJson = context.extension.packageJSON as {
+		doomStartPage?: {
+			startupCommandKeyPaths?: unknown;
+		};
+	};
+
+	const configuredPaths = packageJson.doomStartPage?.startupCommandKeyPaths;
+	if (!Array.isArray(configuredPaths)) {
+		return [];
+	}
+
+	return configuredPaths.flatMap((entry) => {
+		if (typeof entry !== 'string') {
+			return [];
+		}
+
+		const keyPath = entry
+			.split(/\s+/)
+			.map((segment) => segment.trim())
+			.filter((segment) => segment.length > 0);
+
+		return keyPath.length > 0 ? [keyPath] : [];
+	});
+}
+
 async function applyDefaultsToUserSettings(
 	defaults: Record<string, unknown>,
 	showResultMessage = false
@@ -527,7 +553,10 @@ async function showStartupPage(
 	const metadata = getExtensionMetadata(context);
 	const changelogMarkdown = await loadChangelog(context);
 	const installState = evaluateInstalledDefaults(installDefaults, (key) => configuration.get(key));
-	const startupCommands = resolveStartupCommandsFromBindings(getPackageWhichKeyBindings(context));
+	const startupCommands = resolveStartupCommandsFromBindings(
+		getPackageWhichKeyBindings(context),
+		getStartupCommandKeyPaths(context),
+	);
 
 	startPage.show({
 		mode,

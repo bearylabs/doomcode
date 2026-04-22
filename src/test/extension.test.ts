@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
-	computeWorkspaceHistoryUpdate,
-	type StoredWorkspaceTarget,
-	selectReloadWorkspaceTarget,
+    computeWorkspaceHistoryUpdate,
+    selectReloadWorkspaceTarget,
+    type StoredWorkspaceTarget,
 } from '../extension';
 import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
@@ -220,6 +220,7 @@ suite('Extension Test Suite', () => {
 				bindings: [
 					{
 						key: 'r',
+						name: 'Recently opened files',
 						type: 'command',
 						command: 'workbench.action.openRecent',
 					},
@@ -231,6 +232,7 @@ suite('Extension Test Suite', () => {
 				bindings: [
 					{
 						key: 'p',
+						name: 'Open project',
 						type: 'command',
 						command: 'workbench.action.openRecent',
 					},
@@ -242,6 +244,7 @@ suite('Extension Test Suite', () => {
 				bindings: [
 					{
 						key: 'l',
+						name: 'Reload last session',
 						type: 'command',
 						command: 'doom.reloadLastSession',
 					},
@@ -258,6 +261,11 @@ suite('Extension Test Suite', () => {
 					},
 				],
 			},
+		], [
+			['f', 'r'],
+			['p', 'p'],
+			['q', 'l'],
+			['h', 'd', 'h'],
 		]);
 
 		assert.deepStrictEqual(commands, [

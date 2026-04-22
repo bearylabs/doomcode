@@ -35,6 +35,14 @@ export interface StartPageCommand {
 	command: string;
 }
 
+const START_PAGE_COMMAND_ICONS: Record<string, string> = {
+	'Recently opened files': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z"/></svg>',
+	'Reload last session': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M320 128C426 128 512 214 512 320C512 426 426 512 320 512C254.8 512 197.1 479.5 162.4 429.7C152.3 415.2 132.3 411.7 117.8 421.8C103.3 431.9 99.8 451.9 109.9 466.4C156.1 532.6 233 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C234.3 64 158.5 106.1 112 170.7L112 144C112 126.3 97.7 112 80 112C62.3 112 48 126.3 48 144L48 256C48 273.7 62.3 288 80 288L104.6 288C105.1 288 105.6 288 106.1 288L192.1 288C209.8 288 224.1 273.7 224.1 256C224.1 238.3 209.8 224 192.1 224L153.8 224C186.9 166.6 249 128 320 128zM344 216C344 202.7 333.3 192 320 192C306.7 192 296 202.7 296 216L296 320C296 326.4 298.5 332.5 303 337L375 409C384.4 418.4 399.6 418.4 408.9 409C418.2 399.6 418.3 384.4 408.9 375.1L343.9 310.1L343.9 216z"/></svg>',
+	'Open project': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z"/></svg>',
+};
+
+const GITHUB_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.014 8.014 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>';
+
 export interface InstallDefaultsState {
 	matchingDefaults: number;
 	totalDefaults: number;
@@ -43,48 +51,11 @@ export interface InstallDefaultsState {
 
 interface WhichKeyBindingNode {
 	key?: string;
+	name?: string;
 	type?: string;
 	command?: string;
 	bindings?: unknown;
 }
-
-const STARTUP_COMMAND_CANDIDATES = [
-	{
-		label: 'Recently opened files',
-		keyPath: ['f', 'r'],
-		command: 'workbench.action.openRecent',
-	},
-	{
-		label: 'Reload last session',
-		keyPath: ['q', 'l'],
-		command: 'doom.reloadLastSession',
-	},
-	{
-		label: 'Open org-agenda',
-		keyPath: ['o', 'A'],
-		command: 'doom.openOrgAgenda',
-	},
-	{
-		label: 'Open project',
-		keyPath: ['p', 'p'],
-		command: 'workbench.action.openRecent',
-	},
-	{
-		label: 'Jump to bookmark',
-		keyPath: ['RET'],
-		command: 'doom.jumpToBookmark',
-	},
-	{
-		label: 'Open private configuration',
-		keyPath: ['f', 'P'],
-		command: 'doom.openPrivateConfig',
-	},
-	{
-		label: 'Open documentation',
-		keyPath: ['h', 'd', 'h'],
-		command: 'doom.openDocumentation',
-	},
-] as const;
 
 const ASCII_HEADER = [
 	"=================     ===============     ===============   ========  ========",
@@ -231,7 +202,7 @@ function asBindingNodes(value: unknown): WhichKeyBindingNode[] {
 	return value.filter((entry): entry is WhichKeyBindingNode => entry !== null && typeof entry === 'object');
 }
 
-function resolveBindingCommand(bindings: unknown, keyPath: readonly string[]): string | undefined {
+function resolveBindingEntry(bindings: unknown, keyPath: readonly string[]): WhichKeyBindingNode | undefined {
 	let currentBindings = asBindingNodes(bindings);
 	let currentEntry: WhichKeyBindingNode | undefined;
 
@@ -245,24 +216,27 @@ function resolveBindingCommand(bindings: unknown, keyPath: readonly string[]): s
 	}
 
 	if (typeof currentEntry?.command === 'string') {
-		return currentEntry.command;
+		return currentEntry;
 	}
 
 	const defaultBinding = currentBindings.find((entry) => entry.key === '');
-	return typeof defaultBinding?.command === 'string' ? defaultBinding.command : undefined;
+	return typeof defaultBinding?.command === 'string' ? defaultBinding : undefined;
 }
 
-export function resolveStartupCommandsFromBindings(bindings: unknown): StartPageCommand[] {
-	return STARTUP_COMMAND_CANDIDATES.flatMap((candidate) => {
-		const command = resolveBindingCommand(bindings, candidate.keyPath);
-		if (command !== candidate.command) {
+export function resolveStartupCommandsFromBindings(
+	bindings: unknown,
+	startupCommandKeyPaths: readonly string[][],
+): StartPageCommand[] {
+	return startupCommandKeyPaths.flatMap((keyPath) => {
+		const entry = resolveBindingEntry(bindings, keyPath);
+		if (!entry || typeof entry.command !== 'string' || typeof entry.name !== 'string') {
 			return [];
 		}
 
 		return [{
-			label: candidate.label,
-			keybinding: `SPC ${candidate.keyPath.join(' ')}`,
-			command,
+			label: entry.name,
+			keybinding: `SPC ${keyPath.join(' ')}`,
+			command: entry.command,
 		}];
 	});
 }
@@ -391,7 +365,10 @@ export class DoomStartPage {
 			? state.startupCommands.map((entry) => `
 				<li class="menu-item">
 					<button class="menu-link" data-command="executeCommand" data-vscode-command="${this.escapeHtml(entry.command)}">
-						<span class="menu-label">${this.escapeHtml(entry.label)}</span>
+						<span class="menu-label-shell">
+							<span class="menu-icon" aria-hidden="true">${this.getStartupCommandIcon(entry)}</span>
+							<span class="menu-label">${this.escapeHtml(entry.label)}</span>
+						</span>
 						<span class="menu-key">${this.escapeHtml(entry.keybinding)}</span>
 					</button>
 				</li>`).join('')
@@ -399,7 +376,14 @@ export class DoomStartPage {
 		const conflictMarkup = state.conflicts.length > 0
 			? `<p class="status-line status-warning">Conflicting extension still installed: ${this.escapeHtml(state.conflicts.map((conflict) => conflict.name).join(', '))}.</p>`
 			: '';
-		const bootSummary = `Doom Code ${state.currentVersion} loaded ${state.startupCommands.length} startup command${state.startupCommands.length === 1 ? '' : 's'} and ${state.defaultCount} default${state.defaultCount === 1 ? '' : 's'} in current profile`;
+		const installedDefaultsSummary = `${state.installedDefaultCount}/${state.defaultCount} installed`;
+		const bootSummary = state.hasInstalledDefaults
+			? `Doom settings ready (${installedDefaultsSummary})`
+			: `Install Doom settings to match default profile (${installedDefaultsSummary})`;
+		const eyebrow = this.getEyebrow(state);
+		const repositoryMarkup = state.repositoryUrl
+			? `<p class="repo-link-shell"><button class="repo-link" data-command="openUrl" data-url="${this.escapeHtml(state.repositoryUrl)}" aria-label="Open GitHub repository">${GITHUB_ICON}</button></p>`
+			: '';
 
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -482,7 +466,7 @@ export class DoomStartPage {
 		}
 
 		.menu {
-			width: min(520px, 100%);
+			width: min(460px, 100%);
 			display: grid;
 			gap: 18px;
 		}
@@ -504,7 +488,7 @@ export class DoomStartPage {
 			padding: 2px 6px;
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) auto;
-			gap: 24px;
+			gap: 8px;
 			align-items: baseline;
 			background: transparent;
 			border: 0;
@@ -514,8 +498,31 @@ export class DoomStartPage {
 			text-align: left;
 		}
 
+		.menu-label-shell {
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+			min-width: 0;
+			color: var(--vscode-focusBorder, var(--doom-cyan));
+		}
+
+		.menu-icon {
+			width: 1.4em;
+			height: 1.4em;
+			text-align: center;
+			flex: 0 0 auto;
+			color: inherit;
+		}
+
+		.menu-icon svg,
+		.repo-link svg {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
 		.menu-label {
-			color: var(--doom-cyan);
+			color: inherit;
 		}
 
 		.menu-key {
@@ -523,8 +530,8 @@ export class DoomStartPage {
 			white-space: pre;
 		}
 
-		.menu-link:hover .menu-label,
-		.menu-link:focus-visible .menu-label,
+		.menu-link:hover .menu-label-shell,
+		.menu-link:focus-visible .menu-label-shell,
 		.inline-link:hover,
 		.inline-link:focus-visible {
 			color: #b6f4ff;
@@ -573,6 +580,38 @@ export class DoomStartPage {
 			margin: 4px 0 0;
 		}
 
+		.version-indicator {
+			margin: 0;
+			font-size: 11px;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--doom-muted);
+		}
+
+		.repo-link-shell {
+			margin: 0;
+			text-align: center;
+		}
+
+		.repo-link {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 18px;
+			height: 18px;
+			padding: 0;
+			border: 0;
+			background: transparent;
+			color: var(--doom-orange);
+			line-height: 1;
+			cursor: pointer;
+		}
+
+		.repo-link:hover,
+		.repo-link:focus-visible {
+			color: #ffd39d;
+		}
+
 		.toggle {
 			display: inline-flex;
 			align-items: center;
@@ -606,7 +645,7 @@ export class DoomStartPage {
 <body>
 	<main>
 		<section class="shell">
-			<p class="eyebrow">${this.escapeHtml(this.getEyebrow(state))}</p>
+			${eyebrow ? `<p class="eyebrow">${this.escapeHtml(eyebrow)}</p>` : ''}
 			<div class="ascii-header-shell">
 				<pre class="ascii-header" aria-label="Doom Code ASCII art header">${this.escapeHtml(ASCII_HEADER)}</pre>
 			</div>
@@ -626,6 +665,8 @@ export class DoomStartPage {
 				</div>
 			</section>
 			<p class="boot">${this.escapeHtml(bootSummary)}</p>
+			${repositoryMarkup}
+			<p class="version-indicator">Doom v${this.escapeHtml(state.currentVersion)}</p>
 			<label class="toggle" for="open-on-activation-toggle">
 				<input
 					id="open-on-activation-toggle"
@@ -668,11 +709,15 @@ export class DoomStartPage {
 			case 'update':
 				return `Updated to ${state.currentVersion}`;
 			default:
-				return `Startup ${state.currentVersion}`;
+				return '';
 		}
 	}
 
 	private escapeHtml(value: string): string {
 		return escapeHtml(value);
+	}
+
+	private getStartupCommandIcon(entry: StartPageCommand): string {
+		return START_PAGE_COMMAND_ICONS[entry.label] ?? '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.75" fill="currentColor"/></svg>';
 	}
 }

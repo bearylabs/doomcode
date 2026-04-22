@@ -113,6 +113,13 @@
     "window.restoreWindows": "none",
     "window.menuBarVisibility": "compact"
   },
+  "doomStartPage": {
+    "startupCommandKeyPaths": [
+      "f r",
+      "q l",
+      "p p"
+    ]
+  },
   "main": "./out/extension.js",
   "contributes": {
     "configurationDefaults": {
@@ -635,7 +642,7 @@
             },
             {
               "key": "r",
-              "name": "Open recent",
+              "name": "Recently opened files",
               "type": "command",
               "command": "workbench.action.openRecent"
             },
@@ -1034,7 +1041,7 @@
             },
             {
               "key": "p",
-              "name": "Switch project",
+              "name": "Open project",
               "type": "command",
               "command": "workbench.action.openRecent"
             },
