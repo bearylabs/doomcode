@@ -14,6 +14,7 @@ import {
     renderMarkdownFragment,
     resolveStartupCommandsFromBindings,
 } from '../onboarding/startPage';
+import { applyTrackedUiContextCommand } from '../whichkey/menu';
 
 suite('Extension Test Suite', () => {
 	const extensionId = 'bearylabs.doom';
@@ -217,6 +218,40 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
+	});
+
+	test('tracks sidebar context for repeated doom which-key toggles', () => {
+		const initial = {
+			activePanel: '',
+			activeViewlet: '',
+			copilotVisible: false,
+			explorerViewletVisible: false,
+			markersVisible: false,
+			sidebarVisible: false,
+		};
+
+		const explorerOpen = applyTrackedUiContextCommand(initial, 'workbench.view.explorer');
+		assert.deepStrictEqual(explorerOpen, {
+			activePanel: '',
+			activeViewlet: 'workbench.view.explorer',
+			copilotVisible: false,
+			explorerViewletVisible: true,
+			markersVisible: false,
+			sidebarVisible: true,
+		});
+
+		const sidebarHidden = applyTrackedUiContextCommand(
+			explorerOpen,
+			'workbench.action.toggleSidebarVisibility',
+		);
+		assert.deepStrictEqual(sidebarHidden, {
+			activePanel: '',
+			activeViewlet: '',
+			copilotVisible: false,
+			explorerViewletVisible: false,
+			markersVisible: false,
+			sidebarVisible: false,
+		});
 	});
 
 	test('extracts only the current release notes from changelog markdown', () => {

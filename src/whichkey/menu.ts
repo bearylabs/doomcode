@@ -22,6 +22,15 @@ interface ContextSnapshot {
 	terminalFocus: boolean;
 }
 
+interface TrackedUiContext {
+	activePanel: string;
+	activeViewlet: string;
+	copilotVisible: boolean;
+	explorerViewletVisible: boolean;
+	markersVisible: boolean;
+	sidebarVisible: boolean;
+}
+
 interface ShowContext {
 	terminalFocus: boolean;
 }
@@ -41,6 +50,82 @@ interface ViewState {
 interface WebviewMessage {
 	index?: number;
 	type: 'activate' | 'back' | 'close' | 'ready';
+}
+
+function createTrackedUiContext(): TrackedUiContext {
+	return {
+		activePanel: '',
+		activeViewlet: '',
+		copilotVisible: false,
+		explorerViewletVisible: false,
+		markersVisible: false,
+		sidebarVisible: false,
+	};
+}
+
+export function applyTrackedUiContextCommand(
+	context: TrackedUiContext,
+	command: string,
+	arg?: unknown
+): TrackedUiContext {
+	const next = { ...context };
+
+	if (command === 'setContext' && Array.isArray(arg) && arg.length >= 2) {
+		const [key, value] = arg;
+		if (key === 'doom.bigModeEnabled') {
+			return next;
+		}
+
+		if (key === 'view.workbench.panel.chat.view.copilot.visible' && typeof value === 'boolean') {
+			next.copilotVisible = value;
+		}
+
+		if (key === 'view.workbench.panel.markers.view.visible' && typeof value === 'boolean') {
+			next.markersVisible = value;
+		}
+
+		return next;
+	}
+
+	switch (command) {
+	case 'workbench.view.explorer':
+		next.activeViewlet = 'workbench.view.explorer';
+		next.explorerViewletVisible = true;
+		next.sidebarVisible = true;
+		return next;
+	case 'workbench.view.debug':
+		next.activeViewlet = 'workbench.view.debug';
+		next.explorerViewletVisible = false;
+		next.sidebarVisible = true;
+		return next;
+	case 'workbench.action.toggleSidebarVisibility':
+		if (next.sidebarVisible) {
+			next.activeViewlet = '';
+			next.explorerViewletVisible = false;
+			next.sidebarVisible = false;
+			return next;
+		}
+
+		next.sidebarVisible = true;
+		if (next.activeViewlet === 'workbench.view.explorer') {
+			next.explorerViewletVisible = true;
+		}
+		return next;
+	case 'workbench.action.terminal.focus':
+		next.activePanel = 'terminal';
+		return next;
+	case 'workbench.action.togglePanel':
+		next.activePanel = next.activePanel.length > 0 ? '' : 'terminal';
+		return next;
+	case 'workbench.action.closePanel':
+		next.activePanel = '';
+		return next;
+	case 'workbench.action.closeAuxiliaryBar':
+		next.copilotVisible = false;
+		return next;
+	default:
+		return next;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -103,13 +188,13 @@ function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 		activeEditorLastInGroup: activeTab !== undefined
 			&& activeGroup.tabs.length > 0
 			&& activeGroup.tabs[activeGroup.tabs.length - 1] === activeTab,
-		activePanel: '',
-		activeViewlet: '',
+		activePanel: state.trackedUiContext.activePanel,
+		activeViewlet: state.trackedUiContext.activeViewlet,
 		bigModeEnabled: state.isBigModeEnabled,
-		copilotVisible: false,
+		copilotVisible: state.trackedUiContext.copilotVisible,
 		editorHasSelection: activeSelection !== undefined && !activeSelection.isEmpty,
-		explorerViewletVisible: false,
-		markersVisible: false,
+		explorerViewletVisible: state.trackedUiContext.explorerViewletVisible,
+		markersVisible: state.trackedUiContext.markersVisible,
 		multipleEditorGroups: vscode.window.tabGroups.all.length > 1,
 		terminalFocus: state.showContext.terminalFocus,
 	};
@@ -190,6 +275,7 @@ export class DoomWhichKeyMenu {
 	};
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
+	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
@@ -203,6 +289,10 @@ export class DoomWhichKeyMenu {
 
 	get showContext(): ShowContext {
 		return this.currentShowContext;
+	}
+
+	get trackedUiContext(): TrackedUiContext {
+		return this.trackedContext;
 	}
 
 	prepareShow(showContext?: Partial<ShowContext>): void {
@@ -378,6 +468,7 @@ export class DoomWhichKeyMenu {
 
 	private trackContextCommand(command: string, arg?: unknown): void {
 		if (command !== 'setContext' || !Array.isArray(arg) || arg.length < 2) {
+			this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 			return;
 		}
 
@@ -385,6 +476,8 @@ export class DoomWhichKeyMenu {
 		if (key === 'doom.bigModeEnabled' && typeof value === 'boolean') {
 			this.bigModeEnabled = value;
 		}
+
+		this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 	}
 
 	private async close(): Promise<void> {
