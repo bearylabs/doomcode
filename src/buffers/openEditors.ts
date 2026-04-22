@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { focusEditorGroup } from '../window/mru';
 
@@ -7,6 +8,8 @@ interface OpenEditorItem {
 	groupColumn: vscode.ViewColumn;
 	groupLabel: string;
 	isDirty: boolean;
+	isRemote: boolean;
+	isReadonly: boolean;
 	isPinned: boolean;
 	label: string;
 	searchText: string;
@@ -24,8 +27,8 @@ interface OpenEditorState {
 	activeIndex: number;
 	emptyText: string;
 	items: Array<{
+		flags: string;
 		index: number;
-		isDirty: boolean;
 		isPinned: boolean;
 		kind: string;
 		label: string;
@@ -204,6 +207,87 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; kind: strin
 		kind: 'Editor',
 		searchText: tab.label,
 	};
+}
+
+function isUriReadonly(uri: vscode.Uri): boolean {
+	const isWritable = vscode.workspace.fs.isWritableFileSystem(uri.scheme);
+	if (isWritable === false) {
+		return true;
+	}
+
+	if (uri.scheme !== 'file') {
+		return false;
+	}
+
+	try {
+		fs.accessSync(uri.fsPath, fs.constants.W_OK);
+		return false;
+	} catch {
+		return true;
+	}
+}
+
+function isTabReadonly(tab: vscode.Tab): boolean {
+	const input = tab.input;
+
+	if (input instanceof vscode.TabInputTerminal) {
+		return true;
+	}
+
+	if (input instanceof vscode.TabInputText) {
+		return isUriReadonly(input.uri);
+	}
+
+	if (input instanceof vscode.TabInputTextDiff || input instanceof vscode.TabInputNotebookDiff) {
+		return true;
+	}
+
+	if (input instanceof vscode.TabInputCustom || input instanceof vscode.TabInputNotebook) {
+		return isUriReadonly(input.uri);
+	}
+
+	if (input instanceof vscode.TabInputWebview) {
+		return true;
+	}
+
+	return false;
+}
+
+function isRemoteUri(uri: vscode.Uri): boolean {
+	return uri.scheme === 'vscode-remote';
+}
+
+function isTabRemote(tab: vscode.Tab): boolean {
+	const input = tab.input;
+
+	if (input instanceof vscode.TabInputText) {
+		return isRemoteUri(input.uri);
+	}
+
+	if (input instanceof vscode.TabInputTextDiff) {
+		return isRemoteUri(input.original) || isRemoteUri(input.modified);
+	}
+
+	if (input instanceof vscode.TabInputCustom) {
+		return isRemoteUri(input.uri);
+	}
+
+	if (input instanceof vscode.TabInputNotebook) {
+		return isRemoteUri(input.uri);
+	}
+
+	if (input instanceof vscode.TabInputNotebookDiff) {
+		return isRemoteUri(input.original) || isRemoteUri(input.modified);
+	}
+
+	return false;
+}
+
+function getBufferFlags(item: Pick<OpenEditorItem, 'isDirty' | 'isReadonly' | 'isRemote'>): string {
+	const primaryFlag = item.isReadonly ? '%' : item.isDirty ? '*' : '-';
+	const modifiedFlag = item.isDirty ? '*' : item.isReadonly ? '%' : '-';
+	const remoteFlag = item.isRemote ? '@' : '-';
+	return `${primaryFlag}${modifiedFlag}${remoteFlag}`;
 }
 
 function getTabDedupKey(tab: vscode.Tab): string {
@@ -464,6 +548,8 @@ export class DoomOpenEditorsPanel {
 					groupColumn: group.viewColumn,
 					groupLabel: viewColumnToGroupLabel(group.viewColumn),
 					isDirty: tab.isDirty,
+					isRemote: isTabRemote(tab),
+					isReadonly: isTabReadonly(tab),
 					isPinned: tab.isPinned,
 					label: tab.label,
 					searchText: `${details.searchText} ${viewColumnToGroupLabel(group.viewColumn)}`.toLowerCase(),
@@ -617,8 +703,8 @@ export class DoomOpenEditorsPanel {
 			activeIndex: this.activeIndex,
 			emptyText: this.matches.length === 0 ? 'No open editors match.' : '',
 			items: this.matches.map((entry, index) => ({
+				flags: getBufferFlags(entry.item),
 				index,
-				isDirty: entry.item.isDirty,
 				isPinned: entry.item.isPinned,
 				kind: entry.item.kind,
 				label: entry.item.label,
@@ -881,7 +967,7 @@ export class DoomOpenEditorsPanel {
 
 				const flags = document.createElement('span');
 				flags.className = 'flags';
-				flags.textContent = item.isDirty ? '*' : '-';
+				flags.textContent = item.flags;
 
 				const kind = document.createElement('span');
 				kind.className = 'kind';
