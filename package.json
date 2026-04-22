@@ -276,7 +276,7 @@
             },
             {
               "key": "d",
-              "name": "Close active editor",
+              "name": "Kill buffer",
               "type": "command",
               "command": "workbench.action.closeActiveEditor"
             },
@@ -324,7 +324,7 @@
             },
             {
               "key": "M",
-              "name": "Close other editors",
+              "name": "Kill other buffers",
               "type": "command",
               "command": "workbench.action.closeOtherEditors"
             },
@@ -357,13 +357,13 @@
             },
             {
               "key": "N",
-              "name": "New untitled editor",
+              "name": "New empty buffer",
               "type": "command",
               "command": "workbench.action.files.newUntitledFile"
             },
             {
               "key": "u",
-              "name": "Reopen closed editor",
+              "name": "Reopen closed buffer",
               "type": "command",
               "command": "workbench.action.reopenClosedEditor"
             },
