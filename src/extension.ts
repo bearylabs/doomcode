@@ -445,17 +445,13 @@ async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Doom Code is now active.');
-
 	const installDefaults = getInstallDefaults(context);
 	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
 	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu();
-	const windowMru = registerWindowMru(context);
-	const openEditorsPanel = new DoomOpenEditorsPanel(() => windowMru.getLastActiveGroup());
+	registerWindowMru(context);
+	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
@@ -578,13 +574,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const openEditorsOtherWindowCmd = vscode.commands.registerCommand(
-		"doom.showOpenEditorsInOtherWindow",
-		() => {
-			void sharedPanel.showOpenEditorsInOtherWindow();
-		}
-	);
-
 	const fuzzySearchMoveDownCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchMoveDown",
 		() => {
@@ -619,7 +608,6 @@ export function activate(context: vscode.ExtensionContext) {
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,
 		openEditorsCmd,
-		openEditorsOtherWindowCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		sharedPanelViewProvider,

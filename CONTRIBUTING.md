@@ -23,6 +23,7 @@ This shell includes Node.js, npm, and all required tools. All subsequent command
 ### Option 2: Manual Setup
 
 If you don't use Nix, ensure you have:
+
 - Node.js 16+
 - npm 7+
 
@@ -101,6 +102,7 @@ Open the project in VS Code and press **F5** to launch the extension in a test w
 ### 4. Reload Extension
 
 After making TypeScript changes:
+
 - With watch mode running (see step 2), just reload the test window (**Ctrl+R** / **Cmd+R**)
 - Or restart debugging with **F5**
 
@@ -116,7 +118,7 @@ nix develop -c npx @vscode/vsce package
 This generates `doom-0.0.1.vsix` which you can install in VS Code via:
 
 ```bash
-code --install-extension doom-0.0.1.vsix
+code --install-extension doom-<version>.vsix
 ```
 
 ## Project Structure
@@ -152,7 +154,7 @@ flake.nix             # Nix development environment
 
 ### Updating Keybindings
 
-Keybindings and which-key menu are defined in `package.json` → `contributes.configurationDefaults` → `whichkey.bindingOverrides`. Changes apply immediately after reinstalling the extension.
+Keybindings and which-key menu are defined in `package.json` → `contributes.configurationDefaults` → `whichkey.bindings`. Changes apply immediately after reinstalling the extension.
 
 ### Updating Settings
 

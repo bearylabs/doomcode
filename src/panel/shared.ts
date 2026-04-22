@@ -92,11 +92,6 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.showMode('buffers', this.openEditorsPanel);
 	}
 
-	async showOpenEditorsInOtherWindow(): Promise<void> {
-		this.openEditorsPanel.prepareShow(true, true);
-		await this.showMode('buffers', this.openEditorsPanel);
-	}
-
 	async showWhichKeyBindings(): Promise<void> {
 		this.whichKeyBindingsPanel.prepareShow();
 		await this.showMode('bindings', this.whichKeyBindingsPanel);
