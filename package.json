@@ -1562,6 +1562,11 @@
         "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
       },
       {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive) && !whichkeyVisible"
+      },
+      {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
         "args": {
@@ -1573,6 +1578,11 @@
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
         "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive) && !whichkeyVisible"
       },
       {
         "key": "t",
