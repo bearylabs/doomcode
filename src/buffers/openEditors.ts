@@ -250,6 +250,23 @@ function getBufferFlags(item: Pick<OpenEditorItem, 'isDirty' | 'isReadonly' | 'i
 	return `${primaryFlag}${modifiedFlag}${remoteFlag}`;
 }
 
+function shouldHideFromBufferSwitcher(tab: vscode.Tab): boolean {
+	const input = tab.input;
+	if (tab.label === '*doom*') {
+		return true;
+	}
+
+	if (input instanceof vscode.TabInputWebview) {
+		return input.viewType === 'doom.startPage' || input.viewType.includes('doom.startPage');
+	}
+
+	if (input instanceof vscode.TabInputCustom) {
+		return input.viewType === 'doom.startPage' || input.viewType.includes('doom.startPage');
+	}
+
+	return false;
+}
+
 // ---------------------------------------------------------------------------
 // Tab navigation helpers
 // ---------------------------------------------------------------------------
@@ -377,36 +394,49 @@ async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.Vi
 }
 
 async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
-	const input = tab.input;
-	const options = {
+	return openTabInGroupWithOptions(tab, targetGroup, {
 		preserveFocus: false,
 		preview: false,
+	});
+}
+
+async function openTabInGroupWithOptions(
+	tab: vscode.Tab,
+	targetGroup: vscode.ViewColumn,
+	options: {
+		preserveFocus: boolean;
+		preview: boolean;
+	},
+): Promise<boolean> {
+	const input = tab.input;
+	const showOptions = {
+		...options,
 		viewColumn: targetGroup,
 	};
 
 	if (input instanceof vscode.TabInputText) {
-		await vscode.commands.executeCommand('vscode.open', input.uri, options);
+		await vscode.commands.executeCommand('vscode.open', input.uri, showOptions);
 		return true;
 	}
 
 	if (input instanceof vscode.TabInputTextDiff) {
-		await vscode.commands.executeCommand('vscode.diff', input.original, input.modified, tab.label, options);
+		await vscode.commands.executeCommand('vscode.diff', input.original, input.modified, tab.label, showOptions);
 		return true;
 	}
 
 	if (input instanceof vscode.TabInputCustom) {
-		await vscode.commands.executeCommand('vscode.openWith', input.uri, input.viewType, options);
+		await vscode.commands.executeCommand('vscode.openWith', input.uri, input.viewType, showOptions);
 		return true;
 	}
 
 	if (input instanceof vscode.TabInputNotebook) {
-		await vscode.commands.executeCommand('vscode.openWith', input.uri, input.notebookType, options);
+		await vscode.commands.executeCommand('vscode.openWith', input.uri, input.notebookType, showOptions);
 		return true;
 	}
 
 	if (input instanceof vscode.TabInputNotebookDiff) {
 		await vscode.commands.executeCommand('vscode.diff', input.original, input.modified, tab.label, {
-			...options,
+			...showOptions,
 			override: input.notebookType,
 		});
 		return true;
@@ -420,17 +450,24 @@ async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): 
 // ---------------------------------------------------------------------------
 
 export class DoomOpenEditorsPanel {
+	private accepted = false;
 	private activeIndex = 0;
 	private items: OpenEditorItem[] = [];
+	private lastPreviewKey: string | undefined;
 	private matches: OpenEditorMatch[] = [];
 	private query = '';
 	private ready = false;
+	private restoreTabKey: string | undefined;
 	private targetGroup: vscode.ViewColumn | undefined;
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
 	prepareShow(resetQuery = true): void {
-		this.targetGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
+		const activeGroup = vscode.window.tabGroups.activeTabGroup;
+		this.accepted = false;
+		this.lastPreviewKey = undefined;
+		this.restoreTabKey = activeGroup.activeTab ? getTabDedupKey(activeGroup.activeTab) : undefined;
+		this.targetGroup = activeGroup.viewColumn;
 		this.activeIndex = 0;
 		if (resetQuery) {
 			this.query = '';
@@ -504,6 +541,10 @@ export class DoomOpenEditorsPanel {
 
 		for (const group of vscode.window.tabGroups.all) {
 			for (const tab of group.tabs) {
+				if (shouldHideFromBufferSwitcher(tab)) {
+					continue;
+				}
+
 				const dedupKey = getTabDedupKey(tab);
 				if (seen.has(dedupKey)) {
 					continue;
@@ -583,6 +624,7 @@ export class DoomOpenEditorsPanel {
 			this.query = message.query ?? '';
 			this.filterItems();
 			this.render();
+			await this.previewSelection();
 			return;
 		case 'move': {
 			if (this.matches.length === 0 || message.index === undefined) {
@@ -591,6 +633,7 @@ export class DoomOpenEditorsPanel {
 
 			this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
 			this.render();
+			await this.previewSelection();
 			return;
 		}
 		case 'activate': {
@@ -640,12 +683,14 @@ export class DoomOpenEditorsPanel {
 					}
 				}
 
+				this.accepted = true;
 				await this.close();
 				return;
 			}
 
 			if (match.item.tab.group.activeTab === match.item.tab) {
 				await focusEditorGroup(match.item.groupColumn);
+				this.accepted = true;
 				await this.close();
 				return;
 			}
@@ -656,11 +701,76 @@ export class DoomOpenEditorsPanel {
 			return;
 		}
 
+		this.accepted = true;
 		await this.close();
+	}
+
+	private async previewSelection(): Promise<void> {
+		const match = this.matches[this.activeIndex];
+		if (!match) {
+			return;
+		}
+
+		const targetGroup = this.targetGroup ?? vscode.window.tabGroups.activeTabGroup.viewColumn;
+		const previewKey = getTabDedupKey(match.item.tab);
+		if (previewKey === this.lastPreviewKey) {
+			return;
+		}
+
+		const previewed = await openTabInGroupWithOptions(match.item.tab, targetGroup, {
+			preserveFocus: true,
+			preview: true,
+		});
+		if (!previewed) {
+			return;
+		}
+
+		this.lastPreviewKey = previewKey;
+	}
+
+	private async restorePreviewIfNeeded(): Promise<void> {
+		if (this.accepted || !this.lastPreviewKey) {
+			return;
+		}
+
+		const targetGroup = this.targetGroup ?? vscode.window.tabGroups.activeTabGroup.viewColumn;
+		const previewKey = this.lastPreviewKey;
+		const restoreTabKey = this.restoreTabKey;
+		this.lastPreviewKey = undefined;
+
+		if (restoreTabKey) {
+			const group = vscode.window.tabGroups.all.find((entry) => entry.viewColumn === targetGroup);
+			const restoreTab = group?.tabs.find((tab) => getTabDedupKey(tab) === restoreTabKey);
+			if (restoreTab) {
+				const restored = await openTabInGroup(restoreTab, targetGroup);
+				if (restored) {
+					return;
+				}
+
+				if (group?.activeTab !== restoreTab) {
+					await revealExistingTab(restoreTab);
+				}
+				return;
+			}
+		}
+
+		const group = vscode.window.tabGroups.all.find((entry) => entry.viewColumn === targetGroup);
+		const activeTab = group?.activeTab;
+		if (!activeTab || getTabDedupKey(activeTab) !== previewKey) {
+			return;
+		}
+
+		const focused = await focusEditorGroup(targetGroup);
+		if (!focused) {
+			return;
+		}
+
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 	}
 
 	private async close(): Promise<void> {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
+		await this.restorePreviewIfNeeded();
 	}
 
 	private render(): void {

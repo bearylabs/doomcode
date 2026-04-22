@@ -14,12 +14,30 @@ export interface ConfigurationLike {
 	update(section: string, value: unknown, target: vscode.ConfigurationTarget): Thenable<void>;
 }
 
+export interface ApplyDefaultsFailure {
+	key: string;
+	reason: string;
+}
+
 export interface ApplyDefaultsResult {
 	applied: number;
 	skipped: number;
 	unsupported: number;
 	failed: number;
+	failures: ApplyDefaultsFailure[];
 	total: number;
+}
+
+function getErrorReason(error: unknown): string {
+	if (error instanceof Error && error.message.trim().length > 0) {
+		return error.message;
+	}
+
+	if (typeof error === 'string' && error.trim().length > 0) {
+		return error;
+	}
+
+	return 'Unknown error';
 }
 
 export function hasUserOwnedSettingValue(inspected: SettingInspectLike<unknown> | undefined): boolean {
@@ -43,7 +61,7 @@ export async function applyDefaultsToConfiguration(
 	let applied = 0;
 	let skipped = 0;
 	let unsupported = 0;
-	let failed = 0;
+	const failures: ApplyDefaultsFailure[] = [];
 	const entries = Object.entries(defaults);
 
 	for (const [key, value] of entries) {
@@ -64,7 +82,10 @@ export async function applyDefaultsToConfiguration(
 			applied++;
 		} catch (error) {
 			console.warn(`Failed to apply setting '${key}':`, error);
-			failed++;
+			failures.push({
+				key,
+				reason: getErrorReason(error),
+			});
 		}
 	}
 
@@ -72,7 +93,8 @@ export async function applyDefaultsToConfiguration(
 		applied,
 		skipped,
 		unsupported,
-		failed,
+		failed: failures.length,
+		failures,
 		total: entries.length,
 	};
 }

@@ -428,6 +428,10 @@ export class DoomWhichKeyMenu {
 			height: calc(100vh - 8px);
 		}
 
+		.shell:focus {
+			outline: none;
+		}
+
 		.grid {
 			--row-count: 1;
 			display: grid;
@@ -537,7 +541,7 @@ export class DoomWhichKeyMenu {
 	</style>
 </head>
 <body>
-	<div class="shell">
+	<div class="shell" id="shell" tabindex="-1">
 		<div class="grid" id="grid"></div>
 		<div class="empty" id="empty" hidden>No bindings here.</div>
 		<div class="footer">
@@ -547,6 +551,7 @@ export class DoomWhichKeyMenu {
 	</div>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
+		const shell = document.getElementById('shell');
 		const grid = document.getElementById('grid');
 		const empty = document.getElementById('empty');
 		const path = document.getElementById('path');
@@ -586,19 +591,23 @@ export class DoomWhichKeyMenu {
 			items.forEach((item, index) => {
 				const button = document.createElement('button');
 				button.className = item.isGroup ? 'item group' : 'item';
-					button.type = 'button';
-					button.addEventListener('click', () => {
-						vscode.postMessage({ type: 'activate', index });
-					});
-					button.innerHTML = \`
-						<span class="key">\${item.key}</span>
-						<span class="sep">:</span>
-						<span class="label">\${item.name}</span>
-					\`;
-					grid.appendChild(button);
+				button.type = 'button';
+				button.addEventListener('click', () => {
+					vscode.postMessage({ type: 'activate', index });
+				});
+				button.innerHTML = \`
+					<span class="key">\${item.key}</span>
+					<span class="sep">:</span>
+					<span class="label">\${item.name}</span>
+				\`;
+				grid.appendChild(button);
 			});
 
 			updateGridRowCount();
+
+			if (shell instanceof HTMLElement && document.activeElement === document.body) {
+				shell.focus();
+			}
 		}
 
 		function toBindingKey(event) {

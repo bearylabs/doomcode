@@ -115,7 +115,7 @@ nix develop -c npm run compile
 nix develop -c npx @vscode/vsce package
 ```
 
-This generates `doom-0.0.1.vsix` which you can install in VS Code via:
+This generates `doom-<version>.vsix` which you can install in VS Code via:
 
 ```bash
 code --install-extension doom-<version>.vsix

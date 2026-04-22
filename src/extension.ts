@@ -160,6 +160,14 @@ async function reloadLastSession(context: vscode.ExtensionContext): Promise<void
 		return;
 	}
 
+	const choice = await vscode.window.showQuickPick(['Yes', 'No'], {
+		placeHolder: 'This will wipe your current session. Do you want to continue?',
+		ignoreFocusOut: true,
+	});
+	if (choice !== 'Yes') {
+		return;
+	}
+
 	await vscode.commands.executeCommand('vscode.openFolder', targetUri, { forceReuseWindow: true });
 }
 
@@ -277,8 +285,13 @@ async function applyDefaultsToUserSettings(
 		if (result.failed > 0) {
 			parts.push(`${result.failed} failed`);
 		}
+		const failureDetails = result.failures.length > 0
+			? ` Failures: ${result.failures.slice(0, 3).map((failure) => (
+				`${failure.key} (${failure.reason})`
+			)).join('; ')}${result.failures.length > 3 ? `; +${result.failures.length - 3} more` : ''}.`
+			: '';
 		void vscode.window.showInformationMessage(
-			`Doom defaults applied to your global User settings: ${parts.join(', ')}.`
+			`Doom defaults applied to your global User settings: ${parts.join(', ')}.${failureDetails}`
 		);
 	}
 
@@ -532,22 +545,21 @@ function getExtensionMetadata(context: vscode.ExtensionContext): {
 	};
 }
 
-async function showStartupPage(
+function createStartupPageState(
 	context: vscode.ExtensionContext,
-	startPage: DoomStartPage,
 	mode: ReturnType<typeof detectStartPageMode>,
 	installDefaults: Record<string, unknown>,
-): Promise<void> {
+): Parameters<DoomStartPage['show']>[0] {
 	const configuration = vscode.workspace.getConfiguration();
 	const staleState = detectStaleState(context);
 	const metadata = getExtensionMetadata(context);
-	const installState = evaluateInstalledDefaults(installDefaults, (key) => configuration.get(key));
+	const installState = evaluateInstalledDefaults(installDefaults, (key) => configuration.inspect(key));
 	const startupCommands = resolveStartupCommandsFromBindings(
 		getPackageWhichKeyBindings(context),
 		getStartupCommandKeyPaths(context),
 	);
 
-	startPage.show({
+	return {
 		mode,
 		currentVersion: metadata.version,
 		defaultCount: Object.keys(installDefaults).length,
@@ -562,7 +574,29 @@ async function showStartupPage(
 			reason: conflict.reason,
 		})),
 		repositoryUrl: metadata.repositoryUrl,
-	});
+	};
+}
+
+async function showStartupPage(
+	context: vscode.ExtensionContext,
+	startPage: DoomStartPage,
+	mode: ReturnType<typeof detectStartPageMode>,
+	installDefaults: Record<string, unknown>,
+): Promise<void> {
+	startPage.show(createStartupPageState(context, mode, installDefaults));
+}
+
+function refreshStartupPageIfOpen(
+	context: vscode.ExtensionContext,
+	startPage: DoomStartPage,
+	installDefaults: Record<string, unknown>,
+): void {
+	const mode = startPage.getCurrentMode();
+	if (!mode) {
+		return;
+	}
+
+	startPage.refresh(createStartupPageState(context, mode, installDefaults));
 }
 
 // ---------------------------------------------------------------------------
@@ -629,9 +663,29 @@ async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	const installDefaults = getInstallDefaults(context);
+	const startPageRefreshKeys = [
+		WHICH_KEY_MENU_SETTING,
+		START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+		...Object.keys(installDefaults),
+	];
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu();
 	const startPage = new DoomStartPage(context.extensionUri);
+	let startupPageRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	const scheduleStartupPageRefresh = (delayMs = 50) => {
+		if (!startPage.getCurrentMode()) {
+			return;
+		}
+
+		if (startupPageRefreshTimer) {
+			clearTimeout(startupPageRefreshTimer);
+		}
+
+		startupPageRefreshTimer = setTimeout(() => {
+			startupPageRefreshTimer = undefined;
+			refreshStartupPageIfOpen(context, startPage, installDefaults);
+		}, delayMs);
+	};
 	registerWindowMru(context);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
@@ -684,6 +738,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await warnAboutConflicts(conflicts);
 			}
 			await runCleanup(context);
+			scheduleStartupPageRefresh(0);
 		}
 	);
 
@@ -733,12 +788,12 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
-		if (!event.affectsConfiguration(WHICH_KEY_MENU_SETTING)) {
-			return;
+		if (event.affectsConfiguration(WHICH_KEY_MENU_SETTING) && getWhichKeyMenuStyle() === 'vspacecode') {
+			void whichKeyMenu.hide();
 		}
 
-		if (getWhichKeyMenuStyle() === 'vspacecode') {
-			void whichKeyMenu.hide();
+		if (startPageRefreshKeys.some((key) => event.affectsConfiguration(key))) {
+			scheduleStartupPageRefresh();
 		}
 	});
 
@@ -823,6 +878,11 @@ export function activate(context: vscode.ExtensionContext) {
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		sharedPanelViewProvider,
+		new vscode.Disposable(() => {
+			if (startupPageRefreshTimer) {
+				clearTimeout(startupPageRefreshTimer);
+			}
+		}),
 	);
 }
 

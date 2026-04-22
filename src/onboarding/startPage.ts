@@ -239,11 +239,11 @@ export function resolveStartupCommandsFromBindings(
 
 export function evaluateInstalledDefaults(
 	defaults: Record<string, unknown>,
-	readSetting: (key: string) => unknown,
+	inspectSetting: (key: string) => { globalValue?: unknown } | undefined,
 ): InstallDefaultsState {
 	const entries = Object.entries(defaults);
 	const matchingDefaults = entries.reduce((count, [key, value]) => (
-		isDeepStrictEqual(readSetting(key), value) ? count + 1 : count
+		isDeepStrictEqual(inspectSetting(key)?.globalValue, value) ? count + 1 : count
 	), 0);
 
 	return {
@@ -263,14 +263,25 @@ export function detectStartPageMode(previousVersion: string | undefined, current
 
 export class DoomStartPage {
 	private panel: vscode.WebviewPanel | undefined;
+	private lastState: DoomStartPageState | undefined;
 
 	constructor(private readonly extensionUri: vscode.Uri) { }
 
 	show(state: DoomStartPageState): void {
 		const panel = this.getOrCreatePanel();
-		panel.title = this.getTitle(state);
-		panel.webview.html = this.render(state, panel.webview);
-		panel.reveal(vscode.ViewColumn.One, false);
+		this.updatePanel(panel, state, true);
+	}
+
+	refresh(state: DoomStartPageState): void {
+		if (!this.panel) {
+			return;
+		}
+
+		this.updatePanel(this.panel, state, false);
+	}
+
+	getCurrentMode(): StartPageMode | undefined {
+		return this.lastState?.mode;
 	}
 
 	private getOrCreatePanel(): vscode.WebviewPanel {
@@ -303,13 +314,16 @@ export class DoomStartPage {
 	}
 
 	private getTitle(state: DoomStartPageState): string {
-		switch (state.mode) {
-			case 'welcome':
-				return 'Welcome to Doom Code';
-			case 'update':
-				return `Doom Code ${state.currentVersion}`;
-			default:
-				return 'Doom Code Start Page';
+		void state;
+		return '*doom*';
+	}
+
+	private updatePanel(panel: vscode.WebviewPanel, state: DoomStartPageState, reveal: boolean): void {
+		this.lastState = state;
+		panel.title = this.getTitle(state);
+		panel.webview.html = this.render(state, panel.webview);
+		if (reveal) {
+			panel.reveal(vscode.ViewColumn.One, false);
 		}
 	}
 
@@ -352,11 +366,11 @@ export class DoomStartPage {
 	private render(state: DoomStartPageState, webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const staleBindingsFound = state.hasStaleSettings || state.hasStaleKeybindings;
-		const installStatusText = state.defaultCount === 0
-			? 'No Doom defaults configured.'
-			: state.hasInstalledDefaults
-				? 'Doom settings already installed.'
-				: `Doom settings missing (${state.installedDefaultCount}/${state.defaultCount}).`;
+		const installMarkup = state.defaultCount === 0
+			? '<p class="status-line">No Doom defaults configured.</p>'
+			: !state.hasInstalledDefaults
+				? `<p class="status-line">Doom settings missing (${state.installedDefaultCount}/${state.defaultCount}). <button class="inline-link" data-command="install">Install now</button></p>`
+				: '';
 		const startupCommandsMarkup = state.startupCommands.length > 0
 			? state.startupCommands.map((entry) => `
 				<li class="menu-item">
@@ -372,10 +386,6 @@ export class DoomStartPage {
 		const conflictMarkup = state.conflicts.length > 0
 			? `<p class="status-line status-warning">Conflicting extension still installed: ${this.escapeHtml(state.conflicts.map((conflict) => conflict.name).join(', '))}.</p>`
 			: '';
-		const installedDefaultsSummary = `${state.installedDefaultCount}/${state.defaultCount} installed`;
-		const bootSummary = state.hasInstalledDefaults
-			? `Doom settings ready (${installedDefaultsSummary})`
-			: `Install Doom settings to match default profile (${installedDefaultsSummary})`;
 		const eyebrow = this.getEyebrow(state);
 		const repositoryMarkup = state.repositoryUrl
 			? `<p class="repo-link-shell"><button class="repo-link" data-command="openUrl" data-url="${this.escapeHtml(state.repositoryUrl)}" aria-label="Open GitHub repository">${GITHUB_ICON}</button></p>`
@@ -559,8 +569,12 @@ export class DoomStartPage {
 			gap: 6px;
 		}
 
+		.status > * {
+			margin: 0;
+		}
+
 		.status-warning {
-			color: var(--doom-orange);
+			color: var(--doom-muted);
 		}
 
 		.inline-link {
@@ -649,20 +663,13 @@ export class DoomStartPage {
 				<ul class="menu-list">${startupCommandsMarkup}
 				</ul>
 				<div class="status">
-					<p class="status-line">
-						${staleBindingsFound ? 'Stale bindings found.' : 'No stale bindings found.'}
-						${staleBindingsFound ? '<button class="inline-link" data-command="cleanup">Clean em up</button>' : ''}
-					</p>
-					<p class="status-line">
-						${this.escapeHtml(installStatusText)}
-						${!state.hasInstalledDefaults && state.defaultCount > 0 ? '<button class="inline-link" data-command="install">Install now</button>' : ''}
-					</p>
+					${staleBindingsFound ? `<p class="status-line status-warning">Stale bindings found. <button class="inline-link" data-command="cleanup">Clean em up</button></p>` : ''}
+					${installMarkup}
 					${conflictMarkup}
 				</div>
 			</section>
-			<p class="boot">${this.escapeHtml(bootSummary)}</p>
-			${repositoryMarkup}
 			<p class="version-indicator">Doom v${this.escapeHtml(state.currentVersion)}</p>
+			${repositoryMarkup}
 			<label class="toggle" for="open-on-activation-toggle">
 				<input
 					id="open-on-activation-toggle"

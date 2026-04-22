@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-22
+
 ### Added
 
 - `doom.whichKey.menuStyle` setting to choose Doom Code's custom which-key panel or the default VSpaceCode menu

@@ -25,6 +25,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 	private activeController: SharedPanelController | undefined;
 	private activeMode: SharedPanelMode | undefined;
+	private pendingViewResolvers: Array<(view: vscode.WebviewView) => void> = [];
 	private view: vscode.WebviewView | undefined;
 
 	constructor(
@@ -36,6 +37,8 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.view = webviewView;
+		this.pendingViewResolvers.forEach((resolve) => resolve(webviewView));
+		this.pendingViewResolvers = [];
 
 		webviewView.onDidDispose(() => {
 			if (this.view !== webviewView) {
@@ -106,6 +109,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
 		await vscode.commands.executeCommand(`workbench.view.extension.${DoomSharedPanel.containerId}`);
+		await this.waitForView();
 
 		await vscode.commands.executeCommand(`${DoomSharedPanel.viewId}.focus`);
 		await this.syncVisibilityContexts(true);
@@ -133,6 +137,16 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			DoomFuzzySearchPanel.visibleContextKey,
 			isVisible && this.activeMode === 'search'
 		);
+	}
+
+	private waitForView(): Promise<vscode.WebviewView> {
+		if (this.view) {
+			return Promise.resolve(this.view);
+		}
+
+		return new Promise((resolve) => {
+			this.pendingViewResolvers.push(resolve);
+		});
 	}
 
 	private getPlaceholderHtml(): string {

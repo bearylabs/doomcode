@@ -137,7 +137,45 @@ suite('Extension Test Suite', () => {
 			skipped: 2,
 			unsupported: 1,
 			failed: 0,
+			failures: [],
 			total: 4,
+		});
+	});
+
+	test('captures failed install settings with reasons', async () => {
+		const config = {
+			inspect<T>(_key: string) {
+				return {} as { globalValue?: T };
+			},
+			update(key: string, _value: unknown, _target: vscode.ConfigurationTarget) {
+				if (key === 'doom.fail.error') {
+					return Promise.reject(new Error('Permission denied'));
+				}
+
+				if (key === 'doom.fail.string') {
+					return Promise.reject('String failure');
+				}
+
+				return Promise.resolve();
+			},
+		};
+
+		const result = await applyDefaultsToConfiguration(config, {
+			'doom.ok': true,
+			'doom.fail.error': true,
+			'doom.fail.string': true,
+		});
+
+		assert.deepStrictEqual(result, {
+			applied: 1,
+			skipped: 0,
+			unsupported: 0,
+			failed: 2,
+			failures: [
+				{ key: 'doom.fail.error', reason: 'Permission denied' },
+				{ key: 'doom.fail.string', reason: 'String failure' },
+			],
+			total: 3,
 		});
 	});
 
@@ -148,7 +186,7 @@ suite('Extension Test Suite', () => {
 			async () => false,
 			async () => {
 				applied = true;
-				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, total: 1 };
+				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, failures: [], total: 1 };
 			},
 		);
 
@@ -159,7 +197,7 @@ suite('Extension Test Suite', () => {
 			async () => true,
 			async () => {
 				applied = true;
-				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, total: 1 };
+				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, failures: [], total: 1 };
 			},
 		);
 
@@ -168,9 +206,9 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('detects welcome update and steady-state startup modes', () => {
-		assert.strictEqual(detectStartPageMode(undefined, '0.1.2'), 'welcome');
-		assert.strictEqual(detectStartPageMode('0.1.1', '0.1.2'), 'update');
-		assert.strictEqual(detectStartPageMode('0.1.2', '0.1.2'), 'startup');
+		assert.strictEqual(detectStartPageMode(undefined, '0.2.0'), 'welcome');
+		assert.strictEqual(detectStartPageMode('0.1.2', '0.2.0'), 'update');
+		assert.strictEqual(detectStartPageMode('0.2.0', '0.2.0'), 'startup');
 	});
 
 	test('extracts only the current release notes from changelog markdown', () => {
@@ -181,21 +219,21 @@ suite('Extension Test Suite', () => {
 			'',
 			'- future',
 			'',
-			'## [0.1.2] - 2026-04-20',
+			'## [0.2.0] - 2026-04-22',
 			'',
 			'### Added',
 			'',
 			'- first',
 			'',
-			'## [0.1.1] - 2026-04-19',
+			'## [0.1.2] - 2026-04-20',
 			'',
 			'- old',
 		].join('\n');
 
 		assert.strictEqual(
-			extractCurrentReleaseNotes(changelog, '0.1.2'),
+			extractCurrentReleaseNotes(changelog, '0.2.0'),
 			[
-				'## [0.1.2] - 2026-04-20',
+				'## [0.2.0] - 2026-04-22',
 				'',
 				'### Added',
 				'',
@@ -205,9 +243,9 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('renders simple changelog markdown to html', () => {
-		const html = renderMarkdownFragment('## [0.1.2]\n\n### Added\n\n- use `doom.install`\n');
+		const html = renderMarkdownFragment('## [0.2.0]\n\n### Added\n\n- use `doom.install`\n');
 
-		assert.ok(html.includes('<h2>[0.1.2]</h2>'));
+		assert.ok(html.includes('<h2>[0.2.0]</h2>'));
 		assert.ok(html.includes('<h3>Added</h3>'));
 		assert.ok(html.includes('<li>use <code>doom.install</code></li>'));
 	});
@@ -311,7 +349,27 @@ suite('Extension Test Suite', () => {
 				'window.menuBarVisibility': 'compact',
 				'window.restoreWindows': 'none',
 			},
-			(key) => key === 'window.menuBarVisibility' ? 'compact' : 'all',
+			(key) => ({
+				globalValue: key === 'window.menuBarVisibility' ? 'compact' : 'all',
+			}),
+		);
+
+		assert.deepStrictEqual(installState, {
+			matchingDefaults: 1,
+			totalDefaults: 2,
+			isInstalled: false,
+		});
+	});
+
+	test('counts only global user-installed defaults', () => {
+		const installState = evaluateInstalledDefaults(
+			{
+				'vim.leader': '<space>',
+				'window.menuBarVisibility': 'compact',
+			},
+			(key) => key === 'vim.leader'
+				? { globalValue: '<space>' }
+				: { workspaceValue: 'compact' } as { globalValue?: unknown; workspaceValue?: unknown },
 		);
 
 		assert.deepStrictEqual(installState, {

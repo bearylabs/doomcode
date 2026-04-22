@@ -1,6 +1,14 @@
 .vscode/**
 .vscode-test/**
 src/**
+.codex
+.codex/**
+.npm-global/**
+.github/**
+*.vsix
+CONTRIBUTING.md
+flake.nix
+flake.lock
 .gitignore
 .yarnrc
 **/tsconfig.json
@@ -8,3 +16,4 @@ src/**
 **/*.map
 **/*.ts
 **/.vscode-test.*
+out/test/**
