@@ -570,16 +570,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const whichKeyViewProvider = vscode.window.registerWebviewViewProvider(
-		DoomWhichKeyMenu.viewId,
-		whichKeyMenu,
-		{
-			webviewOptions: {
-				retainContextWhenHidden: true,
-			},
-		}
-	);
-
 	const fuzzySearchViewProvider = vscode.window.registerWebviewViewProvider(
 		DoomFuzzySearchPanel.viewId,
 		fuzzySearchPanel,
@@ -612,7 +602,6 @@ export function activate(context: vscode.ExtensionContext) {
 		openEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
-		whichKeyViewProvider,
 		fuzzySearchViewProvider,
 		openEditorsViewProvider
 	);

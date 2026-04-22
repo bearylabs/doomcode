@@ -29,6 +29,16 @@ interface ViewState {
 	items: RenderItem[];
 }
 
+interface EditorLayoutGroup {
+	groups?: EditorLayoutGroup[];
+	size?: number;
+}
+
+interface EditorLayout {
+	groups: EditorLayoutGroup[];
+	orientation?: 0 | 1;
+}
+
 interface WebviewMessage {
 	index?: number;
 	type: 'activate' | 'back' | 'close' | 'ready';
@@ -157,19 +167,22 @@ function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
 
-export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
-	static readonly containerId = 'doomWhichKeyPanel';
-	static readonly viewId = 'doom.whichKeyView';
+export class DoomWhichKeyMenu {
+	static readonly editorViewType = 'doom.whichKeyEditor';
 	static readonly visibleContextKey = 'whichkeyVisible';
+	static readonly title = 'Doom Which Key';
 
 	private readonly extensionUri: vscode.Uri;
 	private bigModeEnabled = false;
 	private currentBindings: WhichKeyBinding[] = [];
 	private currentItems: RenderItem[] = [];
+	private groupCloseTimer: NodeJS.Timeout | undefined;
+	private lastPanelColumn: vscode.ViewColumn | undefined;
+	private panel: vscode.WebviewPanel | undefined;
+	private panelDisposables: vscode.Disposable[] = [];
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
+	private transientGroupColumn: vscode.ViewColumn | undefined;
 
 	constructor(extensionUri: vscode.Uri) {
 		this.extensionUri = extensionUri;
@@ -191,56 +204,243 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	async show(): Promise<void> {
 		this.currentBindings = getConfiguredWhichKeyBindings();
 		this.stack = [];
-		await vscode.commands.executeCommand('workbench.action.positionPanelBottom');
-		await vscode.commands.executeCommand(`workbench.view.extension.${DoomWhichKeyMenu.containerId}`);
-		await vscode.commands.executeCommand(`${DoomWhichKeyMenu.viewId}.focus`);
+		const panel = await this.ensurePanel();
+		panel.reveal(panel.viewColumn, false);
 		await this.updateVisibilityContext(true);
 		this.render();
 	}
 
 	async hide(): Promise<void> {
-		if (!this.view?.visible) {
+		if (!this.panel) {
 			await this.updateVisibilityContext(false);
+			await this.closeTransientGroup();
 			return;
 		}
 
 		await this.close();
 	}
 
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.title = 'Doom Which Key';
-		webviewView.description = 'Two-column menu';
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
-		webviewView.webview.html = this.getHtml(webviewView.webview);
+	private async ensurePanel(): Promise<vscode.WebviewPanel> {
+		if (this.panel) {
+			return this.panel;
+		}
 
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-					this.currentItems = [];
-					void this.updateVisibilityContext(false);
+		const targetGroup = await this.createTransientGroup();
+		const panel = vscode.window.createWebviewPanel(
+			DoomWhichKeyMenu.editorViewType,
+			DoomWhichKeyMenu.title,
+			{
+				viewColumn: targetGroup?.viewColumn ?? vscode.ViewColumn.Beside,
+				preserveFocus: false,
+			},
+			{
+				enableScripts: true,
+			}
+		);
+
+		panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'which-key.svg');
+		panel.webview.html = this.getHtml(panel.webview);
+
+		const initialColumn = panel.viewColumn ?? targetGroup?.viewColumn;
+		this.panel = panel;
+		this.lastPanelColumn = initialColumn;
+		this.transientGroupColumn = initialColumn;
+		this.ready = false;
+		this.currentItems = [];
+
+		this.panelDisposables.push(
+			panel.onDidDispose(() => {
+				const transientGroupColumn = this.transientGroupColumn;
+				this.clearPendingGroupClose();
+				this.panelDisposables.forEach((disposable) => disposable.dispose());
+				this.panelDisposables = [];
+				if (this.panel === panel) {
+					this.panel = undefined;
 				}
+				this.lastPanelColumn = undefined;
+				this.ready = false;
+				this.currentItems = [];
+				this.transientGroupColumn = undefined;
+				void this.updateVisibilityContext(false);
+				this.scheduleGroupClose(transientGroupColumn);
 			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-				if (webviewView.visible) {
-					this.render();
+			panel.onDidChangeViewState((event) => {
+				const nextColumn = event.webviewPanel.viewColumn;
+				const previousColumn = this.lastPanelColumn;
+				this.lastPanelColumn = nextColumn;
+
+				if (
+					this.transientGroupColumn !== undefined
+					&& previousColumn === this.transientGroupColumn
+					&& nextColumn !== this.transientGroupColumn
+				) {
+					const transientGroupColumn = this.transientGroupColumn;
+					this.transientGroupColumn = undefined;
+					this.scheduleGroupClose(transientGroupColumn);
 				}
+
+				if (!event.webviewPanel.visible) {
+					void this.close();
+					return;
+				}
+
+				void this.updateVisibilityContext(true);
+				this.render();
 			}),
-			webviewView.webview.onDidReceiveMessage((message: WebviewMessage) => {
+			panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
 				void this.handleMessage(message);
 			})
 		);
+
+		return panel;
+	}
+
+	private async createTransientGroup(): Promise<vscode.TabGroup | undefined> {
+		const currentLayout = await vscode.commands.executeCommand<EditorLayout>('vscode.getEditorLayout');
+		if (!currentLayout?.groups?.length) {
+			await vscode.commands.executeCommand('workbench.action.newGroupBelow');
+			await vscode.commands.executeCommand('workbench.action.focusBelowGroup');
+			return vscode.window.tabGroups.activeTabGroup;
+		}
+
+		const nextLayout: EditorLayout = {
+			orientation: 1,
+			groups: [
+				{
+					groups: this.wrapLayoutGroups(currentLayout, 0),
+					size: 0.78,
+				},
+				{
+					size: 0.22,
+				},
+			],
+		};
+
+		await vscode.commands.executeCommand('vscode.setEditorLayout', nextLayout);
+		await vscode.commands.executeCommand('workbench.action.focusBelowGroup');
+		return vscode.window.tabGroups.activeTabGroup;
+	}
+
+	private wrapLayoutGroups(layout: EditorLayout, expectedOrientation: 0 | 1): EditorLayoutGroup[] {
+		const clonedGroups = layout.groups.map((group) => this.cloneLayoutGroup(group));
+		if ((layout.orientation ?? 0) === expectedOrientation) {
+			return clonedGroups;
+		}
+
+		return [{ groups: clonedGroups }];
+	}
+
+	private cloneLayoutGroup(group: EditorLayoutGroup): EditorLayoutGroup {
+		return {
+			...(group.size !== undefined ? { size: group.size } : {}),
+			...(group.groups ? { groups: group.groups.map((child) => this.cloneLayoutGroup(child)) } : {}),
+		};
+	}
+
+	private findGroupByColumn(viewColumn: vscode.ViewColumn): vscode.TabGroup | undefined {
+		return vscode.window.tabGroups.all.find((group) => group.viewColumn === viewColumn);
+	}
+
+	private isWhichKeyTab(tab: vscode.Tab): boolean {
+		return tab.input instanceof vscode.TabInputWebview
+			&& tab.input.viewType === DoomWhichKeyMenu.editorViewType;
+	}
+
+	private async closeGroupIfSafe(viewColumn: vscode.ViewColumn | undefined): Promise<void> {
+		if (viewColumn === undefined) {
+			return;
+		}
+
+		const group = this.findGroupByColumn(viewColumn);
+		if (!group) {
+			return;
+		}
+
+		const hasOtherTabs = group.tabs.some((tab) => !this.isWhichKeyTab(tab));
+		if (hasOtherTabs) {
+			return;
+		}
+
+		await vscode.window.tabGroups.close(group, false);
+	}
+
+	private scheduleGroupClose(viewColumn: vscode.ViewColumn | undefined, attempt = 0): void {
+		if (viewColumn === undefined) {
+			return;
+		}
+
+		this.clearPendingGroupClose();
+		this.groupCloseTimer = setTimeout(() => {
+			this.groupCloseTimer = undefined;
+			void this.closeGroupIfSafe(viewColumn).then(() => {
+				const group = this.findGroupByColumn(viewColumn);
+				if (group && group.tabs.some((tab) => this.isWhichKeyTab(tab)) && attempt < 5) {
+					this.scheduleGroupClose(viewColumn, attempt + 1);
+				}
+			});
+		}, 25);
+	}
+
+	private clearPendingGroupClose(): void {
+		if (!this.groupCloseTimer) {
+			return;
+		}
+
+		clearTimeout(this.groupCloseTimer);
+		this.groupCloseTimer = undefined;
+	}
+
+	private async closeTransientGroup(): Promise<void> {
+		this.clearPendingGroupClose();
+		await this.closeGroupIfSafe(this.transientGroupColumn);
+		this.transientGroupColumn = undefined;
+	}
+
+	private async waitForWhichKeyTabToClose(viewColumn: vscode.ViewColumn | undefined): Promise<void> {
+		if (viewColumn === undefined) {
+			return;
+		}
+
+		const groupHasWhichKeyTab = () => {
+			const group = this.findGroupByColumn(viewColumn);
+			return group?.tabs.some((tab) => this.isWhichKeyTab(tab)) ?? false;
+		};
+
+		if (!groupHasWhichKeyTab()) {
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			let done = false;
+			const finish = () => {
+				if (done) {
+					return;
+				}
+
+				done = true;
+				tabsDisposable.dispose();
+				groupsDisposable.dispose();
+				clearTimeout(timeout);
+				resolve();
+			};
+			const check = () => {
+				if (!groupHasWhichKeyTab()) {
+					finish();
+				}
+			};
+
+			const tabsDisposable = vscode.window.tabGroups.onDidChangeTabs(check);
+			const groupsDisposable = vscode.window.tabGroups.onDidChangeTabGroups(check);
+			const timeout = setTimeout(finish, 1000);
+			check();
+		});
 	}
 
 	async executeBinding(binding: WhichKeyBinding): Promise<void> {
+		const transientGroupColumn = this.transientGroupColumn;
 		await this.close();
+		await this.waitForWhichKeyTabToClose(transientGroupColumn);
+		await this.closeGroupIfSafe(transientGroupColumn);
 
 		await executeWhichKeyBindingCommands(binding, (command, arg) => {
 			this.trackContextCommand(command, arg);
@@ -317,7 +517,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	}
 
 	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
+		if (!this.panel || !this.ready || !this.panel.visible) {
 			return;
 		}
 
@@ -338,7 +538,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			items: this.currentItems,
 		};
 
-		void this.view.webview.postMessage({
+		void this.panel.webview.postMessage({
 			type: 'render',
 			state,
 		});
@@ -357,7 +557,7 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 
 	private async close(): Promise<void> {
 		await this.updateVisibilityContext(false);
-		await vscode.commands.executeCommand('workbench.action.closePanel');
+		this.panel?.dispose();
 	}
 
 	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
@@ -414,6 +614,11 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			gap: 4px;
 			width: 100%;
 			height: calc(100vh - 8px);
+		}
+
+		body:focus,
+		.shell:focus {
+			outline: none;
 		}
 
 		.grid {
@@ -524,8 +729,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 		}
 	</style>
 </head>
-<body>
-	<div class="shell">
+<body tabindex="-1">
+	<div class="shell" tabindex="-1">
 		<div class="grid" id="grid"></div>
 		<div class="empty" id="empty" hidden>No bindings here.</div>
 		<div class="footer">
@@ -535,10 +740,22 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 	</div>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
+		const shell = document.querySelector('.shell');
 		const grid = document.getElementById('grid');
 		const empty = document.getElementById('empty');
 		const path = document.getElementById('path');
 		let items = [];
+
+		function focusMenu() {
+			if (shell instanceof HTMLElement) {
+				shell.focus({ preventScroll: true });
+				return;
+			}
+
+			if (document.body instanceof HTMLElement) {
+				document.body.focus({ preventScroll: true });
+			}
+		}
 
 		function updateGridRowCount() {
 			if (items.length === 0) {
@@ -557,6 +774,15 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			const availableHeight = grid.clientHeight || itemHeight;
 			const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (itemHeight + rowGap)));
 			grid.style.setProperty('--row-count', String(Math.min(rows, items.length)));
+		}
+
+		function layoutGrid() {
+			grid.scrollTop = 0;
+			grid.scrollLeft = 0;
+			updateGridRowCount();
+			requestAnimationFrame(() => {
+				updateGridRowCount();
+			});
 		}
 
 		function render(state) {
@@ -586,7 +812,8 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 					grid.appendChild(button);
 			});
 
-			updateGridRowCount();
+			layoutGrid();
+			focusMenu();
 		}
 
 		function toBindingKey(event) {
@@ -640,7 +867,9 @@ export class DoomWhichKeyMenu implements vscode.WebviewViewProvider {
 			}
 		});
 
-		window.addEventListener('resize', updateGridRowCount);
+		window.addEventListener('resize', layoutGrid);
+		window.addEventListener('focus', focusMenu);
+		window.addEventListener('load', focusMenu);
 
 		vscode.postMessage({ type: 'ready' });
 	</script>

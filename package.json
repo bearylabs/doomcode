@@ -1422,17 +1422,12 @@
             "vspacecode"
           ],
           "default": "doom",
-          "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom panel UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
+          "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom editor-group UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
         }
       }
     },
     "viewsContainers": {
       "panel": [
-        {
-          "id": "doomWhichKeyPanel",
-          "title": "Which-Key",
-          "icon": "assets/which-key.svg"
-        },
         {
           "id": "doomFuzzySearchPanel",
           "title": "Search",
@@ -1446,14 +1441,6 @@
       ]
     },
     "views": {
-      "doomWhichKeyPanel": [
-        {
-          "id": "doom.whichKeyView",
-          "type": "webview",
-          "name": "Which Key",
-          "icon": "assets/which-key.svg"
-        }
-      ],
       "doomFuzzySearchPanel": [
         {
           "id": "doom.fuzzySearchView",
