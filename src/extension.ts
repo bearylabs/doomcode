@@ -4,6 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
+import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
+import {
+    detectStartPageMode,
+    DoomStartPage,
+    evaluateInstalledDefaults,
+    resolveStartupCommandsFromBindings,
+    START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+} from './onboarding/startPage';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
@@ -15,6 +23,7 @@ type WhichKeyMenuStyle = 'doom' | 'vspacecode';
 
 const WHICH_KEY_MENU_SETTING = 'doom.whichKey.menuStyle';
 const DEFAULT_WHICH_KEY_MENU_STYLE: WhichKeyMenuStyle = 'doom';
+const LAST_SEEN_VERSION_KEY = 'doom.lastSeenVersion';
 
 function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
 	const configuredStyle = vscode.workspace
@@ -71,53 +80,35 @@ function getInstallDefaults(context: vscode.ExtensionContext): Record<string, un
 	return packageJson.doomInstallDefaults ?? {};
 }
 
+function getPackageWhichKeyBindings(context: vscode.ExtensionContext): unknown {
+	const packageJson = context.extension.packageJSON as {
+		contributes?: {
+			configurationDefaults?: Record<string, unknown>;
+		};
+	};
+
+	return packageJson.contributes?.configurationDefaults?.['whichkey.bindings'];
+}
+
 async function applyDefaultsToUserSettings(
 	defaults: Record<string, unknown>,
 	showResultMessage = false
-): Promise<void> {
+): Promise<ApplyDefaultsResult> {
 	const config = vscode.workspace.getConfiguration();
-	const target = vscode.ConfigurationTarget.Global;
-
-	let applied = 0;
-	let skipped = 0;
-	let unsupported = 0;
-	let failed = 0;
-	const entries = Object.entries(defaults);
-
-	for (const [key, value] of entries) {
-		const inspected = config.inspect(key);
-
-		if (!inspected) {
-			unsupported++;
-			continue;
-		}
-
-		const alreadySetByUser = inspected?.globalValue !== undefined;
-
-		if (alreadySetByUser) {
-			skipped++;
-			continue;
-		}
-
-		try {
-			await config.update(key, value, target);
-			applied++;
-		} catch (error) {
-			console.warn(`Failed to apply setting '${key}':`, error);
-			failed++;
-		}
-	}
+	const result = await applyDefaultsToConfiguration(config, defaults, vscode.ConfigurationTarget.Global);
 
 	if (showResultMessage) {
-		if (entries.length === 0) {
+		if (result.total === 0) {
 			void vscode.window.showWarningMessage("No Doom install defaults are configured in package.json.");
-			return;
+			return result;
 		}
 
 		void vscode.window.showInformationMessage(
-			`Doom defaults: applied ${applied}, skipped ${skipped} (already set), unsupported ${unsupported}, failed ${failed}.`
+			`Doom defaults: applied ${result.applied}, skipped ${result.skipped} (already set), unsupported ${result.unsupported}, failed ${result.failed}.`
 		);
 	}
+
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,42 +309,12 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 }
 
 // ---------------------------------------------------------------------------
-// Prompt for cleanup on automatic activation (never mutates without consent)
-// ---------------------------------------------------------------------------
-
-async function promptForCleanup(context: vscode.ExtensionContext): Promise<void> {
-	const { conflicts, hasStaleSettings, hasStaleKeybindings } = detectStaleState(context);
-
-	if (conflicts.length > 0) {
-		await warnAboutConflicts(conflicts);
-	}
-
-	if (hasStaleSettings || hasStaleKeybindings) {
-		const choice = await vscode.window.showWarningMessage(
-			"Doom Code detected stale VSpaceCode bindings. Clean them up?",
-			"Clean Up",
-			"Not Now"
-		);
-		if (choice === "Clean Up") {
-			await runCleanup(context);
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
 // Full cleanup — mutating path (manual command or user-confirmed)
 // ---------------------------------------------------------------------------
 
 async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	const cleanedSettings = await cleanStaleSettings();
 	const removedKeybindings = await cleanStaleKeybindings(context);
-
-	const didClean = cleanedSettings.length > 0 || removedKeybindings > 0;
-
-	if (didClean) {
-		const defaults = getInstallDefaults(context);
-		await applyDefaultsToUserSettings(defaults, false);
-	}
 
 	const conflicts = detectConflictingExtensions();
 
@@ -380,6 +341,76 @@ async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	} else {
 		void vscode.window.showInformationMessage("Doom Code: no stale settings or conflicts found.");
 	}
+}
+
+async function loadChangelog(context: vscode.ExtensionContext): Promise<string> {
+	try {
+		const changelogUri = vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md');
+		const bytes = await vscode.workspace.fs.readFile(changelogUri);
+		return Buffer.from(bytes).toString('utf-8');
+	} catch (error) {
+		console.warn('Failed to load CHANGELOG.md:', error);
+		return 'Changelog unavailable.';
+	}
+}
+
+function getExtensionMetadata(context: vscode.ExtensionContext): {
+	version: string;
+	description: string;
+	repositoryUrl?: string;
+	homepageUrl?: string;
+	issuesUrl?: string;
+} {
+	const packageJson = context.extension.packageJSON as {
+		version?: string;
+		description?: string;
+		repository?: { url?: string };
+		homepage?: string;
+		bugs?: { url?: string };
+	};
+
+	return {
+		version: packageJson.version ?? '0.0.0',
+		description: packageJson.description ?? '',
+		repositoryUrl: packageJson.repository?.url,
+		homepageUrl: packageJson.homepage,
+		issuesUrl: packageJson.bugs?.url,
+	};
+}
+
+async function showStartupPage(
+	context: vscode.ExtensionContext,
+	startPage: DoomStartPage,
+	mode: ReturnType<typeof detectStartPageMode>,
+	installDefaults: Record<string, unknown>,
+): Promise<void> {
+	const configuration = vscode.workspace.getConfiguration();
+	const staleState = detectStaleState(context);
+	const metadata = getExtensionMetadata(context);
+	const changelogMarkdown = await loadChangelog(context);
+	const installState = evaluateInstalledDefaults(installDefaults, (key) => configuration.get(key));
+	const startupCommands = resolveStartupCommandsFromBindings(getPackageWhichKeyBindings(context));
+
+	startPage.show({
+		mode,
+		currentVersion: metadata.version,
+		description: metadata.description,
+		defaultCount: Object.keys(installDefaults).length,
+		installedDefaultCount: installState.matchingDefaults,
+		hasInstalledDefaults: installState.isInstalled,
+		hasStaleSettings: staleState.hasStaleSettings,
+		hasStaleKeybindings: staleState.hasStaleKeybindings,
+		openOnActivation: configuration.get<boolean>(START_PAGE_OPEN_ON_ACTIVATION_SETTING, true),
+		startupCommands,
+		conflicts: staleState.conflicts.map((conflict) => ({
+			name: conflict.name,
+			reason: conflict.reason,
+		})),
+		repositoryUrl: metadata.repositoryUrl,
+		homepageUrl: metadata.homepageUrl,
+		issuesUrl: metadata.issuesUrl,
+		changelogMarkdown,
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -446,10 +477,9 @@ async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	const installDefaults = getInstallDefaults(context);
-	const defaultsAppliedKey = "doom.defaultsAppliedOnce";
-	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu();
+	const startPage = new DoomStartPage(context.extensionUri);
 	registerWindowMru(context);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
@@ -460,43 +490,28 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyBindingsPanel,
 	);
 
-	// First-activation: apply defaults then detect stale state.
-	if (!context.globalState.get<boolean>(defaultsAppliedKey)) {
-		void applyDefaultsToUserSettings(installDefaults, false)
-			.then(async () => {
-				await context.globalState.update(defaultsAppliedKey, true);
-				if (!context.globalState.get<boolean>(whichKeyMigratedKey)) {
-					await migrateLegacyWhichKeyShowBindings();
-					await context.globalState.update(whichKeyMigratedKey, true);
-				}
-				await promptForCleanup(context);
-			})
-			.catch((error) => {
-				console.warn("Failed to apply Doom defaults on first activation:", error);
-			});
-	} else {
-		// Subsequent activations: detect and prompt, never mutate silently.
-		void (async () => {
-			if (!context.globalState.get<boolean>(whichKeyMigratedKey)) {
-				await migrateLegacyWhichKeyShowBindings();
-				await context.globalState.update(whichKeyMigratedKey, true);
-			}
-			await promptForCleanup(context);
-		})();
-	}
-
 	// Manual install command
 	const installCmd = vscode.commands.registerCommand(
 		"doom.install",
 		async () => {
-			const choice = await vscode.window.showWarningMessage(
-				"Apply Doom default settings to your User settings?",
-				{ modal: true },
-				"Apply"
+			const result = await runInstallFlow(
+				async () => {
+					const choice = await vscode.window.showWarningMessage(
+						"Apply Doom default settings to your User settings? Existing user-owned values will be left alone.",
+						{ modal: true },
+						"Apply"
+					);
+					return choice === "Apply";
+				},
+				async () => {
+					await migrateLegacyWhichKeyShowBindings();
+					return applyDefaultsToUserSettings(installDefaults, true);
+				},
 			);
-			if (choice !== "Apply") { return; }
 
-			await applyDefaultsToUserSettings(installDefaults, true);
+			if (!result) {
+				return;
+			}
 		}
 	);
 
@@ -509,6 +524,13 @@ export function activate(context: vscode.ExtensionContext) {
 				await warnAboutConflicts(conflicts);
 			}
 			await runCleanup(context);
+		}
+	);
+
+	const showStartPageCmd = vscode.commands.registerCommand(
+		"doom.showStartPage",
+		async () => {
+			await showStartupPage(context, startPage, 'startup', installDefaults);
 		}
 	);
 
@@ -598,9 +620,29 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	void (async () => {
+		const metadata = getExtensionMetadata(context);
+		const previousVersion = context.globalState.get<string>(LAST_SEEN_VERSION_KEY);
+		const shouldOpenStartPage = vscode.workspace
+			.getConfiguration()
+			.get<boolean>(START_PAGE_OPEN_ON_ACTIVATION_SETTING, true);
+
+		if (shouldOpenStartPage) {
+			await showStartupPage(
+				context,
+				startPage,
+				detectStartPageMode(previousVersion, metadata.version),
+				installDefaults,
+			);
+		}
+
+		await context.globalState.update(LAST_SEEN_VERSION_KEY, metadata.version);
+	})();
+
 	context.subscriptions.push(
 		installCmd,
 		cleanupCmd,
+		showStartPageCmd,
 		whichKeyCmd,
 		whichKeyBindingsCmd,
 		whichKeyHideCmd,

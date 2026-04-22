@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - `doom.whichKey.menuStyle` setting to choose Doom Code's custom which-key panel or the default VSpaceCode menu
 - `SPC h b` to search available which-key bindings by key, name, or command
+- Startup page now opens on activation with manual install/cleanup actions, repository links, and embedded changelog
 
 ### Changed
 
@@ -15,11 +16,13 @@ All notable changes to this project will be documented in this file.
 - Added top-level shortcuts `SPC /` for project search and `SPC ,` for workspace buffer switching
 - Buffer switching now better matches Doom Emacs, with clear buffer flags
 - Built-in fuzzy search now replaces the external `fuzzy-search` extension for Doom Code search flows
+- Install defaults no longer apply silently on first activation; setup is explicit opt-in only
 
 ### Fixed
 
 - Improved leader-key handling inside Doom Code menus so `SPC`, `Ctrl+K`, and `Escape` behave more consistently
 - `doom.cleanup` now operates on the active VS Code profile's keybindings, not just the default profile
+- Install defaults now respect existing values from any user-owned configuration scope before writing globals
 
 ## [0.1.2] - 2026-04-20
 

@@ -1,5 +1,13 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
+import {
+    detectStartPageMode,
+    evaluateInstalledDefaults,
+    extractCurrentReleaseNotes,
+    renderMarkdownFragment,
+    resolveStartupCommandsFromBindings,
+} from '../onboarding/startPage';
 
 suite('Extension Test Suite', () => {
 	const extensionId = 'bearylabs.doom';
@@ -10,6 +18,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchMoveUp',
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
+		'doom.showStartPage',
 		'doom.showOpenEditors',
 		'doom.whichKeyHide',
 		'doom.whichKeyShow',
@@ -21,6 +30,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchActiveTextEditor',
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
+		'doom.showStartPage',
 		'doom.showOpenEditors',
 		'doom.whichKeyShow',
 		'doom.whichKeyShowBindings',
@@ -69,5 +79,196 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(packageJson.contributes?.configurationDefaults?.['whichkey.sortOrder'], 'none');
 		assert.deepStrictEqual(packageJson.extensionDependencies, ['vscodevim.vim', 'VSpaceCode.whichkey']);
 		assert.deepStrictEqual(packageJson.extensionPack, ['wayou.vscode-todo-highlight']);
+	});
+
+	test('treats every user-owned scope as existing user config', () => {
+		assert.strictEqual(hasUserOwnedSettingValue(undefined), false);
+		assert.strictEqual(hasUserOwnedSettingValue({ globalValue: '<space>' }), true);
+		assert.strictEqual(hasUserOwnedSettingValue({ workspaceValue: 1 }), true);
+		assert.strictEqual(hasUserOwnedSettingValue({ workspaceFolderValue: true }), true);
+		assert.strictEqual(hasUserOwnedSettingValue({ globalLanguageValue: ['x'] }), true);
+		assert.strictEqual(hasUserOwnedSettingValue({ workspaceLanguageValue: ['x'] }), true);
+		assert.strictEqual(hasUserOwnedSettingValue({ workspaceFolderLanguageValue: ['x'] }), true);
+	});
+
+	test('only applies defaults when no user-owned scope exists', async () => {
+		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
+		const config = {
+			inspect<T>(key: string) {
+				if (key === 'doom.apply') {
+					return {} as { globalValue?: T };
+				}
+
+				if (key === 'doom.keepWorkspace') {
+					return { workspaceValue: true as T };
+				}
+
+				if (key === 'doom.keepLanguage') {
+					return { globalLanguageValue: ['keep'] as T };
+				}
+
+				return undefined;
+			},
+			update(key: string, value: unknown, target: vscode.ConfigurationTarget) {
+				updates.push({ key, value, target });
+				return Promise.resolve();
+			},
+		};
+
+		const result = await applyDefaultsToConfiguration(config, {
+			'doom.apply': 'yes',
+			'doom.keepWorkspace': 'no',
+			'doom.keepLanguage': 'no',
+			'doom.unsupported': 'skip',
+		});
+
+		assert.deepStrictEqual(updates, [
+			{ key: 'doom.apply', value: 'yes', target: vscode.ConfigurationTarget.Global },
+		]);
+		assert.deepStrictEqual(result, {
+			applied: 1,
+			skipped: 2,
+			unsupported: 1,
+			failed: 0,
+			total: 4,
+		});
+	});
+
+	test('install flow stays opt-in', async () => {
+		let applied = false;
+
+		const cancelled = await runInstallFlow(
+			async () => false,
+			async () => {
+				applied = true;
+				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, total: 1 };
+			},
+		);
+
+		assert.strictEqual(cancelled, undefined);
+		assert.strictEqual(applied, false);
+
+		const confirmed = await runInstallFlow(
+			async () => true,
+			async () => {
+				applied = true;
+				return { applied: 1, skipped: 0, unsupported: 0, failed: 0, total: 1 };
+			},
+		);
+
+		assert.ok(confirmed);
+		assert.strictEqual(applied, true);
+	});
+
+	test('detects welcome update and steady-state startup modes', () => {
+		assert.strictEqual(detectStartPageMode(undefined, '0.1.2'), 'welcome');
+		assert.strictEqual(detectStartPageMode('0.1.1', '0.1.2'), 'update');
+		assert.strictEqual(detectStartPageMode('0.1.2', '0.1.2'), 'startup');
+	});
+
+	test('extracts only the current release notes from changelog markdown', () => {
+		const changelog = [
+			'# Changelog',
+			'',
+			'## [Unreleased]',
+			'',
+			'- future',
+			'',
+			'## [0.1.2] - 2026-04-20',
+			'',
+			'### Added',
+			'',
+			'- first',
+			'',
+			'## [0.1.1] - 2026-04-19',
+			'',
+			'- old',
+		].join('\n');
+
+		assert.strictEqual(
+			extractCurrentReleaseNotes(changelog, '0.1.2'),
+			[
+				'## [0.1.2] - 2026-04-20',
+				'',
+				'### Added',
+				'',
+				'- first',
+			].join('\n')
+		);
+	});
+
+	test('renders simple changelog markdown to html', () => {
+		const html = renderMarkdownFragment('## [0.1.2]\n\n### Added\n\n- use `doom.install`\n');
+
+		assert.ok(html.includes('<h2>[0.1.2]</h2>'));
+		assert.ok(html.includes('<h3>Added</h3>'));
+		assert.ok(html.includes('<li>use <code>doom.install</code></li>'));
+	});
+
+	test('keeps only original doom startup commands present in bindings', () => {
+		const commands = resolveStartupCommandsFromBindings([
+			{
+				key: 'f',
+				type: 'bindings',
+				bindings: [
+					{
+						key: 'r',
+						type: 'command',
+						command: 'workbench.action.openRecent',
+					},
+				],
+			},
+			{
+				key: 'p',
+				type: 'bindings',
+				bindings: [
+					{
+						key: 'p',
+						type: 'command',
+						command: 'workbench.action.openRecent',
+					},
+				],
+			},
+			{
+				key: 'h',
+				type: 'bindings',
+				bindings: [
+					{
+						key: 'b',
+						type: 'command',
+						command: 'doom.whichKeyShowBindings',
+					},
+				],
+			},
+		]);
+
+		assert.deepStrictEqual(commands, [
+			{
+				label: 'Recently opened files',
+				keybinding: 'SPC f r',
+				command: 'workbench.action.openRecent',
+			},
+			{
+				label: 'Open project',
+				keybinding: 'SPC p p',
+				command: 'workbench.action.openRecent',
+			},
+		]);
+	});
+
+	test('reports whether install defaults already match effective settings', () => {
+		const installState = evaluateInstalledDefaults(
+			{
+				'window.menuBarVisibility': 'compact',
+				'window.restoreWindows': 'none',
+			},
+			(key) => key === 'window.menuBarVisibility' ? 'compact' : 'all',
+		);
+
+		assert.deepStrictEqual(installState, {
+			matchingDefaults: 1,
+			totalDefaults: 2,
+			isInstalled: false,
+		});
 	});
 });

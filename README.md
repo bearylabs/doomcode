@@ -74,13 +74,25 @@ Project search, in-file fuzzy search, workspace buffer switching, and the custom
 
 Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSCodeVim and VSpaceCode are declared as dependencies and will be installed automatically.
 
-### Step 2: Let Doom Code Apply Its Defaults
+### Step 2: Use the Start Page to Opt In
 
-On first activation, Doom Code automatically writes its install defaults to your user settings when those settings are not already configured.
+On activation, Doom Code opens a start page with:
 
-This gives a fresh setup the required defaults automatically while leaving any existing user-defined settings untouched.
+- a button to run **Install Doom Code**
+- a button to run **Doom Code: Clean Up Stale Settings**
+- repository and issue links
+- the current changelog
 
-If you want to run the setup again later, open the Command Palette, run **Install Doom Code**, and confirm the prompt.
+Doom Code does **not** write to your user settings automatically anymore. It only applies install defaults after you explicitly confirm the install command.
+
+When install runs, Doom Code treats any existing value in these user-owned scopes as yours and leaves it untouched:
+
+- user/global scope
+- workspace scope
+- workspace-folder scope
+- language-specific user/workspace/workspace-folder scopes
+
+If you want to reopen the page later, run **Doom Code: Show Start Page**.
 
 ### Step 3: Configure UI Layout
 
@@ -91,6 +103,8 @@ For the configuration to work optimally:
 3. **Drag "Open Editors"** to make it its own tab inside the primary side bar for a cleaner UI
 
 This creates a clean primary editor area with file navigation and history in the bottom panel, matching Doom Emacs' layout philosophy.
+
+If the start page opening on activation becomes noise, set `doom.startPage.openOnActivation` to `false`.
 
 ### Step 4: Clean Up Your UI (Recommended)
 

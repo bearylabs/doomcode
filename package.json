@@ -1423,6 +1423,11 @@
           ],
           "default": "doom",
           "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom panel UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
+        },
+        "doom.startPage.openOnActivation": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Open Doom Code's start page whenever the extension activates. The page contains manual install and cleanup actions, repository links, and the current changelog."
         }
       }
     },
@@ -1449,6 +1454,10 @@
       {
         "command": "doom.install",
         "title": "Install Doom Code"
+      },
+      {
+        "command": "doom.showStartPage",
+        "title": "Doom Code: Show Start Page"
       },
       {
         "command": "doom.cleanup",
