@@ -341,7 +341,8 @@ async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
 		await vscode.commands.executeCommand(command);
 	}
 
-	return group.activeTab === tab;
+	const freshGroup = vscode.window.tabGroups.all.find((g) => g.viewColumn === targetGroup);
+	return freshGroup?.activeTab !== undefined && getTabDedupKey(freshGroup.activeTab) === getTabDedupKey(tab);
 }
 
 async function moveActiveEditorToGroup(targetGroup: vscode.ViewColumn): Promise<boolean> {
@@ -360,8 +361,10 @@ async function moveActiveEditorToGroup(targetGroup: vscode.ViewColumn): Promise<
 		value: targetGroup,
 	});
 
-	return vscode.window.tabGroups.activeTabGroup.viewColumn === targetGroup
-		&& vscode.window.tabGroups.activeTabGroup.activeTab === activeTab;
+	const newActiveGroup = vscode.window.tabGroups.activeTabGroup;
+	return newActiveGroup.viewColumn === targetGroup
+		&& newActiveGroup.activeTab !== undefined
+		&& getTabDedupKey(newActiveGroup.activeTab) === getTabDedupKey(activeTab);
 }
 
 function isTerminalTabActiveInGroup(targetGroup: vscode.ViewColumn, label: string): boolean {
@@ -577,13 +580,13 @@ export class DoomOpenEditorsPanel {
 		const matches = this.items
 			.map((item, index) => {
 				if (query.length === 0) {
-				return {
-					displayMatches: [],
-					index,
-					item,
-					score: 0,
-				};
-			}
+					return {
+						displayMatches: [],
+						index,
+						item,
+						score: 0,
+					};
+				}
 
 				const searchMatch = fuzzyMatch(item.searchText, query);
 				if (!searchMatch) {
@@ -616,39 +619,39 @@ export class DoomOpenEditorsPanel {
 
 	private async handleMessage(message: OpenEditorMessage): Promise<void> {
 		switch (message.type) {
-		case 'ready':
-			this.ready = true;
-			this.render();
-			return;
-		case 'query':
-			this.query = message.query ?? '';
-			this.filterItems();
-			this.render();
-			await this.previewSelection();
-			return;
-		case 'move': {
-			if (this.matches.length === 0 || message.index === undefined) {
+			case 'ready':
+				this.ready = true;
+				this.render();
+				return;
+			case 'query':
+				this.query = message.query ?? '';
+				this.filterItems();
+				this.render();
+				await this.previewSelection();
+				return;
+			case 'move': {
+				if (this.matches.length === 0 || message.index === undefined) {
+					return;
+				}
+
+				this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
+				this.render();
+				await this.previewSelection();
 				return;
 			}
+			case 'activate': {
+				if (message.index !== undefined) {
+					this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
+				}
 
-			this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
-			this.render();
-			await this.previewSelection();
-			return;
-		}
-		case 'activate': {
-			if (message.index !== undefined) {
-				this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
+				await this.activateSelection();
+				return;
 			}
-
-			await this.activateSelection();
-			return;
-		}
-		case 'close':
-			await this.close();
-			return;
-		default:
-			return;
+			case 'close':
+				await this.close();
+				return;
+			default:
+				return;
 		}
 	}
 
@@ -685,13 +688,20 @@ export class DoomOpenEditorsPanel {
 
 				this.accepted = true;
 				await this.close();
+				if (match.item.tab.input instanceof vscode.TabInputTerminal) {
+					await vscode.commands.executeCommand('workbench.action.terminal.focus');
+				}
 				return;
 			}
 
-			if (match.item.tab.group.activeTab === match.item.tab) {
+			const sourceGroup = vscode.window.tabGroups.all.find((g) => g.viewColumn === match.item.groupColumn);
+			if (sourceGroup?.activeTab !== undefined && getTabDedupKey(sourceGroup.activeTab) === getTabDedupKey(match.item.tab)) {
 				await focusEditorGroup(match.item.groupColumn);
 				this.accepted = true;
 				await this.close();
+				if (match.item.tab.input instanceof vscode.TabInputTerminal) {
+					await vscode.commands.executeCommand('workbench.action.terminal.focus');
+				}
 				return;
 			}
 
