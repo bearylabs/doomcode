@@ -198,6 +198,12 @@
           "command": "workbench.action.files.openFile"
         },
         {
+          "key": ",",
+          "name": "Switch workspace buffer",
+          "type": "command",
+          "command": "doom.showOpenEditors"
+        },
+        {
           "key": "/",
           "name": "Search in a project",
           "type": "command",
