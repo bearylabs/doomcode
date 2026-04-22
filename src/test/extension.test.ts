@@ -14,7 +14,11 @@ import {
     renderMarkdownFragment,
     resolveStartupCommandsFromBindings,
 } from '../onboarding/startPage';
-import { applyTrackedUiContextCommand } from '../whichkey/menu';
+import {
+	applyTrackedUiContextCommand,
+	evaluateWhenExpression,
+	selectTriggeredConditionForKey,
+} from '../whichkey/menu';
 
 suite('Extension Test Suite', () => {
 	const extensionId = 'bearylabs.doom';
@@ -252,6 +256,76 @@ suite('Extension Test Suite', () => {
 			markersVisible: false,
 			sidebarVisible: false,
 		});
+	});
+
+	test('evaluates native-style which-key when expressions', () => {
+		const contextValues = {
+			activeEditorLastInGroup: true,
+			activeViewlet: 'workbench.view.debug',
+			explorerViewletVisible: true,
+			multipleEditorGroups: false,
+			whichkeyVisible: true,
+		};
+
+		assert.strictEqual(
+			evaluateWhenExpression(contextValues, 'whichkeyVisible && explorerViewletVisible'),
+			true,
+		);
+		assert.strictEqual(
+			evaluateWhenExpression(
+				contextValues,
+				"whichkeyVisible && activeViewlet == 'workbench.view.debug'",
+			),
+			true,
+		);
+		assert.strictEqual(
+			evaluateWhenExpression(
+				contextValues,
+				'whichkeyVisible && activeEditorLastInGroup && !multipleEditorGroups',
+			),
+			true,
+		);
+	});
+
+	test('selects trigger conditions from package-style keybindings', () => {
+		const triggerBindings = [
+			{
+				key: 'p',
+				condition: 'explorerViewletVisible',
+				when: 'whichkeyVisible && explorerViewletVisible',
+			},
+			{
+				key: 'x',
+				condition: 'multipleEditorGroups',
+				when: 'whichkeyVisible && multipleEditorGroups',
+			},
+			{
+				key: 'x',
+				condition: 'activeEditorLastInGroup',
+				when: 'whichkeyVisible && activeEditorLastInGroup && !multipleEditorGroups',
+			},
+		];
+
+		assert.strictEqual(
+			selectTriggeredConditionForKey(
+				'p',
+				{ explorerViewletVisible: true, whichkeyVisible: true },
+				triggerBindings,
+			),
+			'explorerViewletVisible',
+		);
+		assert.strictEqual(
+			selectTriggeredConditionForKey(
+				'x',
+				{
+					activeEditorLastInGroup: true,
+					multipleEditorGroups: false,
+					whichkeyVisible: true,
+				},
+				triggerBindings,
+			),
+			'activeEditorLastInGroup',
+		);
 	});
 
 	test('extracts only the current release notes from changelog markdown', () => {
