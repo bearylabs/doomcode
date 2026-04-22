@@ -280,35 +280,30 @@ async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
 }
 
 async function moveActiveEditorToGroup(targetGroup: vscode.ViewColumn): Promise<boolean> {
-	const orderedGroups = vscode.window.tabGroups.all
-		.map((group) => group.viewColumn)
-		.filter((viewColumn): viewColumn is vscode.ViewColumn => viewColumn !== undefined)
-		.sort((left, right) => left - right);
-	const currentGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
-	if (currentGroup === undefined) {
+	const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+	if (!activeTab) {
 		return false;
 	}
 
-	const currentIndex = orderedGroups.indexOf(currentGroup);
-	const targetIndex = orderedGroups.indexOf(targetGroup);
-	if (currentIndex < 0 || targetIndex < 0) {
-		return false;
-	}
-
-	if (currentIndex === targetIndex) {
+	if (vscode.window.tabGroups.activeTabGroup.viewColumn === targetGroup) {
 		return true;
 	}
 
-	const command = currentIndex < targetIndex
-		? 'workbench.action.moveEditorToNextGroup'
-		: 'workbench.action.moveEditorToPreviousGroup';
-	const steps = Math.abs(targetIndex - currentIndex);
+	await vscode.commands.executeCommand('moveActiveEditor', {
+		by: 'group',
+		to: 'position',
+		value: targetGroup,
+	});
 
-	for (let step = 0; step < steps; step++) {
-		await vscode.commands.executeCommand(command);
-	}
+	return vscode.window.tabGroups.activeTabGroup.viewColumn === targetGroup
+		&& vscode.window.tabGroups.activeTabGroup.activeTab === activeTab;
+}
 
-	return vscode.window.tabGroups.activeTabGroup.viewColumn === targetGroup;
+function isTerminalTabActiveInGroup(targetGroup: vscode.ViewColumn, label: string): boolean {
+	const activeGroup = vscode.window.tabGroups.activeTabGroup;
+	return activeGroup.viewColumn === targetGroup
+		&& activeGroup.activeTab?.input instanceof vscode.TabInputTerminal
+		&& activeGroup.activeTab.label === label;
 }
 
 async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
@@ -316,6 +311,11 @@ async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.Vi
 		return false;
 	}
 
+	if (await moveActiveEditorToGroup(targetGroup) && isTerminalTabActiveInGroup(targetGroup, tab.label)) {
+		return true;
+	}
+
+	await vscode.commands.executeCommand('workbench.action.terminal.focus');
 	await vscode.commands.executeCommand('workbench.action.terminal.moveToTerminalPanel');
 
 	const focused = await focusEditorGroup(targetGroup);
@@ -325,10 +325,7 @@ async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.Vi
 
 	await vscode.commands.executeCommand('workbench.action.terminal.moveToEditor');
 
-	const activeGroup = vscode.window.tabGroups.activeTabGroup;
-	return activeGroup.viewColumn === targetGroup
-		&& activeGroup.activeTab?.input instanceof vscode.TabInputTerminal
-		&& activeGroup.activeTab.label === tab.label;
+	return isTerminalTabActiveInGroup(targetGroup, tab.label);
 }
 
 async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
@@ -570,9 +567,21 @@ export class DoomOpenEditorsPanel {
 			if (revealedExistingTab) {
 				if (match.item.groupColumn !== targetGroup) {
 					if (match.item.tab.input instanceof vscode.TabInputTerminal) {
-						await moveTerminalEditorToGroup(match.item.tab, targetGroup);
+						const moved = await moveTerminalEditorToGroup(match.item.tab, targetGroup);
+						if (!moved) {
+							void vscode.window.showWarningMessage(
+								`Doom Code: cannot move terminal "${match.item.label}" to ${viewColumnToGroupLabel(targetGroup)}.`
+							);
+							return;
+						}
 					} else {
-						await moveActiveEditorToGroup(targetGroup);
+						const moved = await moveActiveEditorToGroup(targetGroup);
+						if (!moved) {
+							void vscode.window.showWarningMessage(
+								`Doom Code: cannot move "${match.item.label}" to ${viewColumnToGroupLabel(targetGroup)}.`
+							);
+							return;
+						}
 					}
 				}
 
