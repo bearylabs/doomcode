@@ -327,12 +327,11 @@ export class DoomFuzzySearchPanel {
 
 	private buildDocumentItems(document: vscode.TextDocument): SearchItem[] {
 		const lines = document.getText().split(/\r?\n/);
-		const lineCountWidth = lines.length.toString().length;
 
 		return lines
 			.map((text, index) => ({
 				line: index,
-				lineLabel: String(index + 1).padStart(lineCountWidth, '0'),
+				lineLabel: String(index + 1),
 				searchText: text.trim().toLowerCase(),
 				text: text.trim(),
 			}))
@@ -383,14 +382,13 @@ export class DoomFuzzySearchPanel {
 
 	private buildWorkspaceItems(document: vscode.TextDocument): SearchItem[] {
 		const lines = document.getText().split(/\r?\n/);
-		const lineCountWidth = lines.length.toString().length;
 		const fileLabel = vscode.workspace.asRelativePath(document.uri, false);
 
 		return lines
 			.map((text, index) => ({
 				fileLabel,
 				line: index,
-				lineLabel: String(index + 1).padStart(lineCountWidth, '0'),
+				lineLabel: String(index + 1),
 				searchText: text.trim().toLowerCase(),
 				text: text.trim(),
 				uri: document.uri,
@@ -777,7 +775,7 @@ export class DoomFuzzySearchPanel {
 
 		.item {
 			display: grid;
-			grid-template-columns: auto 1fr;
+			grid-template-columns: minmax(4ch, auto) 1fr;
 			align-items: baseline;
 			gap: 12px;
 			flex: 0 0 auto;
@@ -794,22 +792,26 @@ export class DoomFuzzySearchPanel {
 		}
 
 		.item.active {
-			background: var(--selected);
-			color: var(--selected-text);
-			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-			outline-offset: -1px;
+			color: inherit;
 		}
 
 		.group {
 			display: flex;
 			align-items: center;
-			gap: 12px;
+			gap: 8px;
 			padding: 4px 8px 0;
 			color: var(--muted);
 			font-style: italic;
 		}
 
-		.group::before,
+		.group::before {
+			content: '';
+			flex: 0 0 auto;
+			width: 5ch;
+			border-top: 1px solid var(--border);
+			opacity: 0.8;
+		}
+
 		.group::after {
 			content: '';
 			flex: 1 1 auto;
@@ -825,13 +827,24 @@ export class DoomFuzzySearchPanel {
 		.line {
 			color: var(--muted);
 			font-variant-numeric: tabular-nums;
+			justify-self: end;
+			text-align: right;
 			opacity: 0.95;
 		}
 
 		.content {
+			display: block;
 			min-width: 0;
+			padding-left: 5px;
 			overflow: hidden;
 			text-overflow: ellipsis;
+		}
+
+		.item.active .content {
+			background: var(--selected);
+			color: var(--selected-text);
+			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+			outline-offset: -1px;
 		}
 
 		.match {
@@ -931,7 +944,7 @@ export class DoomFuzzySearchPanel {
 
 				const line = document.createElement('span');
 				line.className = 'line';
-				line.textContent = item.lineLabel + ':';
+				line.textContent = item.lineLabel;
 
 				const content = document.createElement('span');
 				content.className = 'content';
