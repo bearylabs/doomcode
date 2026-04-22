@@ -62,7 +62,7 @@ const ASCII_HEADER = [
 	"|| . .||   ||. _-|| ||-_ .||   ||. . || || . .||   ||. _-|| ||-_.|\\ . . . . ||",
 	"||. . ||   ||-'  || ||  `-||   || . .|| ||. . ||   ||-'  || ||  `|\\_ . .|. .||",
 	"|| . _||   ||    || ||    ||   ||_ . || || . _||   ||    || ||   |\\ `-_/| . ||",
-	"||_-' ||  .|/    || ||    \|.  || `-_|| ||_-' ||  .|/    || ||   | \\  / |-_.||",
+	"||_-' ||  .|/    || ||    \\|.  || `-_|| ||_-' ||  .|/    || ||   | \\  / |-_.||",
 	"||    ||_-'      || ||      `-_||    || ||    ||_-'      || ||   | \\  / |  `||",
 	"||    `'         || ||         `'    || ||    `'         || ||   | \\  / |   ||",
 	"||            .===' `===.         .==='.`===.         .===' /==. |  \\/  |   ||",
@@ -70,7 +70,7 @@ const ASCII_HEADER = [
 	"||      .=='    _-'    `-_  `='    _-'   `-_    `='  _-'   `-_  /|  \\/  |   ||",
 	"||   .=='    _-'          '-__\\._-'         '-_./__-'         `' |. /|  |   ||",
 	"||.=='    _-'                                                     `' |  /==.||",
-	"=='    _-'                         C O D E                          \\/   `==",
+	"=='    _-'                          C O D E                           \\/   `==",
 	"\\   _-'                                                                `-_   /",
 	" `''                                                                      ``'",
 ].join('\n');
@@ -264,7 +264,7 @@ export function detectStartPageMode(previousVersion: string | undefined, current
 export class DoomStartPage {
 	private panel: vscode.WebviewPanel | undefined;
 
-	constructor(private readonly extensionUri: vscode.Uri) {}
+	constructor(private readonly extensionUri: vscode.Uri) { }
 
 	show(state: DoomStartPageState): void {
 		const panel = this.getOrCreatePanel();
