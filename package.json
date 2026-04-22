@@ -1431,7 +1431,7 @@
         {
           "id": "doomPanel",
           "title": "Doom",
-          "icon": "assets/which-key.svg"
+          "icon": "assets/doom-panel.svg"
         }
       ]
     },
@@ -1441,7 +1441,7 @@
           "id": "doom.panelView",
           "type": "webview",
           "name": "Doom",
-          "icon": "assets/which-key.svg"
+          "icon": "assets/doom-panel.svg"
         }
       ]
     },
