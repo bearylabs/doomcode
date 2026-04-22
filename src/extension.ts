@@ -17,7 +17,7 @@ import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
-import { registerWindowMru } from './window/mru';
+import { focusEditorGroup, registerWindowMru } from './window/mru';
 
 type WhichKeyMenuStyle = 'doom' | 'vspacecode';
 
@@ -116,6 +116,23 @@ export function selectReloadWorkspaceTarget(
 	}
 
 	return undefined;
+}
+
+export type WindowDeleteAction = 'closeGroup' | 'closePanel' | 'moveTerminalEditorToPanelAndCloseGroup';
+
+export function resolveWindowDeleteAction(
+	terminalFocus: boolean,
+	activeTerminalEditor: boolean,
+): WindowDeleteAction {
+	if (terminalFocus && !activeTerminalEditor) {
+		return 'closePanel';
+	}
+
+	if (activeTerminalEditor) {
+		return 'moveTerminalEditorToPanelAndCloseGroup';
+	}
+
+	return 'closeGroup';
 }
 
 async function persistWorkspaceHistory(context: vscode.ExtensionContext): Promise<void> {
@@ -758,13 +775,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const whichKeyCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShow",
-		() => {
+		(showContext?: { terminalFocus?: boolean }) => {
 			if (getWhichKeyMenuStyle() === 'vspacecode') {
+				whichKeyMenu.prepareShow(showContext);
 				void showConfiguredWhichKeyMenu(whichKeyMenu, sharedPanel);
 				return;
 			}
 
-			void sharedPanel.showWhichKey();
+			void sharedPanel.showWhichKeyWithContext(showContext);
 		}
 	);
 
@@ -784,6 +802,32 @@ export function activate(context: vscode.ExtensionContext) {
 		"doom.whichKeyHide",
 		() => {
 			void whichKeyMenu.hide();
+		}
+	);
+
+	const windowDeleteCmd = vscode.commands.registerCommand(
+		"doom.windowDelete",
+		async () => {
+			const activeGroup = vscode.window.tabGroups.activeTabGroup;
+			const activeTerminalEditor = vscode.window.tabGroups.activeTabGroup.activeTab?.input instanceof vscode.TabInputTerminal;
+			const action = resolveWindowDeleteAction(
+				whichKeyMenu.showContext.terminalFocus,
+				activeTerminalEditor,
+			);
+
+			if (action === 'closePanel') {
+				await vscode.commands.executeCommand('workbench.action.closePanel');
+				return;
+			}
+
+			if (action === 'moveTerminalEditorToPanelAndCloseGroup') {
+				await vscode.commands.executeCommand('workbench.action.terminal.moveToTerminalPanel');
+				await focusEditorGroup(activeGroup.viewColumn);
+				await vscode.commands.executeCommand('workbench.action.closeGroup');
+				return;
+			}
+
+			await vscode.commands.executeCommand('workbench.action.closeGroup');
 		}
 	);
 
@@ -871,6 +915,7 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyCmd,
 		whichKeyBindingsCmd,
 		whichKeyHideCmd,
+		windowDeleteCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,

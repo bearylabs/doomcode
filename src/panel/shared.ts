@@ -73,6 +73,11 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.showMode('whichkey', this.whichKeyMenu);
 	}
 
+	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean }): Promise<void> {
+		this.whichKeyMenu.prepareShow(showContext);
+		await this.showMode('whichkey', this.whichKeyMenu);
+	}
+
 	async showFuzzySearch(): Promise<void> {
 		if (!this.fuzzySearchPanel.prepareShow()) {
 			return;

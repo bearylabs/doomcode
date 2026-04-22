@@ -942,8 +942,11 @@
                 {
                   "key": "",
                   "name": "default",
-                  "type": "command",
-                  "command": "workbench.action.terminal.focus"
+                  "type": "commands",
+                  "commands": [
+                    "workbench.action.terminal.focus",
+                    "workbench.action.terminal.moveToTerminalPanel"
+                  ]
                 },
                 {
                   "key": "when:activePanel == 'terminal'",
@@ -1216,13 +1219,13 @@
               "key": "c",
               "name": "evil-window-delete",
               "type": "command",
-              "command": "workbench.action.closeGroup"
+              "command": "doom.windowDelete"
             },
             {
               "key": "d",
               "name": "evil-window-delete",
               "type": "command",
-              "command": "workbench.action.closeGroup"
+              "command": "doom.windowDelete"
             },
             {
               "key": "h",
@@ -1538,7 +1541,7 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
@@ -1548,12 +1551,28 @@
       {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
+        "args": {
+          "terminalFocus": true
+        },
+        "when": "terminalFocus && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || terminalFocus || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !whichkeyVisible"
+        "args": {
+          "terminalFocus": true
+        },
+        "when": "terminalFocus && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "t",

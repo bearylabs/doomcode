@@ -19,6 +19,20 @@ interface ContextSnapshot {
 	explorerViewletVisible: boolean;
 	markersVisible: boolean;
 	multipleEditorGroups: boolean;
+	terminalFocus: boolean;
+}
+
+interface TrackedUiContext {
+	activePanel: string;
+	activeViewlet: string;
+	copilotVisible: boolean;
+	explorerViewletVisible: boolean;
+	markersVisible: boolean;
+	sidebarVisible: boolean;
+}
+
+interface ShowContext {
+	terminalFocus: boolean;
 }
 
 interface RenderItem {
@@ -38,51 +52,364 @@ interface WebviewMessage {
 	type: 'activate' | 'back' | 'close' | 'ready';
 }
 
-// ---------------------------------------------------------------------------
-// Context and render helpers
-// ---------------------------------------------------------------------------
+interface WhichKeyTriggerBinding {
+	condition?: string;
+	key: string;
+	when: string;
+}
 
-function getContextValue(state: DoomWhichKeyMenu, rawCondition: string): boolean {
+function createTrackedUiContext(): TrackedUiContext {
+	return {
+		activePanel: '',
+		activeViewlet: '',
+		copilotVisible: false,
+		explorerViewletVisible: false,
+		markersVisible: false,
+		sidebarVisible: false,
+	};
+}
+
+export function applyTrackedUiContextCommand(
+	context: TrackedUiContext,
+	command: string,
+	arg?: unknown
+): TrackedUiContext {
+	const next = { ...context };
+
+	if (command === 'setContext' && Array.isArray(arg) && arg.length >= 2) {
+		const [key, value] = arg;
+		if (key === 'doom.bigModeEnabled') {
+			return next;
+		}
+
+		if (key === 'view.workbench.panel.chat.view.copilot.visible' && typeof value === 'boolean') {
+			next.copilotVisible = value;
+		}
+
+		if (key === 'view.workbench.panel.markers.view.visible' && typeof value === 'boolean') {
+			next.markersVisible = value;
+		}
+
+		return next;
+	}
+
+	switch (command) {
+	case 'workbench.view.explorer':
+		next.activeViewlet = 'workbench.view.explorer';
+		next.explorerViewletVisible = true;
+		next.sidebarVisible = true;
+		return next;
+	case 'workbench.view.debug':
+		next.activeViewlet = 'workbench.view.debug';
+		next.explorerViewletVisible = false;
+		next.sidebarVisible = true;
+		return next;
+	case 'workbench.action.toggleSidebarVisibility':
+		if (next.sidebarVisible) {
+			next.activeViewlet = '';
+			next.explorerViewletVisible = false;
+			next.sidebarVisible = false;
+			return next;
+		}
+
+		next.sidebarVisible = true;
+		if (next.activeViewlet === 'workbench.view.explorer') {
+			next.explorerViewletVisible = true;
+		}
+		return next;
+	case 'workbench.action.terminal.focus':
+		next.activePanel = 'terminal';
+		return next;
+	case 'workbench.action.togglePanel':
+		next.activePanel = next.activePanel.length > 0 ? '' : 'terminal';
+		return next;
+	case 'workbench.action.closePanel':
+		next.activePanel = '';
+		return next;
+	case 'workbench.action.closeAuxiliaryBar':
+		next.copilotVisible = false;
+		return next;
+	default:
+		return next;
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object';
+}
+
+function normalizeBindingKey(value: string): string {
+	if (value === '\t') {
+		return 'TAB';
+	}
+
+	if (value === ' ') {
+		return 'SPC';
+	}
+
+	return value;
+}
+
+function normalizeCondition(rawCondition: string): string {
 	const condition = rawCondition.trim();
-	if (condition.length === 0) {
+	return condition.startsWith('when:')
+		? condition.slice('when:'.length).trim()
+		: condition;
+}
+
+function getContextValues(state: DoomWhichKeyMenu): Record<string, boolean | string> {
+	const snapshot = state.snapshot;
+	return {
+		activeEditorLastInGroup: snapshot.activeEditorLastInGroup,
+		activePanel: snapshot.activePanel,
+		activeViewlet: snapshot.activeViewlet,
+		'doom.bigModeEnabled': snapshot.bigModeEnabled,
+		editorHasSelection: snapshot.editorHasSelection,
+		explorerViewletVisible: snapshot.explorerViewletVisible,
+		multipleEditorGroups: snapshot.multipleEditorGroups,
+		terminalFocus: snapshot.terminalFocus,
+		'view.workbench.panel.chat.view.copilot.visible': snapshot.copilotVisible,
+		'view.workbench.panel.markers.view.visible': snapshot.markersVisible,
+		whichkeyVisible: true,
+	};
+}
+
+function tokenizeWhenExpression(expression: string): string[] | undefined {
+	const tokens: string[] = [];
+	let index = 0;
+
+	while (index < expression.length) {
+		const char = expression[index];
+		if (/\s/.test(char)) {
+			index += 1;
+			continue;
+		}
+
+		const twoChars = expression.slice(index, index + 2);
+		if (twoChars === '&&' || twoChars === '||' || twoChars === '==' || twoChars === '!=') {
+			tokens.push(twoChars);
+			index += 2;
+			continue;
+		}
+
+		if (char === '!' || char === '(' || char === ')') {
+			tokens.push(char);
+			index += 1;
+			continue;
+		}
+
+		if (char === '\'') {
+			let endIndex = index + 1;
+			while (endIndex < expression.length && expression[endIndex] !== '\'') {
+				endIndex += 1;
+			}
+
+			if (endIndex >= expression.length) {
+				return undefined;
+			}
+
+			tokens.push(expression.slice(index, endIndex + 1));
+			index = endIndex + 1;
+			continue;
+		}
+
+		const identifierMatch = expression.slice(index).match(/^[A-Za-z0-9._]+/);
+		if (!identifierMatch) {
+			return undefined;
+		}
+
+		tokens.push(identifierMatch[0]);
+		index += identifierMatch[0].length;
+	}
+
+	return tokens;
+}
+
+class WhenExpressionParser {
+	private index = 0;
+
+	constructor(
+		private readonly contextValues: Record<string, boolean | string>,
+		private readonly tokens: string[],
+	) {}
+
+	parse(): boolean {
+		const value = this.parseOr();
+		return value !== undefined && this.index === this.tokens.length ? value : false;
+	}
+
+	private parseOr(): boolean | undefined {
+		let value = this.parseAnd();
+		while (this.peek() === '||') {
+			this.index += 1;
+			const right = this.parseAnd();
+			if (value === undefined || right === undefined) {
+				return undefined;
+			}
+
+			value = value || right;
+		}
+
+		return value;
+	}
+
+	private parseAnd(): boolean | undefined {
+		let value = this.parseUnary();
+		while (this.peek() === '&&') {
+			this.index += 1;
+			const right = this.parseUnary();
+			if (value === undefined || right === undefined) {
+				return undefined;
+			}
+
+			value = value && right;
+		}
+
+		return value;
+	}
+
+	private parseUnary(): boolean | undefined {
+		if (this.peek() === '!') {
+			this.index += 1;
+			const value = this.parseUnary();
+			return value === undefined ? undefined : !value;
+		}
+
+		if (this.peek() === '(') {
+			this.index += 1;
+			const value = this.parseOr();
+			if (this.peek() !== ')') {
+				return undefined;
+			}
+
+			this.index += 1;
+			return value;
+		}
+
+		return this.parseComparison();
+	}
+
+	private parseComparison(): boolean | undefined {
+		const leftToken = this.consumeIdentifier();
+		if (!leftToken) {
+			return undefined;
+		}
+
+		const operator = this.peek();
+		if (operator === '==' || operator === '!=') {
+			this.index += 1;
+			const rightToken = this.consumeValue();
+			if (rightToken === undefined) {
+				return undefined;
+			}
+
+			const leftValue = this.contextValues[leftToken];
+			const rightValue = rightToken.startsWith('\'')
+				? rightToken.slice(1, -1)
+				: this.contextValues[rightToken] ?? rightToken;
+			return operator === '=='
+				? leftValue === rightValue
+				: leftValue !== rightValue;
+		}
+
+		return Boolean(this.contextValues[leftToken]);
+	}
+
+	private consumeIdentifier(): string | undefined {
+		const token = this.peek();
+		if (!token || token.startsWith('\'') || ['&&', '||', '==', '!=', '!', '(', ')'].includes(token)) {
+			return undefined;
+		}
+
+		this.index += 1;
+		return token;
+	}
+
+	private consumeValue(): string | undefined {
+		const token = this.peek();
+		if (!token || ['&&', '||', '==', '!=', '!', '(', ')'].includes(token)) {
+			return undefined;
+		}
+
+		this.index += 1;
+		return token;
+	}
+
+	private peek(): string | undefined {
+		return this.tokens[this.index];
+	}
+}
+
+export function evaluateWhenExpression(
+	contextValues: Record<string, boolean | string>,
+	expression: string,
+): boolean {
+	const trimmed = expression.trim();
+	if (trimmed.length === 0) {
 		return true;
 	}
 
-	if (condition === 'editorHasSelection') {
-		return state.snapshot.editorHasSelection;
+	const tokens = tokenizeWhenExpression(trimmed);
+	if (!tokens) {
+		return false;
 	}
 
-	switch (condition) {
-	case 'activeEditorLastInGroup':
-		return state.snapshot.activeEditorLastInGroup;
-	case 'doom.bigModeEnabled':
-		return state.snapshot.bigModeEnabled;
-	case 'explorerViewletVisible':
-		return state.snapshot.explorerViewletVisible;
-	case 'multipleEditorGroups':
-		return state.snapshot.multipleEditorGroups;
-	case 'view.workbench.panel.chat.view.copilot.visible':
-		return state.snapshot.copilotVisible;
-	case 'view.workbench.panel.markers.view.visible':
-		return state.snapshot.markersVisible;
-	default:
-		break;
-	}
-
-	const equalsMatch = condition.match(/^([A-Za-z0-9._]+)\s*==\s*'([^']+)'$/);
-	if (equalsMatch) {
-		const [, left, right] = equalsMatch;
-		if (left === 'activePanel') {
-			return state.snapshot.activePanel === right;
-		}
-
-		if (left === 'activeViewlet') {
-			return state.snapshot.activeViewlet === right;
-		}
-	}
-
-	return false;
+	return new WhenExpressionParser(contextValues, tokens).parse();
 }
+
+function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
+	const extension = vscode.extensions.getExtension('bearylabs.doom');
+	const packageJson = extension?.packageJSON as {
+		contributes?: {
+			keybindings?: unknown[];
+		};
+	} | undefined;
+
+	return (packageJson?.contributes?.keybindings ?? []).flatMap((entry) => {
+		if (!isRecord(entry) || entry.command !== 'whichkey.triggerKey' || typeof entry.when !== 'string') {
+			return [];
+		}
+
+		if (typeof entry.args === 'string') {
+			return [{
+				key: normalizeBindingKey(entry.args),
+				when: entry.when,
+			}];
+		}
+
+		if (!isRecord(entry.args) || typeof entry.args.key !== 'string') {
+			return [];
+		}
+
+		return [{
+			condition: typeof entry.args.when === 'string' ? entry.args.when : undefined,
+			key: normalizeBindingKey(entry.args.key),
+			when: entry.when,
+		}];
+	});
+}
+
+export function selectTriggeredConditionForKey(
+	key: string,
+	contextValues: Record<string, boolean | string>,
+	triggerBindings: WhichKeyTriggerBinding[],
+): string | undefined {
+	for (const binding of triggerBindings) {
+		if (binding.key !== key) {
+			continue;
+		}
+
+		if (evaluateWhenExpression(contextValues, binding.when)) {
+			return binding.condition;
+		}
+	}
+
+	return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Context and render helpers
+// ---------------------------------------------------------------------------
 
 function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 	const activeEditor = vscode.window.activeTextEditor;
@@ -94,20 +421,36 @@ function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 		activeEditorLastInGroup: activeTab !== undefined
 			&& activeGroup.tabs.length > 0
 			&& activeGroup.tabs[activeGroup.tabs.length - 1] === activeTab,
-		activePanel: '',
-		activeViewlet: '',
+		activePanel: state.trackedUiContext.activePanel,
+		activeViewlet: state.trackedUiContext.activeViewlet,
 		bigModeEnabled: state.isBigModeEnabled,
-		copilotVisible: false,
+		copilotVisible: state.trackedUiContext.copilotVisible,
 		editorHasSelection: activeSelection !== undefined && !activeSelection.isEmpty,
-		explorerViewletVisible: false,
-		markersVisible: false,
+		explorerViewletVisible: state.trackedUiContext.explorerViewletVisible,
+		markersVisible: state.trackedUiContext.markersVisible,
 		multipleEditorGroups: vscode.window.tabGroups.all.length > 1,
+		terminalFocus: state.showContext.terminalFocus,
 	};
 }
 
 function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBinding): WhichKeyBinding | undefined {
 	const options = binding.bindings ?? [];
 	let fallback: WhichKeyBinding | undefined;
+	const contextValues = getContextValues(state);
+	const triggeredCondition = selectTriggeredConditionForKey(
+		binding.key,
+		contextValues,
+		getWhichKeyTriggerBindings(),
+	);
+
+	if (triggeredCondition) {
+		const triggeredOption = options.find(
+			(option) => normalizeCondition(option.key) === triggeredCondition,
+		);
+		if (triggeredOption) {
+			return triggeredOption;
+		}
+	}
 
 	for (const option of options) {
 		const key = option.key.trim();
@@ -116,11 +459,7 @@ function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBin
 			continue;
 		}
 
-		const rawCondition = key.startsWith('when:')
-			? key.slice('when:'.length)
-			: key;
-
-		if (getContextValue(state, rawCondition)) {
+		if (evaluateWhenExpression(contextValues, normalizeCondition(key))) {
 			return option;
 		}
 	}
@@ -175,8 +514,12 @@ export class DoomWhichKeyMenu {
 	private bigModeEnabled = false;
 	private currentBindings: WhichKeyBinding[] = [];
 	private currentItems: RenderItem[] = [];
+	private currentShowContext: ShowContext = {
+		terminalFocus: false,
+	};
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
+	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
@@ -188,7 +531,18 @@ export class DoomWhichKeyMenu {
 		return buildContextSnapshot(this);
 	}
 
-	prepareShow(): void {
+	get showContext(): ShowContext {
+		return this.currentShowContext;
+	}
+
+	get trackedUiContext(): TrackedUiContext {
+		return this.trackedContext;
+	}
+
+	prepareShow(showContext?: Partial<ShowContext>): void {
+		this.currentShowContext = {
+			terminalFocus: showContext?.terminalFocus === true,
+		};
 		this.currentBindings = getConfiguredWhichKeyBindings();
 		this.stack = [];
 	}
@@ -358,6 +712,7 @@ export class DoomWhichKeyMenu {
 
 	private trackContextCommand(command: string, arg?: unknown): void {
 		if (command !== 'setContext' || !Array.isArray(arg) || arg.length < 2) {
+			this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 			return;
 		}
 
@@ -365,6 +720,8 @@ export class DoomWhichKeyMenu {
 		if (key === 'doom.bigModeEnabled' && typeof value === 'boolean') {
 			this.bigModeEnabled = value;
 		}
+
+		this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 	}
 
 	private async close(): Promise<void> {

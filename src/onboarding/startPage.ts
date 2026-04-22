@@ -300,9 +300,13 @@ export class DoomStartPage {
 		);
 
 		panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'icon.png');
+		panel.onDidChangeViewState(({ webviewPanel }) => {
+			void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', webviewPanel.active);
+		});
 		panel.onDidDispose(() => {
 			if (this.panel === panel) {
 				this.panel = undefined;
+				void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', false);
 			}
 		});
 		panel.webview.onDidReceiveMessage((message: StartPageMessage) => {
@@ -324,6 +328,7 @@ export class DoomStartPage {
 		panel.webview.html = this.render(state, panel.webview);
 		if (reveal) {
 			panel.reveal(vscode.ViewColumn.One, false);
+			void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', true);
 		}
 	}
 

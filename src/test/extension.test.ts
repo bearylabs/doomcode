@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
     computeWorkspaceHistoryUpdate,
+    resolveWindowDeleteAction,
     selectReloadWorkspaceTarget,
     type StoredWorkspaceTarget,
 } from '../extension';
@@ -13,6 +14,11 @@ import {
     renderMarkdownFragment,
     resolveStartupCommandsFromBindings,
 } from '../onboarding/startPage';
+import {
+	applyTrackedUiContextCommand,
+	evaluateWhenExpression,
+	selectTriggeredConditionForKey,
+} from '../whichkey/menu';
 
 suite('Extension Test Suite', () => {
 	const extensionId = 'bearylabs.doom';
@@ -209,6 +215,117 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(detectStartPageMode(undefined, '0.2.0'), 'welcome');
 		assert.strictEqual(detectStartPageMode('0.1.2', '0.2.0'), 'update');
 		assert.strictEqual(detectStartPageMode('0.2.0', '0.2.0'), 'startup');
+	});
+
+	test('routes window delete by active terminal mode', () => {
+		assert.strictEqual(resolveWindowDeleteAction(false, false), 'closeGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
+	});
+
+	test('tracks sidebar context for repeated doom which-key toggles', () => {
+		const initial = {
+			activePanel: '',
+			activeViewlet: '',
+			copilotVisible: false,
+			explorerViewletVisible: false,
+			markersVisible: false,
+			sidebarVisible: false,
+		};
+
+		const explorerOpen = applyTrackedUiContextCommand(initial, 'workbench.view.explorer');
+		assert.deepStrictEqual(explorerOpen, {
+			activePanel: '',
+			activeViewlet: 'workbench.view.explorer',
+			copilotVisible: false,
+			explorerViewletVisible: true,
+			markersVisible: false,
+			sidebarVisible: true,
+		});
+
+		const sidebarHidden = applyTrackedUiContextCommand(
+			explorerOpen,
+			'workbench.action.toggleSidebarVisibility',
+		);
+		assert.deepStrictEqual(sidebarHidden, {
+			activePanel: '',
+			activeViewlet: '',
+			copilotVisible: false,
+			explorerViewletVisible: false,
+			markersVisible: false,
+			sidebarVisible: false,
+		});
+	});
+
+	test('evaluates native-style which-key when expressions', () => {
+		const contextValues = {
+			activeEditorLastInGroup: true,
+			activeViewlet: 'workbench.view.debug',
+			explorerViewletVisible: true,
+			multipleEditorGroups: false,
+			whichkeyVisible: true,
+		};
+
+		assert.strictEqual(
+			evaluateWhenExpression(contextValues, 'whichkeyVisible && explorerViewletVisible'),
+			true,
+		);
+		assert.strictEqual(
+			evaluateWhenExpression(
+				contextValues,
+				"whichkeyVisible && activeViewlet == 'workbench.view.debug'",
+			),
+			true,
+		);
+		assert.strictEqual(
+			evaluateWhenExpression(
+				contextValues,
+				'whichkeyVisible && activeEditorLastInGroup && !multipleEditorGroups',
+			),
+			true,
+		);
+	});
+
+	test('selects trigger conditions from package-style keybindings', () => {
+		const triggerBindings = [
+			{
+				key: 'p',
+				condition: 'explorerViewletVisible',
+				when: 'whichkeyVisible && explorerViewletVisible',
+			},
+			{
+				key: 'x',
+				condition: 'multipleEditorGroups',
+				when: 'whichkeyVisible && multipleEditorGroups',
+			},
+			{
+				key: 'x',
+				condition: 'activeEditorLastInGroup',
+				when: 'whichkeyVisible && activeEditorLastInGroup && !multipleEditorGroups',
+			},
+		];
+
+		assert.strictEqual(
+			selectTriggeredConditionForKey(
+				'p',
+				{ explorerViewletVisible: true, whichkeyVisible: true },
+				triggerBindings,
+			),
+			'explorerViewletVisible',
+		);
+		assert.strictEqual(
+			selectTriggeredConditionForKey(
+				'x',
+				{
+					activeEditorLastInGroup: true,
+					multipleEditorGroups: false,
+					whichkeyVisible: true,
+				},
+				triggerBindings,
+			),
+			'activeEditorLastInGroup',
+		);
 	});
 
 	test('extracts only the current release notes from changelog markdown', () => {
