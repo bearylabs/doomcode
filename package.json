@@ -263,12 +263,6 @@
               "command": "doom.showOpenEditors"
             },
             {
-              "key": "B",
-              "name": "Switch buffer",
-              "type": "command",
-              "command": "workbench.action.showAllEditors"
-            },
-            {
               "key": "c",
               "name": "Clone buffer",
               "type": "command",

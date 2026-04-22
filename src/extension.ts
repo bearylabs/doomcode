@@ -454,8 +454,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyMigratedKey = "doom.whichKeyShowMigrated";
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu();
-	registerWindowMru(context);
-	const openEditorsPanel = new DoomOpenEditorsPanel();
+	const windowMru = registerWindowMru(context);
+	const openEditorsPanel = new DoomOpenEditorsPanel(() => windowMru.getLastActiveGroup());
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
@@ -578,6 +578,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const openEditorsOtherWindowCmd = vscode.commands.registerCommand(
+		"doom.showOpenEditorsInOtherWindow",
+		() => {
+			void sharedPanel.showOpenEditorsInOtherWindow();
+		}
+	);
+
 	const fuzzySearchMoveDownCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchMoveDown",
 		() => {
@@ -612,6 +619,7 @@ export function activate(context: vscode.ExtensionContext) {
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,
 		openEditorsCmd,
+		openEditorsOtherWindowCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		sharedPanelViewProvider,
