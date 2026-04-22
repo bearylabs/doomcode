@@ -1,5 +1,10 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import {
+	computeWorkspaceHistoryUpdate,
+	type StoredWorkspaceTarget,
+	selectReloadWorkspaceTarget,
+} from '../extension';
 import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
     detectStartPageMode,
@@ -18,6 +23,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchMoveUp',
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
+		'doom.reloadLastSession',
 		'doom.showStartPage',
 		'doom.showOpenEditors',
 		'doom.whichKeyHide',
@@ -30,6 +36,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchActiveTextEditor',
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
+		'doom.reloadLastSession',
 		'doom.showStartPage',
 		'doom.showOpenEditors',
 		'doom.whichKeyShow',
@@ -230,6 +237,17 @@ suite('Extension Test Suite', () => {
 				],
 			},
 			{
+				key: 'q',
+				type: 'bindings',
+				bindings: [
+					{
+						key: 'l',
+						type: 'command',
+						command: 'doom.reloadLastSession',
+					},
+				],
+			},
+			{
 				key: 'h',
 				type: 'bindings',
 				bindings: [
@@ -253,7 +271,30 @@ suite('Extension Test Suite', () => {
 				keybinding: 'SPC p p',
 				command: 'workbench.action.openRecent',
 			},
+			{
+				label: 'Reload last session',
+				keybinding: 'SPC q l',
+				command: 'doom.reloadLastSession',
+			},
 		]);
+	});
+
+	test('tracks previous workspace and picks reload target', () => {
+		const alpha: StoredWorkspaceTarget = { label: 'alpha', uri: 'file:///alpha' };
+		const beta: StoredWorkspaceTarget = { label: 'beta', uri: 'file:///beta' };
+
+		assert.deepStrictEqual(
+			computeWorkspaceHistoryUpdate(beta, alpha, undefined),
+			{
+				changed: true,
+				last: beta,
+				previous: alpha,
+			}
+		);
+
+		assert.strictEqual(selectReloadWorkspaceTarget(beta, beta, alpha), alpha);
+		assert.strictEqual(selectReloadWorkspaceTarget(undefined, beta, alpha), beta);
+		assert.strictEqual(selectReloadWorkspaceTarget(alpha, alpha, undefined), undefined);
 	});
 
 	test('reports whether install defaults already match effective settings', () => {

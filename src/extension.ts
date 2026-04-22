@@ -24,6 +24,144 @@ type WhichKeyMenuStyle = 'doom' | 'vspacecode';
 const WHICH_KEY_MENU_SETTING = 'doom.whichKey.menuStyle';
 const DEFAULT_WHICH_KEY_MENU_STYLE: WhichKeyMenuStyle = 'doom';
 const LAST_SEEN_VERSION_KEY = 'doom.lastSeenVersion';
+const LAST_WORKSPACE_TARGET_KEY = 'doom.lastWorkspaceTarget';
+const PREVIOUS_WORKSPACE_TARGET_KEY = 'doom.previousWorkspaceTarget';
+
+export interface StoredWorkspaceTarget {
+	label: string;
+	uri: string;
+}
+
+function isStoredWorkspaceTarget(value: unknown): value is StoredWorkspaceTarget {
+	return value !== null
+		&& typeof value === 'object'
+		&& 'label' in value
+		&& 'uri' in value
+		&& typeof value.label === 'string'
+		&& typeof value.uri === 'string';
+}
+
+function getStoredWorkspaceTarget(state: vscode.Memento, key: string): StoredWorkspaceTarget | undefined {
+	const value = state.get<unknown>(key);
+	return isStoredWorkspaceTarget(value) ? value : undefined;
+}
+
+function getWorkspaceTargetLabel(targetUri: vscode.Uri): string {
+	if (vscode.workspace.workspaceFile?.toString() === targetUri.toString()) {
+		return path.basename(targetUri.fsPath);
+	}
+
+	return vscode.workspace.name || path.basename(targetUri.fsPath);
+}
+
+function getCurrentWorkspaceTarget(): StoredWorkspaceTarget | undefined {
+	const workspaceFile = vscode.workspace.workspaceFile;
+	if (workspaceFile?.scheme === 'file') {
+		return {
+			label: getWorkspaceTargetLabel(workspaceFile),
+			uri: workspaceFile.toString(),
+		};
+	}
+
+	const firstFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+	if (firstFolder?.scheme !== 'file') {
+		return undefined;
+	}
+
+	return {
+		label: getWorkspaceTargetLabel(firstFolder),
+		uri: firstFolder.toString(),
+	};
+}
+
+export function computeWorkspaceHistoryUpdate(
+	current: StoredWorkspaceTarget | undefined,
+	last: StoredWorkspaceTarget | undefined,
+	previous: StoredWorkspaceTarget | undefined,
+): {
+	changed: boolean;
+	last: StoredWorkspaceTarget | undefined;
+	previous: StoredWorkspaceTarget | undefined;
+} {
+	if (!current || last?.uri === current.uri) {
+		return {
+			changed: false,
+			last,
+			previous,
+		};
+	}
+
+	return {
+		changed: true,
+		last: current,
+		previous: last,
+	};
+}
+
+export function selectReloadWorkspaceTarget(
+	current: StoredWorkspaceTarget | undefined,
+	last: StoredWorkspaceTarget | undefined,
+	previous: StoredWorkspaceTarget | undefined,
+): StoredWorkspaceTarget | undefined {
+	if (!current) {
+		return last ?? previous;
+	}
+
+	if (previous && previous.uri !== current.uri) {
+		return previous;
+	}
+
+	if (last && last.uri !== current.uri) {
+		return last;
+	}
+
+	return undefined;
+}
+
+async function persistWorkspaceHistory(context: vscode.ExtensionContext): Promise<void> {
+	const next = computeWorkspaceHistoryUpdate(
+		getCurrentWorkspaceTarget(),
+		getStoredWorkspaceTarget(context.globalState, LAST_WORKSPACE_TARGET_KEY),
+		getStoredWorkspaceTarget(context.globalState, PREVIOUS_WORKSPACE_TARGET_KEY),
+	);
+
+	if (!next.changed) {
+		return;
+	}
+
+	await context.globalState.update(PREVIOUS_WORKSPACE_TARGET_KEY, next.previous);
+	await context.globalState.update(LAST_WORKSPACE_TARGET_KEY, next.last);
+}
+
+async function reloadLastSession(context: vscode.ExtensionContext): Promise<void> {
+	const last = getStoredWorkspaceTarget(context.globalState, LAST_WORKSPACE_TARGET_KEY);
+	const previous = getStoredWorkspaceTarget(context.globalState, PREVIOUS_WORKSPACE_TARGET_KEY);
+	const target = selectReloadWorkspaceTarget(getCurrentWorkspaceTarget(), last, previous);
+
+	if (!target) {
+		void vscode.window.showInformationMessage('No previous project saved yet. Open another project first.');
+		return;
+	}
+
+	const targetUri = vscode.Uri.parse(target.uri);
+
+	try {
+		await vscode.workspace.fs.stat(targetUri);
+	} catch {
+		if (last?.uri === target.uri) {
+			await context.globalState.update(LAST_WORKSPACE_TARGET_KEY, undefined);
+		}
+
+		if (previous?.uri === target.uri) {
+			await context.globalState.update(PREVIOUS_WORKSPACE_TARGET_KEY, undefined);
+		}
+
+		void vscode.window.showWarningMessage(`Last session "${target.label}" is no longer available.`);
+		return;
+	}
+
+	await vscode.commands.executeCommand('vscode.openFolder', targetUri, { forceReuseWindow: true });
+}
 
 function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
 	const configuredStyle = vscode.workspace
@@ -534,6 +672,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const reloadLastSessionCmd = vscode.commands.registerCommand(
+		"doom.reloadLastSession",
+		async () => {
+			await reloadLastSession(context);
+		}
+	);
+
 	const whichKeyCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShow",
 		() => {
@@ -621,6 +766,8 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	void (async () => {
+		await persistWorkspaceHistory(context);
+
 		const metadata = getExtensionMetadata(context);
 		const previousVersion = context.globalState.get<string>(LAST_SEEN_VERSION_KEY);
 		const shouldOpenStartPage = vscode.workspace
@@ -643,6 +790,7 @@ export function activate(context: vscode.ExtensionContext) {
 		installCmd,
 		cleanupCmd,
 		showStartPageCmd,
+		reloadLastSessionCmd,
 		whichKeyCmd,
 		whichKeyBindingsCmd,
 		whichKeyHideCmd,

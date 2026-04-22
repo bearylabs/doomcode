@@ -1047,6 +1047,19 @@
           ]
         },
         {
+          "key": "q",
+          "name": "+quit/session",
+          "type": "bindings",
+          "bindings": [
+            {
+              "key": "l",
+              "name": "Reload last session",
+              "type": "command",
+              "command": "doom.reloadLastSession"
+            }
+          ]
+        },
+        {
           "key": "s",
           "name": "+search",
           "type": "bindings",
@@ -1458,6 +1471,10 @@
       {
         "command": "doom.showStartPage",
         "title": "Doom Code: Show Start Page"
+      },
+      {
+        "command": "doom.reloadLastSession",
+        "title": "Doom Code: Reload Last Session"
       },
       {
         "command": "doom.cleanup",
