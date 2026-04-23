@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-04-23
+
 ### Added
 
 - Which-key menu closes when focus moves to an editor, terminal, or any other panel
