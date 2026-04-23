@@ -622,6 +622,7 @@ export class DoomOpenEditorsPanel {
 			case 'ready':
 				this.ready = true;
 				this.render();
+				await this.previewSelection();
 				return;
 			case 'query':
 				this.query = message.query ?? '';
