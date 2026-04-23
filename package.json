@@ -749,6 +749,18 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "[",
+              "name": "Jump to previous hunk",
+              "type": "command",
+              "command": "workbench.action.editor.previousChange"
+            },
+            {
+              "key": "]",
+              "name": "Jump to next hunk",
+              "type": "command",
+              "command": "workbench.action.editor.nextChange"
+            },
+            {
               "key": ".",
               "name": "Magit file dispatch",
               "type": "command",
