@@ -53,6 +53,7 @@ export class DoomWhichKeyBindingsPanel {
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
+	/** Call before making the panel visible. Resets query so prior search doesn't bleed into next open. */
 	prepareShow(resetQuery = true): void {
 		if (resetQuery) {
 			this.query = '';
@@ -61,10 +62,12 @@ export class DoomWhichKeyBindingsPanel {
 		this.refreshItems();
 	}
 
+	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
 	attachToView(webviewView: vscode.WebviewView): void {
 		this.resolveWebviewView(webviewView);
 	}
 
+	/** Tears down listeners and clears the view reference without destroying the panel instance. */
 	detachFromView(): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -72,6 +75,10 @@ export class DoomWhichKeyBindingsPanel {
 		this.ready = false;
 	}
 
+	/**
+	 * Bootstraps a WebviewView: injects HTML, wires dispose/visibility/message listeners.
+	 * Re-entrant — cleans up previous listeners before rebinding, so safe to call on view recycle.
+	 */
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -103,6 +110,7 @@ export class DoomWhichKeyBindingsPanel {
 		);
 	}
 
+	/** Stamps static title/description onto the sidebar pane header. */
 	private updateViewMetadata(): void {
 		if (!this.view) {
 			return;
@@ -112,11 +120,17 @@ export class DoomWhichKeyBindingsPanel {
 		this.view.description = 'Which-key command list';
 	}
 
+	/** Re-reads live config and re-applies current filter — call when config may have changed. */
 	private refreshItems(): void {
 		this.bindings = getFlattenedWhichKeyBindings();
 		this.filterItems();
 	}
 
+	/**
+	 * Applies fuzzy search against `searchText` and sorts by score desc, then path/name asc.
+	 * Empty query shows all bindings unranked. Clamps `activeIndex` so it never goes out of bounds.
+	 * Match indices are computed against `path` only — highlight stays in the key column.
+	 */
 	private filterItems(): void {
 		const query = this.query.trim().toLowerCase();
 		const matches = this.bindings
@@ -158,6 +172,7 @@ export class DoomWhichKeyBindingsPanel {
 			: Math.min(this.activeIndex, this.matches.length - 1);
 	}
 
+	/** Dispatches messages from the webview. `activate` optionally updates index before executing. */
 	private async handleMessage(message: WhichKeyBindingsMessage): Promise<void> {
 		switch (message.type) {
 		case 'ready':
@@ -194,6 +209,7 @@ export class DoomWhichKeyBindingsPanel {
 		}
 	}
 
+	/** Executes the active match's binding then closes the panel. No-op if list is empty. */
 	private async activateSelection(): Promise<void> {
 		const match = this.matches[this.activeIndex];
 		if (!match) {
@@ -204,10 +220,12 @@ export class DoomWhichKeyBindingsPanel {
 		await this.close();
 	}
 
+	/** Collapses the bottom panel — keeps the webview alive so state survives the next open. */
 	private async close(): Promise<void> {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
 
+	/** Serializes current match/index state and pushes it to the webview via postMessage. Guards against rendering before 'ready'. */
 	private render(): void {
 		if (!this.view || !this.ready || !this.view.visible) {
 			return;
@@ -240,6 +258,10 @@ export class DoomWhichKeyBindingsPanel {
 		});
 	}
 
+	/**
+	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
+	 * The embedded script owns all DOM interaction and communicates exclusively via postMessage.
+	 */
 	private getHtml(webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const csp = [
@@ -409,6 +431,7 @@ export class DoomWhichKeyBindingsPanel {
 		const status = document.getElementById('status');
 		let items = [];
 
+		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
 		function appendHighlightedText(container, text, matches) {
 			if (!matches || matches.length === 0) {
 				container.textContent = text;
@@ -439,6 +462,7 @@ export class DoomWhichKeyBindingsPanel {
 			}
 		}
 
+		// Full DOM reconcile from state. Skips overwriting the input if it has focus to avoid caret jump.
 		function render(state) {
 			items = state.items;
 			document.title = state.title;

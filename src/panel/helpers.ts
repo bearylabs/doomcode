@@ -3,10 +3,18 @@ export interface FuzzyMatch {
 	score: number;
 }
 
+/** Generates a random 10-char alphanumeric nonce for CSP script-src directives. */
 export function createNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
 
+/**
+ * Greedy subsequence fuzzy match. Returns undefined if not all query chars are found in order.
+ *
+ * Scoring: +8 per matched char, +4 per consecutive streak char (rewards contiguous runs).
+ * Penalises by subtracting the index of the first match (rewards prefix matches).
+ * Indices point into `text` and are used by the highlight renderer.
+ */
 export function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
 	if (query.length === 0) {
 		return {

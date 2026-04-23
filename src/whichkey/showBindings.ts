@@ -21,6 +21,7 @@ export interface WhichKeyExecutableBinding {
 // Flattening helpers
 // ---------------------------------------------------------------------------
 
+/** Normalizes a conditional binding key into a human-readable "when <expr>" label. Empty key = 'default'. */
 function formatConditionalLabel(rawKey: string): string {
 	const trimmed = rawKey.trim();
 	if (trimmed.length === 0) {
@@ -32,6 +33,14 @@ function formatConditionalLabel(rawKey: string): string {
 		: `when ${trimmed}`;
 }
 
+/**
+ * Recursively flattens a nested binding tree into a searchable list of executable bindings.
+ *
+ * Conditional bindings are expanded into one entry per branch so every reachable
+ * command is independently addressable. The `path` accumulates pressed keys
+ * (e.g. "SPC g s"), `groups` carries ancestor names for the detail breadcrumb,
+ * and `condition` surfaces the active when-clause for conditional branches.
+ */
 function flattenWhichKeyBindings(
 	bindings: WhichKeyBinding[],
 	path = 'SPC',
@@ -128,10 +137,16 @@ function flattenWhichKeyBindings(
 // Binding pickers
 // ---------------------------------------------------------------------------
 
+/** Entry point: reads live config and returns the fully-flattened binding list. */
 export function getFlattenedWhichKeyBindings(): WhichKeyExecutableBinding[] {
 	return flattenWhichKeyBindings(getConfiguredWhichKeyBindings());
 	}
 
+/**
+ * Opens a fuzzy-searchable QuickPick over all configured which-key bindings.
+ * Matches on key path, binding name, and command detail simultaneously.
+ * Executes the chosen binding — no-op on dismiss.
+ */
 export async function showWhichKeyBindingsQuickPick(): Promise<void> {
 	const flattenedBindings = getFlattenedWhichKeyBindings();
 

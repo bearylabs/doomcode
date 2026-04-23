@@ -32,6 +32,7 @@ export interface StoredWorkspaceTarget {
 	uri: string;
 }
 
+/** Type guard for `StoredWorkspaceTarget` — validates shape before reading from globalState. */
 function isStoredWorkspaceTarget(value: unknown): value is StoredWorkspaceTarget {
 	return value !== null
 		&& typeof value === 'object'
@@ -41,11 +42,13 @@ function isStoredWorkspaceTarget(value: unknown): value is StoredWorkspaceTarget
 		&& typeof value.uri === 'string';
 }
 
+/** Reads and validates a `StoredWorkspaceTarget` from a Memento. Returns undefined if missing or malformed. */
 function getStoredWorkspaceTarget(state: vscode.Memento, key: string): StoredWorkspaceTarget | undefined {
 	const value = state.get<unknown>(key);
 	return isStoredWorkspaceTarget(value) ? value : undefined;
 }
 
+/** Returns a human-readable label for a workspace target URI, preferring workspace name over basename. */
 function getWorkspaceTargetLabel(targetUri: vscode.Uri): string {
 	if (vscode.workspace.workspaceFile?.toString() === targetUri.toString()) {
 		return path.basename(targetUri.fsPath);
@@ -54,6 +57,7 @@ function getWorkspaceTargetLabel(targetUri: vscode.Uri): string {
 	return vscode.workspace.name || path.basename(targetUri.fsPath);
 }
 
+/** Returns the current workspace as a storable target. Only handles local `file://` workspaces; returns undefined for remote or untitled. */
 function getCurrentWorkspaceTarget(): StoredWorkspaceTarget | undefined {
 	const workspaceFile = vscode.workspace.workspaceFile;
 	if (workspaceFile?.scheme === 'file') {
@@ -74,6 +78,10 @@ function getCurrentWorkspaceTarget(): StoredWorkspaceTarget | undefined {
 	};
 }
 
+/**
+ * Pure function: computes the new last/previous history pair given the current workspace.
+ * No-ops (changed=false) if the current workspace is already the last recorded one.
+ */
 export function computeWorkspaceHistoryUpdate(
 	current: StoredWorkspaceTarget | undefined,
 	last: StoredWorkspaceTarget | undefined,
@@ -98,6 +106,10 @@ export function computeWorkspaceHistoryUpdate(
 	};
 }
 
+/**
+ * Pure function: picks the best target to switch to for "reload last session".
+ * Prefers `previous` when it differs from current, then `last`, then falls back if none differ.
+ */
 export function selectReloadWorkspaceTarget(
 	current: StoredWorkspaceTarget | undefined,
 	last: StoredWorkspaceTarget | undefined,
@@ -120,6 +132,10 @@ export function selectReloadWorkspaceTarget(
 
 export type WindowDeleteAction = 'closeGroup' | 'closePanel' | 'moveTerminalEditorToPanelAndCloseGroup';
 
+/**
+ * Pure function: determines the correct `doom.windowDelete` action based on focus context.
+ * Terminal panel focus → close panel. Terminal editor tab → move back to panel first. Otherwise → close group.
+ */
 export function resolveWindowDeleteAction(
 	terminalFocus: boolean,
 	activeTerminalEditor: boolean,
@@ -135,6 +151,7 @@ export function resolveWindowDeleteAction(
 	return 'closeGroup';
 }
 
+/** Snapshots the current workspace into globalState if it differs from the last recorded one. */
 async function persistWorkspaceHistory(context: vscode.ExtensionContext): Promise<void> {
 	const next = computeWorkspaceHistoryUpdate(
 		getCurrentWorkspaceTarget(),
@@ -150,6 +167,10 @@ async function persistWorkspaceHistory(context: vscode.ExtensionContext): Promis
 	await context.globalState.update(LAST_WORKSPACE_TARGET_KEY, next.last);
 }
 
+/**
+ * Opens the previous workspace in the current window after user confirmation.
+ * Clears stale history entries if the target path no longer exists on disk.
+ */
 async function reloadLastSession(context: vscode.ExtensionContext): Promise<void> {
 	const last = getStoredWorkspaceTarget(context.globalState, LAST_WORKSPACE_TARGET_KEY);
 	const previous = getStoredWorkspaceTarget(context.globalState, PREVIOUS_WORKSPACE_TARGET_KEY);
@@ -188,6 +209,7 @@ async function reloadLastSession(context: vscode.ExtensionContext): Promise<void
 	await vscode.commands.executeCommand('vscode.openFolder', targetUri, { forceReuseWindow: true });
 }
 
+/** Reads which-key menu style from config, normalising unknown values to the default 'doom' style. */
 function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
 	const configuredStyle = vscode.workspace
 		.getConfiguration()
@@ -196,6 +218,10 @@ function getWhichKeyMenuStyle(): WhichKeyMenuStyle {
 	return configuredStyle === 'vspacecode' ? configuredStyle : DEFAULT_WHICH_KEY_MENU_STYLE;
 }
 
+/**
+ * Shows which-key via VSpaceCode if configured, falling back to Doom's panel on error.
+ * Hides the Doom menu first to avoid stacking both UIs simultaneously.
+ */
 async function showConfiguredWhichKeyMenu(
 	whichKeyMenu: DoomWhichKeyMenu,
 	sharedPanel: DoomSharedPanel,
@@ -235,6 +261,7 @@ const STALE_COMMAND_PREFIXES = ["vspacecode."];
 // Install defaults
 // ---------------------------------------------------------------------------
 
+/** Reads the `doomInstallDefaults` map from package.json — the settings Doom writes on install. */
 function getInstallDefaults(context: vscode.ExtensionContext): Record<string, unknown> {
 	const packageJson = context.extension.packageJSON as {
 		doomInstallDefaults?: Record<string, unknown>;
@@ -243,6 +270,7 @@ function getInstallDefaults(context: vscode.ExtensionContext): Record<string, un
 	return packageJson.doomInstallDefaults ?? {};
 }
 
+/** Reads the bundled `whichkey.bindings` default from package.json contributes, used to resolve startup command key paths. */
 function getPackageWhichKeyBindings(context: vscode.ExtensionContext): unknown {
 	const packageJson = context.extension.packageJSON as {
 		contributes?: {
@@ -253,6 +281,7 @@ function getPackageWhichKeyBindings(context: vscode.ExtensionContext): unknown {
 	return packageJson.contributes?.configurationDefaults?.['whichkey.bindings'];
 }
 
+/** Parses `doomStartPage.startupCommandKeyPaths` from package.json into `string[][]` key path arrays. */
 function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][] {
 	const packageJson = context.extension.packageJSON as {
 		doomStartPage?: {
@@ -279,6 +308,10 @@ function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][]
 	});
 }
 
+/**
+ * Writes install defaults to the user's global settings, skipping user-owned keys.
+ * Optionally shows a toast summarising applied/skipped/failed counts.
+ */
 async function applyDefaultsToUserSettings(
 	defaults: Record<string, unknown>,
 	showResultMessage = false
@@ -319,12 +352,14 @@ async function applyDefaultsToUserSettings(
 // Conflict detection
 // ---------------------------------------------------------------------------
 
+/** Returns the subset of `CONFLICTING_EXTENSIONS` that are currently installed. */
 function detectConflictingExtensions(): typeof CONFLICTING_EXTENSIONS {
 	return CONFLICTING_EXTENSIONS.filter(
 		(ext) => vscode.extensions.getExtension(ext.id) !== undefined
 	);
 }
 
+/** Shows a modal warning for each conflicting extension with an "Open Extensions" action. */
 async function warnAboutConflicts(conflicts: typeof CONFLICTING_EXTENSIONS): Promise<void> {
 	for (const ext of conflicts) {
 		const choice = await vscode.window.showWarningMessage(
@@ -471,6 +506,7 @@ interface StaleDetectionResult {
 	hasStaleKeybindings: boolean;
 }
 
+/** Read-only stale detection: scans vim settings and keybindings.json without writing anything. */
 function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResult {
 	const conflicts = detectConflictingExtensions();
 
@@ -516,6 +552,7 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 // Full cleanup — mutating path (manual command or user-confirmed)
 // ---------------------------------------------------------------------------
 
+/** Runs both setting and keybinding cleanup, then shows a summary toast with a "Reload" action. */
 async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	const cleanedSettings = await cleanStaleSettings();
 	const removedKeybindings = await cleanStaleKeybindings(context);
@@ -547,6 +584,7 @@ async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
 	}
 }
 
+/** Extracts version and repository URL from package.json for display in the start page. */
 function getExtensionMetadata(context: vscode.ExtensionContext): {
 	version: string;
 	repositoryUrl?: string;
@@ -562,6 +600,7 @@ function getExtensionMetadata(context: vscode.ExtensionContext): {
 	};
 }
 
+/** Assembles the full `DoomStartPageState` by combining config inspection, stale detection, and binding resolution. */
 function createStartupPageState(
 	context: vscode.ExtensionContext,
 	mode: ReturnType<typeof detectStartPageMode>,
@@ -594,6 +633,7 @@ function createStartupPageState(
 	};
 }
 
+/** Builds state and reveals the start page panel. */
 async function showStartupPage(
 	context: vscode.ExtensionContext,
 	startPage: DoomStartPage,
@@ -603,6 +643,7 @@ async function showStartupPage(
 	startPage.show(createStartupPageState(context, mode, installDefaults));
 }
 
+/** Re-renders the start page with fresh state if it's currently open. No-op if the page was never shown. */
 function refreshStartupPageIfOpen(
 	context: vscode.ExtensionContext,
 	startPage: DoomStartPage,
@@ -620,6 +661,7 @@ function refreshStartupPageIfOpen(
 // Which-key migration
 // ---------------------------------------------------------------------------
 
+/** One-time migration: rewrites `whichkey.show` → `doom.whichKeyShow` in user vim keybindings so SPC still works after install. */
 async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
 	const config = vscode.workspace.getConfiguration();
 	const keysToCheck = [
@@ -676,8 +718,10 @@ async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
 // Extension lifecycle
 // ---------------------------------------------------------------------------
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+/**
+ * Extension entry point. Wires all commands, panel providers, and event listeners,
+ * then asynchronously persists workspace history and optionally shows the start page.
+ */
 export function activate(context: vscode.ExtensionContext) {
 	const installDefaults = getInstallDefaults(context);
 	const startPageRefreshKeys = [
@@ -689,6 +733,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyMenu = new DoomWhichKeyMenu();
 	const startPage = new DoomStartPage(context.extensionUri);
 	let startupPageRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	// Debounced refresh so rapid config changes (e.g. bulk settings apply) don't re-render on every key.
 	const scheduleStartupPageRefresh = (delayMs = 50) => {
 		if (!startPage.getCurrentMode()) {
 			return;

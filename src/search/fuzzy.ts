@@ -82,24 +82,29 @@ export class DoomFuzzySearchPanel {
 	private workspaceCache: SearchItem[] | undefined;
 	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
 
+	/** Switches to editor mode and seeds search state from the active editor. Returns false if no editor is open. */
 	prepareShow(): boolean {
 		this.mode = 'editor';
 		return this.initializeFromActiveEditor({ notifyWhenMissing: true, resetQuery: true });
 	}
 
+	/** Switches to workspace mode and primes state for a workspace search. Returns false if no folder is open. */
 	prepareShowWorkspace(): boolean {
 		this.mode = 'workspace';
 		return this.initializeWorkspaceSearch({ notifyWhenMissing: true, resetQuery: true });
 	}
 
+	/** Kicks off workspace file loading in the background after the panel is shown. */
 	async loadPreparedWorkspaceItems(): Promise<void> {
 		await this.loadWorkspaceItems();
 	}
 
+	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
 	attachToView(webviewView: vscode.WebviewView): void {
 		this.resolveWebviewView(webviewView);
 	}
 
+	/** Tears down listeners, restores the original editor selection if search was cancelled, and clears the view ref. */
 	detachFromView(): void {
 		this.restoreSelectionIfNeeded();
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
@@ -108,6 +113,7 @@ export class DoomFuzzySearchPanel {
 		this.ready = false;
 	}
 
+	/** Moves the active result by `delta` rows and live-previews the line in editor mode. No-op at list boundaries. */
 	async moveSelection(delta: number): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
@@ -129,6 +135,7 @@ export class DoomFuzzySearchPanel {
 		this.render();
 	}
 
+	/** Confirms the active result: opens the file/line and closes the panel. Sets `accepted` to suppress selection restore. */
 	async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
@@ -148,6 +155,10 @@ export class DoomFuzzySearchPanel {
 		await this.close();
 	}
 
+	/**
+	 * Bootstraps a WebviewView: injects HTML, wires dispose/visibility/message listeners.
+	 * Re-entrant — cleans up previous listeners first, so safe to call on view recycle.
+	 */
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -182,10 +193,12 @@ export class DoomFuzzySearchPanel {
 		);
 	}
 
+	/** Syncs the `doom.fuzzySearchVisible` context key so keybindings can scope to panel visibility. */
 	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
 		await vscode.commands.executeCommand('setContext', DoomFuzzySearchPanel.visibleContextKey, isVisible);
 	}
 
+	/** Re-initializes and re-renders when the panel becomes visible again — handles both modes. */
 	private async refreshVisibleSearch(): Promise<void> {
 		this.updateViewMetadata();
 		if (this.mode === 'workspace') {
@@ -205,6 +218,7 @@ export class DoomFuzzySearchPanel {
 		this.render();
 	}
 
+	/** Stamps mode-appropriate title and description onto the sidebar pane header. */
 	private updateViewMetadata(): void {
 		if (!this.view) {
 			return;
@@ -220,6 +234,11 @@ export class DoomFuzzySearchPanel {
 		this.view.description = 'Search current file';
 	}
 
+	/**
+	 * Resets all search state and loads lines from the currently active editor.
+	 * Snapshots the starting selection so it can be restored on cancel.
+	 * Returns false (and optionally notifies) when no editor is open.
+	 */
 	private initializeFromActiveEditor(options: SearchOptions = {}): boolean {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor) {
@@ -252,6 +271,10 @@ export class DoomFuzzySearchPanel {
 		return true;
 	}
 
+	/**
+	 * Resets state for a fresh workspace search. Items are empty until `loadWorkspaceItems` resolves.
+	 * Returns false (and optionally notifies) when no workspace folder exists.
+	 */
 	private initializeWorkspaceSearch(options: SearchOptions = {}): boolean {
 		if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
 			this.accepted = false;
@@ -283,6 +306,7 @@ export class DoomFuzzySearchPanel {
 		return true;
 	}
 
+	/** Splits a document into trimmed, non-empty line items for editor-mode search. */
 	private buildDocumentItems(document: vscode.TextDocument): SearchItem[] {
 		const lines = document.getText().split(/\r?\n/);
 
@@ -298,6 +322,11 @@ export class DoomFuzzySearchPanel {
 
 	private static readonly loadBatchSize = 20;
 
+	/**
+	 * Finds all workspace files, loads them in batches, then caches the result.
+	 * Uses `loadSequence` to abandon stale loads when a new search is triggered mid-flight.
+	 * Cache is invalidated by a filesystem watcher on any create/delete/change.
+	 */
 	private async loadWorkspaceItems(): Promise<void> {
 		if (this.workspaceCache) {
 			this.loading = false;
@@ -348,6 +377,7 @@ export class DoomFuzzySearchPanel {
 		this.render();
 	}
 
+	/** Loads a single file's lines, silently skipping files that are oversized, non-file, or unreadable. */
 	private async loadFileItems(uri: vscode.Uri): Promise<SearchItem[]> {
 		let stat: vscode.FileStat | undefined;
 		try {
@@ -367,6 +397,7 @@ export class DoomFuzzySearchPanel {
 		}
 	}
 
+	/** Same as `buildDocumentItems` but attaches `fileLabel` and `uri` for workspace-mode navigation. */
 	private buildWorkspaceItems(document: vscode.TextDocument): SearchItem[] {
 		const lines = document.getText().split(/\r?\n/);
 		const fileLabel = vscode.workspace.asRelativePath(document.uri, false);
@@ -383,6 +414,11 @@ export class DoomFuzzySearchPanel {
 			.filter((item) => item.text.length > 0);
 	}
 
+	/**
+	 * Applies fuzzy filter to `currentItems` and caps results at 200.
+	 * Editor mode: shows first 200 lines unranked for queries < 2 chars, then sorts by line number.
+	 * Workspace mode: shows nothing until 2+ chars are typed, then groups by file via `groupWorkspaceMatches`.
+	 */
 	private filterItems(): void {
 		this.activeIndex = 0;
 		const query = this.query.trim().toLowerCase();
@@ -430,6 +466,7 @@ export class DoomFuzzySearchPanel {
 				.slice(0, 200);
 	}
 
+	/** Groups matches by file (alphabetically), with lines within each file sorted by line number. */
 	private groupWorkspaceMatches(matches: SearchMatch[]): SearchMatch[] {
 		const groups = new Map<string, { fileLabel: string; matches: SearchMatch[] }>();
 
@@ -452,6 +489,7 @@ export class DoomFuzzySearchPanel {
 			.flatMap((group) => group.matches.sort((left, right) => left.item.line - right.item.line));
 	}
 
+	/** Dispatches webview messages. `query` also triggers a live editor preview of the first result. */
 	private async handleMessage(message: SearchMessage): Promise<void> {
 		switch (message.type) {
 		case 'ready':
@@ -498,6 +536,7 @@ export class DoomFuzzySearchPanel {
 		}
 	}
 
+	/** Scrolls the target editor to `line` and moves the cursor there for live preview during navigation. */
 	private async revealEditorLine(line: number): Promise<void> {
 		const editor = this.targetEditor;
 		if (!editor) {
@@ -510,6 +549,7 @@ export class DoomFuzzySearchPanel {
 		editor.selection = new vscode.Selection(position, position);
 	}
 
+	/** Opens a workspace file in a non-preview editor tab and jumps to the matched line. */
 	private async openWorkspaceItem(item: SearchItem): Promise<void> {
 		if (!item.uri) {
 			return;
@@ -526,6 +566,7 @@ export class DoomFuzzySearchPanel {
 		editor.selection = new vscode.Selection(position, position);
 	}
 
+	/** Builds the full SearchState and pushes it to the webview. Guards against rendering before 'ready'. */
 	private render(): void {
 		if (!this.view || !this.ready || !this.view.visible) {
 			return;
@@ -558,6 +599,7 @@ export class DoomFuzzySearchPanel {
 		});
 	}
 
+	/** Converts filtered matches to the render model. In workspace mode inserts file header rows on group boundaries. */
 	private toRenderItems(): SearchRenderItem[] {
 		if (this.mode !== 'workspace') {
 			return this.filteredItems.map((entry, index) => ({
@@ -594,6 +636,7 @@ export class DoomFuzzySearchPanel {
 		return items;
 	}
 
+	/** Returns the "N/M" status string — workspace uses match count, editor uses absolute line number. */
 	private getStatusLabel(): string {
 		if (this.mode === 'workspace') {
 			const total = this.filteredItems.length;
@@ -609,6 +652,7 @@ export class DoomFuzzySearchPanel {
 		return activeItem ? `${activeItem.line + 1}/${totalLines}` : `0/${totalLines}`;
 	}
 
+	/** Computes a fixed CSS `ch` width for the status column so it never causes layout shift as numbers change. */
 	private getStatusWidthCh(): number {
 		if (this.mode === 'workspace') {
 			const total = Math.max(this.filteredItems.length, 0);
@@ -621,6 +665,7 @@ export class DoomFuzzySearchPanel {
 		return digits * 2 + 1;
 	}
 
+	/** Returns the appropriate empty-state message depending on load state, mode, and query length. */
 	private getEmptyText(): string {
 		if (this.loading) {
 			return 'Loading project files...';
@@ -633,10 +678,12 @@ export class DoomFuzzySearchPanel {
 		return 'No matches.';
 	}
 
+	/** Returns the workspace name for UI labels, falling back to 'workspace' if unnamed. */
 	private getWorkspaceLabel(): string {
 		return vscode.workspace.name ?? 'workspace';
 	}
 
+	/** Scrolls the editor back to the pre-search cursor position when the user dismisses without confirming. */
 	private restoreSelectionIfNeeded(): void {
 		if (this.mode !== 'editor' || this.accepted || !this.startingSelection || !this.targetEditor) {
 			return;
@@ -647,10 +694,15 @@ export class DoomFuzzySearchPanel {
 		this.targetEditor.selection = this.startingSelection;
 	}
 
+	/** Collapses the bottom panel — keeps the webview alive so state survives the next open. */
 	private async close(): Promise<void> {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
 
+	/**
+	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
+	 * The embedded script owns all DOM interaction and communicates exclusively via postMessage.
+	 */
 	private getHtml(webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const csp = [
@@ -863,6 +915,7 @@ export class DoomFuzzySearchPanel {
 		const status = document.getElementById('status');
 		let items = [];
 
+		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
 		function appendHighlightedText(container, text, matches) {
 			if (!matches || matches.length === 0) {
 				container.textContent = text;
@@ -893,6 +946,7 @@ export class DoomFuzzySearchPanel {
 			}
 		}
 
+		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump. Inserts header divs for workspace file groups.
 		function render(state) {
 			items = state.items;
 			document.title = state.title;

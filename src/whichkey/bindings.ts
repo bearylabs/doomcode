@@ -20,10 +20,12 @@ export interface WhichKeyBinding {
 // Binding validation and lookup
 // ---------------------------------------------------------------------------
 
+/** Guards against null — `typeof null === 'object'` would otherwise pass. */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
 }
 
+/** Minimal structural check — intentionally loose so unknown extra fields pass through. */
 function isWhichKeyBinding(value: unknown): value is WhichKeyBinding {
 	if (!isRecord(value)) {
 		return false;
@@ -34,6 +36,7 @@ function isWhichKeyBinding(value: unknown): value is WhichKeyBinding {
 		&& typeof value.type === 'string';
 }
 
+/** Reads `whichkey.bindings` from workspace config and filters out malformed entries. */
 export function getConfiguredWhichKeyBindings(): WhichKeyBinding[] {
 	const configured = vscode.workspace.getConfiguration().get<unknown>('whichkey.bindings', []);
 
@@ -48,6 +51,11 @@ export function getConfiguredWhichKeyBindings(): WhichKeyBinding[] {
 // Binding execution
 // ---------------------------------------------------------------------------
 
+/**
+ * Executes a VS Code command with correct argument spreading.
+ * Array args are spread as positional params; single args pass as-is; missing args omitted entirely
+ * so commands that inspect `arguments.length` behave correctly.
+ */
 export function executeConfiguredCommand(command: string, arg?: unknown): Thenable<unknown> {
 	if (Array.isArray(arg)) {
 		return vscode.commands.executeCommand(command, ...arg);
@@ -60,6 +68,11 @@ export function executeConfiguredCommand(command: string, arg?: unknown): Thenab
 	return vscode.commands.executeCommand(command);
 }
 
+/**
+ * Runs a binding's command(s) in sequence, awaiting each before the next.
+ * For `commands`, args are positionally matched by index — missing args silently become undefined.
+ * `afterCommand` fires after each successful execution, useful for telemetry or menu state updates.
+ */
 export async function executeWhichKeyBindingCommands(
 	binding: Pick<WhichKeyBinding, 'args' | 'command' | 'commands'>,
 	afterCommand?: (command: string, arg: unknown) => void

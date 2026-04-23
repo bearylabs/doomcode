@@ -53,6 +53,7 @@ interface OpenEditorMessage {
 	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
 }
 
+/** Formats a view column number as a short group label, e.g. column 2 → "G2". */
 function viewColumnToGroupLabel(viewColumn: vscode.ViewColumn): string {
 	return `G${viewColumn}`;
 }
@@ -61,6 +62,7 @@ function viewColumnToGroupLabel(viewColumn: vscode.ViewColumn): string {
 // Tab metadata helpers
 // ---------------------------------------------------------------------------
 
+/** Returns a workspace-relative path for file URIs; falls back to uri.path or full URI string for other schemes. */
 function getRelativeLabel(uri: vscode.Uri): string {
 	if (uri.scheme === 'file') {
 		return vscode.workspace.asRelativePath(uri, false);
@@ -69,6 +71,7 @@ function getRelativeLabel(uri: vscode.Uri): string {
 	return uri.path.length > 0 ? uri.path : uri.toString(true);
 }
 
+/** Returns workspace name, falling back to first folder name, then 'workspace'. */
 function getWorkspaceLabel(): string {
 	const namedWorkspace = vscode.workspace.name?.trim();
 	if (namedWorkspace) {
@@ -79,6 +82,7 @@ function getWorkspaceLabel(): string {
 	return firstFolder && firstFolder.length > 0 ? firstFolder : 'workspace';
 }
 
+/** Extracts an uppercase extension (up to 6 chars) from a file URI, or the URI scheme for non-file URIs. */
 function inferKindFromUri(uri: vscode.Uri, fallback = 'Text'): string {
 	if (uri.scheme !== 'file') {
 		return uri.scheme.slice(0, 6) || fallback;
@@ -94,6 +98,7 @@ function inferKindFromUri(uri: vscode.Uri, fallback = 'Text'): string {
 	return basename.slice(dotIndex + 1, dotIndex + 7).toUpperCase();
 }
 
+/** Dispatches on tab input type to extract a human-readable description, kind badge, and searchable text. */
 function getTabInputDetails(tab: vscode.Tab): { description: string; kind: string; searchText: string } {
 	const input = tab.input;
 
@@ -169,6 +174,10 @@ function getTabInputDetails(tab: vscode.Tab): { description: string; kind: strin
 	};
 }
 
+/**
+ * Checks if a URI is read-only. Uses VS Code's `isWritableFileSystem` first;
+ * for local files, falls back to `fs.accessSync` since the API can return undefined.
+ */
 function isUriReadonly(uri: vscode.Uri): boolean {
 	const isWritable = vscode.workspace.fs.isWritableFileSystem(uri.scheme);
 	if (isWritable === false) {
@@ -187,6 +196,7 @@ function isUriReadonly(uri: vscode.Uri): boolean {
 	}
 }
 
+/** Dispatches on tab input type to determine read-only status. Terminals and diffs are always read-only. */
 function isTabReadonly(tab: vscode.Tab): boolean {
 	const input = tab.input;
 
@@ -213,10 +223,12 @@ function isTabReadonly(tab: vscode.Tab): boolean {
 	return false;
 }
 
+/** Returns true for `vscode-remote://` URIs (SSH, Codespaces, WSL, etc.). */
 function isRemoteUri(uri: vscode.Uri): boolean {
 	return uri.scheme === 'vscode-remote';
 }
 
+/** Dispatches on tab input type to check if any associated URI is remote. */
 function isTabRemote(tab: vscode.Tab): boolean {
 	const input = tab.input;
 
@@ -243,6 +255,7 @@ function isTabRemote(tab: vscode.Tab): boolean {
 	return false;
 }
 
+/** Returns a 3-char vim-style buffer flags string: dirty/readonly indicator, modified indicator, remote indicator. */
 function getBufferFlags(item: Pick<OpenEditorItem, 'isDirty' | 'isReadonly' | 'isRemote'>): string {
 	const primaryFlag = item.isReadonly ? '%' : item.isDirty ? '*' : '-';
 	const modifiedFlag = item.isDirty ? '*' : item.isReadonly ? '%' : '-';
@@ -250,6 +263,7 @@ function getBufferFlags(item: Pick<OpenEditorItem, 'isDirty' | 'isReadonly' | 'i
 	return `${primaryFlag}${modifiedFlag}${remoteFlag}`;
 }
 
+/** Filters out Doom's own start page and internal panels so they don't appear in the buffer switcher. */
 function shouldHideFromBufferSwitcher(tab: vscode.Tab): boolean {
 	const input = tab.input;
 	if (tab.label === '*doom*') {
@@ -271,6 +285,7 @@ function shouldHideFromBufferSwitcher(tab: vscode.Tab): boolean {
 // Tab navigation helpers
 // ---------------------------------------------------------------------------
 
+/** Produces a stable, type-prefixed identity string for a tab — used to deduplicate tabs across groups and track preview state. */
 function getTabDedupKey(tab: vscode.Tab): string {
 	const input = tab.input;
 
@@ -305,6 +320,10 @@ function getTabDedupKey(tab: vscode.Tab): string {
 	return `unknown:${tab.label}`;
 }
 
+/**
+ * Focuses the tab's group then steps forward or backward through tabs (whichever is shorter)
+ * until the target tab is active. Returns true only if the correct tab ends up active.
+ */
 async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
 	const group = tab.group;
 	const targetGroup = group.viewColumn;
@@ -345,6 +364,7 @@ async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
 	return freshGroup?.activeTab !== undefined && getTabDedupKey(freshGroup.activeTab) === getTabDedupKey(tab);
 }
 
+/** Moves the currently active editor to `targetGroup` via the `moveActiveEditor` command. Returns false if the move didn't land. */
 async function moveActiveEditorToGroup(targetGroup: vscode.ViewColumn): Promise<boolean> {
 	const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
 	if (!activeTab) {
@@ -367,6 +387,7 @@ async function moveActiveEditorToGroup(targetGroup: vscode.ViewColumn): Promise<
 		&& getTabDedupKey(newActiveGroup.activeTab) === getTabDedupKey(activeTab);
 }
 
+/** Checks whether a specific terminal tab (matched by label) is currently active in the given group. */
 function isTerminalTabActiveInGroup(targetGroup: vscode.ViewColumn, label: string): boolean {
 	const activeGroup = vscode.window.tabGroups.activeTabGroup;
 	return activeGroup.viewColumn === targetGroup
@@ -374,6 +395,10 @@ function isTerminalTabActiveInGroup(targetGroup: vscode.ViewColumn, label: strin
 		&& activeGroup.activeTab.label === label;
 }
 
+/**
+ * Moves a terminal tab to `targetGroup`. Tries `moveActiveEditor` first; if that fails,
+ * falls back to the terminal panel → editor-area dance via `moveToTerminalPanel` / `moveToEditor`.
+ */
 async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
 	if (!(tab.input instanceof vscode.TabInputTerminal)) {
 		return false;
@@ -396,6 +421,7 @@ async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.Vi
 	return isTerminalTabActiveInGroup(targetGroup, tab.label);
 }
 
+/** Opens a tab in `targetGroup` with default options (non-preview, take focus). */
 async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
 	return openTabInGroupWithOptions(tab, targetGroup, {
 		preserveFocus: false,
@@ -403,6 +429,7 @@ async function openTabInGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): 
 	});
 }
 
+/** Dispatches on tab input type to open it in `targetGroup` via the appropriate VS Code command. Returns false for unsupported input types (e.g. terminals). */
 async function openTabInGroupWithOptions(
 	tab: vscode.Tab,
 	targetGroup: vscode.ViewColumn,
@@ -465,6 +492,7 @@ export class DoomOpenEditorsPanel {
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
+	/** Snapshots the active tab for post-cancel restore, resets state, and loads current open editors. */
 	prepareShow(resetQuery = true): void {
 		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		this.accepted = false;
@@ -479,10 +507,12 @@ export class DoomOpenEditorsPanel {
 		this.refreshItems();
 	}
 
+	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
 	attachToView(webviewView: vscode.WebviewView): void {
 		this.resolveWebviewView(webviewView);
 	}
 
+	/** Tears down listeners and clears the view reference without destroying the panel instance. */
 	detachFromView(): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -490,6 +520,10 @@ export class DoomOpenEditorsPanel {
 		this.ready = false;
 	}
 
+	/**
+	 * Bootstraps the WebviewView: injects HTML, wires dispose/visibility/tab-change/message listeners.
+	 * Also subscribes to `onDidChangeTabs` so the list stays live while the panel is open.
+	 */
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -529,6 +563,7 @@ export class DoomOpenEditorsPanel {
 		);
 	}
 
+	/** Stamps the panel title and workspace name onto the sidebar pane header. */
 	private updateViewMetadata(): void {
 		if (!this.view) {
 			return;
@@ -538,6 +573,7 @@ export class DoomOpenEditorsPanel {
 		this.view.description = getWorkspaceLabel();
 	}
 
+	/** Rebuilds the flat item list from all tab groups, deduplicating by key and skipping hidden tabs. */
 	private refreshItems(): void {
 		const items: OpenEditorItem[] = [];
 		const seen = new Set<string>();
@@ -575,6 +611,10 @@ export class DoomOpenEditorsPanel {
 		this.filterItems();
 	}
 
+	/**
+	 * Fuzzy-filters items by `searchText` but highlights matches against `label` only.
+	 * Empty query shows all tabs unranked. Clamps `activeIndex` to stay in bounds.
+	 */
 	private filterItems(): void {
 		const query = this.query.trim().toLowerCase();
 		const matches = this.items
@@ -617,6 +657,7 @@ export class DoomOpenEditorsPanel {
 			: Math.min(this.activeIndex, this.matches.length - 1);
 	}
 
+	/** Dispatches webview messages. Query and move changes also trigger a live preview of the active item. */
 	private async handleMessage(message: OpenEditorMessage): Promise<void> {
 		switch (message.type) {
 			case 'ready':
@@ -656,6 +697,10 @@ export class DoomOpenEditorsPanel {
 		}
 	}
 
+	/**
+	 * Opens the selected tab in `targetGroup`. Falls back to `revealExistingTab` for unsupported
+	 * input types, then attempts to move it to the target group. Shows a warning if the move fails.
+	 */
 	private async activateSelection(): Promise<void> {
 		const match = this.matches[this.activeIndex];
 		if (!match) {
@@ -716,6 +761,7 @@ export class DoomOpenEditorsPanel {
 		await this.close();
 	}
 
+	/** Opens the active match as a preview (preserveFocus) in the target group. Skips if already previewing the same tab. */
 	private async previewSelection(): Promise<void> {
 		const match = this.matches[this.activeIndex];
 		if (!match) {
@@ -739,6 +785,10 @@ export class DoomOpenEditorsPanel {
 		this.lastPreviewKey = previewKey;
 	}
 
+	/**
+	 * On cancel, reopens the tab that was active before the panel opened.
+	 * If that tab is gone, closes the previewed editor instead to leave the group clean.
+	 */
 	private async restorePreviewIfNeeded(): Promise<void> {
 		if (this.accepted || !this.lastPreviewKey) {
 			return;
@@ -779,11 +829,13 @@ export class DoomOpenEditorsPanel {
 		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 	}
 
+	/** Closes the panel then restores the pre-search editor state if the user cancelled. */
 	private async close(): Promise<void> {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 		await this.restorePreviewIfNeeded();
 	}
 
+	/** Serializes current match/index state and posts it to the webview. Guards against rendering before 'ready'. */
 	private render(): void {
 		if (!this.view || !this.ready || !this.view.visible) {
 			return;
@@ -814,6 +866,10 @@ export class DoomOpenEditorsPanel {
 		});
 	}
 
+	/**
+	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
+	 * The embedded script owns all DOM interaction and communicates exclusively via postMessage.
+	 */
 	private getHtml(webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const csp = [
@@ -1000,6 +1056,7 @@ export class DoomOpenEditorsPanel {
 		const status = document.getElementById('status');
 		let items = [];
 
+		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
 		function appendHighlightedText(container, text, matches) {
 			if (!matches || matches.length === 0) {
 				container.textContent = text;
@@ -1030,6 +1087,7 @@ export class DoomOpenEditorsPanel {
 			}
 		}
 
+		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump.
 		function render(state) {
 			items = state.items;
 			document.title = state.title;

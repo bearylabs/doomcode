@@ -28,6 +28,7 @@ export interface ApplyDefaultsResult {
 	total: number;
 }
 
+/** Extracts a human-readable reason from a caught error, falling back to 'Unknown error'. */
 function getErrorReason(error: unknown): string {
 	if (error instanceof Error && error.message.trim().length > 0) {
 		return error.message;
@@ -40,6 +41,7 @@ function getErrorReason(error: unknown): string {
 	return 'Unknown error';
 }
 
+/** Returns true if the user has set this key at any scope — used to skip overwriting intentional user config. */
 export function hasUserOwnedSettingValue(inspected: SettingInspectLike<unknown> | undefined): boolean {
 	if (!inspected) {
 		return false;
@@ -53,6 +55,11 @@ export function hasUserOwnedSettingValue(inspected: SettingInspectLike<unknown> 
 		|| inspected.workspaceFolderLanguageValue !== undefined;
 }
 
+/**
+ * Writes each default setting to `config` at `target`, skipping keys the user already owns
+ * and marking keys not recognised by VS Code as unsupported. Per-key errors are collected
+ * rather than thrown so one bad setting can't abort the whole install.
+ */
 export async function applyDefaultsToConfiguration(
 	config: ConfigurationLike,
 	defaults: Record<string, unknown>,
@@ -99,6 +106,11 @@ export async function applyDefaultsToConfiguration(
 	};
 }
 
+/**
+ * Orchestrates the install UX: confirms with the user first, then delegates to `applyDefaults`.
+ * Returns undefined if the user cancels, otherwise returns the apply result.
+ * Kept side-effect-free at this level so callers can inject the confirm/apply behaviour for testing.
+ */
 export async function runInstallFlow(
 	confirmInstall: () => Promise<boolean>,
 	applyDefaults: () => Promise<ApplyDefaultsResult>,

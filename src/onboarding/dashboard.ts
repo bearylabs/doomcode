@@ -75,6 +75,7 @@ const ASCII_HEADER = [
 	" `''                                                                      ``'",
 ].join('\n');
 
+/** Escapes the five HTML special chars. Used before inserting user-controlled strings into HTML. */
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')
@@ -84,6 +85,7 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+/** Converts inline backtick code and `[text](url)` links to HTML. Input must be pre-escaped. */
 function renderInlineMarkdown(value: string): string {
 	const escaped = escapeHtml(value);
 
@@ -92,6 +94,10 @@ function renderInlineMarkdown(value: string): string {
 		.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2">$1</a>');
 }
 
+/**
+ * Slices the `## [x.y.z]` section for `currentVersion` out of a CHANGELOG.md.
+ * Falls back to the full changelog if the version heading isn't found.
+ */
 export function extractCurrentReleaseNotes(changelogMarkdown: string, currentVersion: string): string {
 	const normalized = changelogMarkdown.replace(/\r\n/g, '\n');
 	const escapedVersion = currentVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -114,12 +120,17 @@ export function extractCurrentReleaseNotes(changelogMarkdown: string, currentVer
 	return remaining.slice(0, versionMatch[0].length + nextSectionMatch.index).trim();
 }
 
+/**
+ * Converts a markdown subset (h2, h3, bullet lists, paragraphs, inline code, links) to an HTML fragment.
+ * Not a full parser — handles the specific structure of Doom's release notes and config docs.
+ */
 export function renderMarkdownFragment(markdown: string): string {
 	const lines = markdown.replace(/\r\n/g, '\n').split('\n');
 	const parts: string[] = [];
 	let inList = false;
 	let paragraphLines: string[] = [];
 
+	// Drains accumulated paragraph lines into a <p> tag and resets the buffer.
 	const flushParagraph = () => {
 		if (paragraphLines.length === 0) {
 			return;
@@ -129,6 +140,7 @@ export function renderMarkdownFragment(markdown: string): string {
 		paragraphLines = [];
 	};
 
+	// Closes an open <ul> if one is in progress.
 	const closeList = () => {
 		if (!inList) {
 			return;
@@ -190,6 +202,7 @@ type StartPageMessage = {
 	vscodeCommand?: string;
 };
 
+/** Casts an unknown value to a typed binding node array, filtering out non-objects. */
 function asBindingNodes(value: unknown): WhichKeyBindingNode[] {
 	if (!Array.isArray(value)) {
 		return [];
@@ -198,6 +211,10 @@ function asBindingNodes(value: unknown): WhichKeyBindingNode[] {
 	return value.filter((entry): entry is WhichKeyBindingNode => entry !== null && typeof entry === 'object');
 }
 
+/**
+ * Walks a which-key binding tree by key path and returns the terminal command node.
+ * For conditional nodes, falls back to the entry with an empty key (the 'default' branch).
+ */
 function resolveBindingEntry(bindings: unknown, keyPath: readonly string[]): WhichKeyBindingNode | undefined {
 	let currentBindings = asBindingNodes(bindings);
 	let currentEntry: WhichKeyBindingNode | undefined;
@@ -219,6 +236,7 @@ function resolveBindingEntry(bindings: unknown, keyPath: readonly string[]): Whi
 	return typeof defaultBinding?.command === 'string' ? defaultBinding : undefined;
 }
 
+/** Maps a list of key paths to startup commands by resolving each against the live binding tree. Missing paths are silently skipped. */
 export function resolveStartupCommandsFromBindings(
 	bindings: unknown,
 	startupCommandKeyPaths: readonly string[][],
@@ -237,6 +255,10 @@ export function resolveStartupCommandsFromBindings(
 	});
 }
 
+/**
+ * Counts how many default settings match the user's global config via deep equality.
+ * `isInstalled` is true only when every default matches (or there are no defaults at all).
+ */
 export function evaluateInstalledDefaults(
 	defaults: Record<string, unknown>,
 	inspectSetting: (key: string) => { globalValue?: unknown } | undefined,
@@ -253,6 +275,7 @@ export function evaluateInstalledDefaults(
 	};
 }
 
+/** Returns 'welcome' on first install, 'update' when version changed, 'startup' on normal launch. */
 export function detectStartPageMode(previousVersion: string | undefined, currentVersion: string): StartPageMode {
 	if (!previousVersion) {
 		return 'welcome';
@@ -267,11 +290,13 @@ export class DoomStartPage {
 
 	constructor(private readonly extensionUri: vscode.Uri) { }
 
+	/** Creates or reuses the panel, renders state, and reveals it in column one. */
 	show(state: DoomStartPageState): void {
 		const panel = this.getOrCreatePanel();
 		this.updatePanel(panel, state, true);
 	}
 
+	/** Re-renders into an existing panel without revealing it. No-op if the panel was closed. */
 	refresh(state: DoomStartPageState): void {
 		if (!this.panel) {
 			return;
@@ -280,10 +305,12 @@ export class DoomStartPage {
 		this.updatePanel(this.panel, state, false);
 	}
 
+	/** Returns the mode of the last rendered state, or undefined if the panel has never been shown. */
 	getCurrentMode(): StartPageMode | undefined {
 		return this.lastState?.mode;
 	}
 
+	/** Returns the existing panel or creates a new one, wiring dispose/visibility/message handlers. */
 	private getOrCreatePanel(): vscode.WebviewPanel {
 		if (this.panel) {
 			return this.panel;
@@ -317,11 +344,13 @@ export class DoomStartPage {
 		return panel;
 	}
 
+	/** Returns the panel tab title. State param reserved for future mode-specific titles. */
 	private getTitle(state: DoomStartPageState): string {
 		void state;
 		return '*doom*';
 	}
 
+	/** Stamps new HTML onto the panel and optionally brings it to the foreground. */
 	private updatePanel(panel: vscode.WebviewPanel, state: DoomStartPageState, reveal: boolean): void {
 		this.lastState = state;
 		panel.title = this.getTitle(state);
@@ -332,6 +361,7 @@ export class DoomStartPage {
 		}
 	}
 
+	/** Dispatches webview button clicks to VS Code commands or settings updates. */
 	private async handleMessage(message: StartPageMessage): Promise<void> {
 		switch (message.command) {
 			case 'executeCommand':
@@ -368,6 +398,7 @@ export class DoomStartPage {
 		}
 	}
 
+	/** Builds the full start-page HTML from state. Nonce-locked CSP, no external resources. */
 	private render(state: DoomStartPageState, webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const staleBindingsFound = state.hasStaleSettings || state.hasStaleKeybindings;
@@ -710,6 +741,7 @@ export class DoomStartPage {
 </html>`;
 	}
 
+	/** Returns the small uppercase label above the ASCII header — blank for normal startup. */
 	private getEyebrow(state: DoomStartPageState): string {
 		switch (state.mode) {
 			case 'welcome':
@@ -721,10 +753,12 @@ export class DoomStartPage {
 		}
 	}
 
+	/** Instance wrapper around the module-level `escapeHtml` for use inside template expressions. */
 	private escapeHtml(value: string): string {
 		return escapeHtml(value);
 	}
 
+	/** Returns a named SVG icon for known commands, falling back to a generic dot for unknown ones. */
 	private getStartupCommandIcon(entry: StartPageCommand): string {
 		return START_PAGE_COMMAND_ICONS[entry.label] ?? '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.75" fill="currentColor"/></svg>';
 	}
