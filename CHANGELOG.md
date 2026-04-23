@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Which-key menu closes when focus moves to an editor, terminal, or any other panel
 - Git whichkey: `SPC g [` jump to previous hunk, `SPC g ]` jump to next hunk
 - Default scrollbar hidden (`editor.scrollbar.vertical/horizontal: hidden`)
 - SCM diff decorations default to gutter only (`scm.diffDecorations: gutter`)

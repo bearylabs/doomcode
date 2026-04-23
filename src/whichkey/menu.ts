@@ -613,6 +613,11 @@ export class DoomWhichKeyMenu {
 			}),
 			webviewView.webview.onDidReceiveMessage((message: WebviewMessage) => {
 				void this.handleMessage(message);
+			}),
+			vscode.window.onDidChangeActiveTextEditor(() => {
+				if (this.isShowing) {
+					void this.close();
+				}
 			})
 		);
 	}
@@ -747,6 +752,7 @@ export class DoomWhichKeyMenu {
 	private async close(): Promise<void> {
 		this.isShowing = false;
 		this.hostPendingKeys = [];
+		void this.view?.webview.postMessage({ type: 'hide' });
 		await this.updateVisibilityContext(false);
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
@@ -936,6 +942,8 @@ export class DoomWhichKeyMenu {
 		const path = document.getElementById('path');
 		let items = [];
 		let pendingKeys = [];
+		let blurEnabled = false;
+		let blurTimer = null;
 
 		function updateGridRowCount() {
 			if (items.length === 0) {
@@ -1016,7 +1024,12 @@ export class DoomWhichKeyMenu {
 
 		window.addEventListener('message', (event) => {
 			if (event.data.type === 'render') {
+				clearTimeout(blurTimer);
+				blurTimer = setTimeout(() => { blurEnabled = true; }, 200);
 				render(event.data.state);
+			} else if (event.data.type === 'hide') {
+				clearTimeout(blurTimer);
+				blurEnabled = false;
 			}
 		});
 
@@ -1058,6 +1071,12 @@ export class DoomWhichKeyMenu {
 		});
 
 		window.addEventListener('resize', updateGridRowCount);
+
+		window.addEventListener('blur', () => {
+			if (blurEnabled) {
+				vscode.postMessage({ type: 'close' });
+			}
+		});
 
 		vscode.postMessage({ type: 'ready' });
 	</script>
