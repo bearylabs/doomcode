@@ -858,35 +858,22 @@
               "type": "bindings",
               "bindings": [
                 {
+                  "key": "a",
+                  "name": "Open Claude chat",
+                  "type": "command",
+                  "command": "claude-vscode.primaryEditor.open"
+                },
+                {
                   "key": "c",
-                  "name": "Open Codex Chat",
+                  "name": "Open Codex chat",
                   "type": "command",
                   "command": "chatgpt.openSidebar"
                 },
                 {
-                  "key": "a",
-                  "name": "Toggle Copilot Chat",
-                  "type": "conditional",
-                  "bindings": [
-                    {
-                      "key": "",
-                      "name": "default",
-                      "type": "command",
-                      "command": "workbench.action.chat.open"
-                    },
-                    {
-                      "key": "when:view.workbench.panel.chat.view.copilot.visible",
-                      "name": "Close Copilot Chat",
-                      "type": "command",
-                      "command": "workbench.action.closeAuxiliaryBar"
-                    }
-                  ]
-                },
-                {
                   "key": "g",
-                  "name": "Open Gemini Chat",
+                  "name": "Open Copilot chat",
                   "type": "command",
-                  "command": "cloudcode.gemini.chatView.focus"
+                  "command": "workbench.action.openChat"
                 }
               ]
             },
@@ -1664,15 +1651,6 @@
           "when": "editorHasSelection"
         },
         "when": "whichkeyVisible && editorHasSelection"
-      },
-      {
-        "key": "a",
-        "command": "whichkey.triggerKey",
-        "args": {
-          "key": "a",
-          "when": "view.workbench.panel.chat.view.copilot.visible"
-        },
-        "when": "whichkeyVisible && view.workbench.panel.chat.view.copilot.visible"
       },
       {
         "key": "b",
