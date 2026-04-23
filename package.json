@@ -98,24 +98,6 @@
         "commands": [
           "doom.whichKeyShow"
         ]
-      },
-      {
-        "before": [
-          "<alt+x>"
-        ],
-        "commands": [
-          "workbench.action.showCommands"
-        ]
-      }
-    ],
-    "vim.insertModeKeyBindings": [
-      {
-        "before": [
-          "<alt+x>"
-        ],
-        "commands": [
-          "workbench.action.showCommands"
-        ]
       }
     ],
     "vim.visualModeKeyBindingsNonRecursive": [
@@ -1568,6 +1550,11 @@
         "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible"
       },
       {
+        "key": "space",
+        "command": "doom.whichKeyShow",
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible"
+      },
+      {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
         "args": {
@@ -1578,7 +1565,7 @@
       {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus || (activeEditor && inputFocus && !editorTextFocus)) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "alt+space",
@@ -1596,7 +1583,7 @@
       {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
-        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus) && !terminalFocus && !whichkeyVisible"
+        "when": "(inDebugRepl || (view.workbench.panel.markers.view.visible && inputFocus) || vim.mode == 'Insert' || (activeAuxiliary && !inputFocus && !sideBarFocus) || auxiliaryBarFocus || (activeEditor && inputFocus && !editorTextFocus)) && !terminalFocus && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
