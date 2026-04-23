@@ -79,6 +79,8 @@ export class DoomFuzzySearchPanel {
 	private targetEditor: vscode.TextEditor | undefined;
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
+	private workspaceCache: SearchItem[] | undefined;
+	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
 
 	prepareShow(): boolean {
 		this.mode = 'editor';
@@ -294,7 +296,17 @@ export class DoomFuzzySearchPanel {
 			.filter((item) => item.text.length > 0);
 	}
 
+	private static readonly loadBatchSize = 20;
+
 	private async loadWorkspaceItems(): Promise<void> {
+		if (this.workspaceCache) {
+			this.loading = false;
+			this.currentItems = this.workspaceCache;
+			this.filterItems();
+			this.render();
+			return;
+		}
+
 		const loadId = ++this.loadSequence;
 		this.loading = true;
 		this.render();
@@ -302,27 +314,18 @@ export class DoomFuzzySearchPanel {
 		const files = await vscode.workspace.findFiles('**/*', DoomFuzzySearchPanel.workspaceExcludeGlob);
 		const items: SearchItem[] = [];
 
-		for (const uri of files) {
+		for (let i = 0; i < files.length; i += DoomFuzzySearchPanel.loadBatchSize) {
 			if (loadId !== this.loadSequence || this.mode !== 'workspace') {
 				return;
 			}
 
-			let stat: vscode.FileStat | undefined;
-			try {
-				stat = await vscode.workspace.fs.stat(uri);
-			} catch {
-				stat = undefined;
-			}
-			if (!stat || stat.size > DoomFuzzySearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
-				continue;
-			}
+			const batch = files.slice(i, i + DoomFuzzySearchPanel.loadBatchSize);
+			const results = await Promise.allSettled(batch.map((uri) => this.loadFileItems(uri)));
 
-			try {
-				const document = await vscode.workspace.openTextDocument(uri);
-				const fileItems = this.buildWorkspaceItems(document);
-				items.push(...fileItems);
-			} catch {
-				continue;
+			for (const result of results) {
+				if (result.status === 'fulfilled') {
+					items.push(...result.value);
+				}
 			}
 		}
 
@@ -330,10 +333,38 @@ export class DoomFuzzySearchPanel {
 			return;
 		}
 
+		this.workspaceCache = items;
+		if (!this.workspaceCacheWatcher) {
+			this.workspaceCacheWatcher = vscode.workspace.createFileSystemWatcher('**/*');
+			const invalidate = (): void => { this.workspaceCache = undefined; };
+			this.workspaceCacheWatcher.onDidCreate(invalidate);
+			this.workspaceCacheWatcher.onDidDelete(invalidate);
+			this.workspaceCacheWatcher.onDidChange(invalidate);
+		}
+
 		this.loading = false;
 		this.currentItems = items;
 		this.filterItems();
 		this.render();
+	}
+
+	private async loadFileItems(uri: vscode.Uri): Promise<SearchItem[]> {
+		let stat: vscode.FileStat | undefined;
+		try {
+			stat = await vscode.workspace.fs.stat(uri);
+		} catch {
+			return [];
+		}
+		if (!stat || stat.size > DoomFuzzySearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
+			return [];
+		}
+
+		try {
+			const document = await vscode.workspace.openTextDocument(uri);
+			return this.buildWorkspaceItems(document);
+		} catch {
+			return [];
+		}
 	}
 
 	private buildWorkspaceItems(document: vscode.TextDocument): SearchItem[] {
@@ -361,7 +392,7 @@ export class DoomFuzzySearchPanel {
 			return;
 		}
 
-		if (query.length === 0) {
+		if (query.length < 2) {
 			if (this.mode === 'workspace') {
 				this.filteredItems = [];
 				return;
