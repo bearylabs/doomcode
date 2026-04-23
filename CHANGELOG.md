@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-04-23
+
+### Changed
+
+- Startup page renamed to dashboard
+
+### Fixed
+
+- Which-key menu can now be opened from settings and keyboard UI pages
+
 ## [0.2.3] - 2026-04-23
 
 ### Added
