@@ -426,32 +426,30 @@ export class DoomFuzzySearchPanel {
 		this.filteredItems = this.mode === 'workspace'
 			? this.groupWorkspaceMatches(matches).slice(0, 200)
 			: matches
-				.sort((left, right) => right.score - left.score || left.item.line - right.item.line)
+				.sort((left, right) => left.item.line - right.item.line)
 				.slice(0, 200);
 	}
 
 	private groupWorkspaceMatches(matches: SearchMatch[]): SearchMatch[] {
-		const groups = new Map<string, { fileLabel: string; matches: SearchMatch[]; topScore: number }>();
+		const groups = new Map<string, { fileLabel: string; matches: SearchMatch[] }>();
 
 		for (const match of matches) {
 			const fileLabel = match.item.fileLabel ?? '';
 			const existing = groups.get(fileLabel);
 			if (existing) {
 				existing.matches.push(match);
-				existing.topScore = Math.max(existing.topScore, match.score);
 				continue;
 			}
 
 			groups.set(fileLabel, {
 				fileLabel,
 				matches: [match],
-				topScore: match.score,
 			});
 		}
 
 		return Array.from(groups.values())
-			.sort((left, right) => right.topScore - left.topScore || left.fileLabel.localeCompare(right.fileLabel))
-			.flatMap((group) => group.matches.sort((left, right) => right.score - left.score || left.item.line - right.item.line));
+			.sort((left, right) => left.fileLabel.localeCompare(right.fileLabel))
+			.flatMap((group) => group.matches.sort((left, right) => left.item.line - right.item.line));
 	}
 
 	private async handleMessage(message: SearchMessage): Promise<void> {

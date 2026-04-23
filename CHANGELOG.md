@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - `SPC o a c` now opens Codex CLI in a terminal editor instead of the ChatGPT sidebar
+- `SPC s s` and `SPC s p` fuzzy search results now display in file order (by line number) instead of by match score
 
 ## [0.2.5] - 2026-04-23
 
