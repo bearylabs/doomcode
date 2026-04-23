@@ -58,6 +58,7 @@ interface WhichKeyTriggerBinding {
 	when: string;
 }
 
+/** Zero-value factory used as the baseline before any command executes. */
 function createTrackedUiContext(): TrackedUiContext {
 	return {
 		activePanel: '',
@@ -69,6 +70,10 @@ function createTrackedUiContext(): TrackedUiContext {
 	};
 }
 
+/**
+ * Mirrors UI state changes inferred from executed commands.
+ * VS Code has no panel-focus observation API, so we reconstruct state from side effects.
+ */
 export function applyTrackedUiContextCommand(
 	context: TrackedUiContext,
 	command: string,
@@ -134,10 +139,12 @@ export function applyTrackedUiContextCommand(
 	}
 }
 
+/** Narrows `unknown` to an object for safe property access on untyped packageJSON entries. */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
 }
 
+/** Maps literal chars to symbolic names matching the webview keydown handler. */
 function normalizeBindingKey(value: string): string {
 	if (value === '\t') {
 		return 'TAB';
@@ -150,6 +157,7 @@ function normalizeBindingKey(value: string): string {
 	return value;
 }
 
+/** Strips the optional `when:` prefix present in some binding condition formats. */
 function normalizeCondition(rawCondition: string): string {
 	const condition = rawCondition.trim();
 	return condition.startsWith('when:')
@@ -157,6 +165,10 @@ function normalizeCondition(rawCondition: string): string {
 		: condition;
 }
 
+/**
+ * Builds the evaluation environment for when-expressions.
+ * `whichkeyVisible` is hardcoded true because this only runs while the menu is open.
+ */
 function getContextValues(state: DoomWhichKeyMenu): Record<string, boolean | string> {
 	const snapshot = state.snapshot;
 	return {
@@ -174,6 +186,10 @@ function getContextValues(state: DoomWhichKeyMenu): Record<string, boolean | str
 	};
 }
 
+/**
+ * Returns `undefined` (not `[]`) on unrecoverable syntax errors.
+ * Callers treat undefined as "hide the binding" rather than "show with empty condition".
+ */
 function tokenizeWhenExpression(expression: string): string[] | undefined {
 	const tokens: string[] = [];
 	let index = 0;
@@ -233,11 +249,13 @@ class WhenExpressionParser {
 		private readonly tokens: string[],
 	) {}
 
+	/** Remaining tokens after a successful sub-parse signals a malformed expression; return false rather than silently accept. */
 	parse(): boolean {
 		const value = this.parseOr();
 		return value !== undefined && this.index === this.tokens.length ? value : false;
 	}
 
+	/** Returns `undefined` to propagate parse errors up the call stack without throwing. */
 	private parseOr(): boolean | undefined {
 		let value = this.parseAnd();
 		while (this.peek() === '||') {
@@ -253,6 +271,7 @@ class WhenExpressionParser {
 		return value;
 	}
 
+	/** Returns `undefined` to propagate parse errors up the call stack without throwing. */
 	private parseAnd(): boolean | undefined {
 		let value = this.parseUnary();
 		while (this.peek() === '&&') {
@@ -268,6 +287,7 @@ class WhenExpressionParser {
 		return value;
 	}
 
+	/** Handles `!` negation and `(...)` grouping before delegating to comparison. */
 	private parseUnary(): boolean | undefined {
 		if (this.peek() === '!') {
 			this.index += 1;
@@ -289,6 +309,7 @@ class WhenExpressionParser {
 		return this.parseComparison();
 	}
 
+	/** Bare identifier without `==`/`!=` operator is a truthy check against context values. */
 	private parseComparison(): boolean | undefined {
 		const leftToken = this.consumeIdentifier();
 		if (!leftToken) {
@@ -315,6 +336,7 @@ class WhenExpressionParser {
 		return Boolean(this.contextValues[leftToken]);
 	}
 
+	/** Rejects operators and string literals as identifier starts. */
 	private consumeIdentifier(): string | undefined {
 		const token = this.peek();
 		if (!token || token.startsWith('\'') || ['&&', '||', '==', '!=', '!', '(', ')'].includes(token)) {
@@ -325,6 +347,7 @@ class WhenExpressionParser {
 		return token;
 	}
 
+	/** Accepts both identifiers and quoted string literals as comparison RHS. */
 	private consumeValue(): string | undefined {
 		const token = this.peek();
 		if (!token || ['&&', '||', '==', '!=', '!', '(', ')'].includes(token)) {
@@ -335,11 +358,13 @@ class WhenExpressionParser {
 		return token;
 	}
 
+	/** Non-consuming lookahead at the current token. */
 	private peek(): string | undefined {
 		return this.tokens[this.index];
 	}
 }
 
+/** Empty expression is always true (binding visible); undefined tokens from tokenizer means hide binding. */
 export function evaluateWhenExpression(
 	contextValues: Record<string, boolean | string>,
 	expression: string,
@@ -357,6 +382,10 @@ export function evaluateWhenExpression(
 	return new WhenExpressionParser(contextValues, tokens).parse();
 }
 
+/**
+ * Reads package.json at runtime to discover keys routed through `whichkey.triggerKey`.
+ * Args can be a plain string (key only) or an object with an optional condition.
+ */
 function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
 	const extension = vscode.extensions.getExtension('bearylabs.doom');
 	const packageJson = extension?.packageJSON as {
@@ -389,6 +418,10 @@ function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
 	});
 }
 
+/**
+ * Returns the condition string for the first matching trigger binding.
+ * Keybinding-triggered condition wins over evaluated when-expressions to honour the exact chord that fired.
+ */
 export function selectTriggeredConditionForKey(
 	key: string,
 	contextValues: Record<string, boolean | string>,
@@ -411,6 +444,10 @@ export function selectTriggeredConditionForKey(
 // Context and render helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Blends live VS Code state with tracked state.
+ * activePanel and copilotVisible have no direct query API so they come from tracked context.
+ */
 function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 	const activeEditor = vscode.window.activeTextEditor;
 	const activeSelection = activeEditor?.selection;
@@ -433,6 +470,10 @@ function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 	};
 }
 
+/**
+ * An empty key in a binding option marks it as the fallback.
+ * Triggered condition from the fired keybinding wins over evaluated when-expressions.
+ */
 function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBinding): WhichKeyBinding | undefined {
 	const options = binding.bindings ?? [];
 	let fallback: WhichKeyBinding | undefined;
@@ -467,6 +508,10 @@ function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBin
 	return fallback;
 }
 
+/**
+ * Conditional bindings inherit the parent key so navigation stays consistent.
+ * A resolved name of 'default' means use the parent binding's display name.
+ */
 function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): RenderItem | undefined {
 	switch (binding.type) {
 	case 'bindings':
@@ -500,6 +545,7 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 	}
 }
 
+/** Per-load random nonce for the Content-Security-Policy script-src directive. */
 function getNonce(): string {
 	return Math.random().toString(36).slice(2, 12);
 }
@@ -545,10 +591,12 @@ export class DoomWhichKeyMenu {
 		return this.trackedContext;
 	}
 
+	/** Keys pressed before the webview is ready are buffered and replayed after the first render. */
 	queueKey(key: string): void {
 		this.hostPendingKeys.push(key);
 	}
 
+	/** Called before the panel opens so bindings are fresh and the navigation stack is at root. */
 	prepareShow(showContext?: Partial<ShowContext>): void {
 		this.isShowing = true;
 		this.hostPendingKeys = [];
@@ -559,10 +607,12 @@ export class DoomWhichKeyMenu {
 		this.stack = [];
 	}
 
+	/** SharedPanelController contract — called when this controller becomes active. */
 	attachToView(webviewView: vscode.WebviewView): void {
 		this.resolveWebviewView(webviewView);
 	}
 
+	/** SharedPanelController contract — disposes view-scoped listeners so the next attach starts clean. */
 	detachFromView(): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -571,11 +621,13 @@ export class DoomWhichKeyMenu {
 		this.currentItems = [];
 	}
 
+	/** Returns root bindings when the navigation stack is empty (top-level menu). */
 	private get currentLevelBindings(): WhichKeyBinding[] {
 		const current = this.stack[this.stack.length - 1];
 		return current?.bindings ?? this.currentBindings;
 	}
 
+	/** Used when the panel collapses externally; avoids a double-close if the view is already hidden. */
 	async hide(): Promise<void> {
 		if (!this.view?.visible) {
 			await this.updateVisibilityContext(false);
@@ -585,6 +637,10 @@ export class DoomWhichKeyMenu {
 		await this.close();
 	}
 
+	/**
+	 * Disposes previous listeners first — called on re-attachment (panel mode switch), not just first registration.
+	 * Also wires the `onDidChangeActiveTextEditor` fallback for focus-loss detection alongside the webview blur listener.
+	 */
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.forEach((disposable) => disposable.dispose());
 		this.viewDisposables = [];
@@ -622,6 +678,7 @@ export class DoomWhichKeyMenu {
 		);
 	}
 
+	/** Closes the menu before executing so commands see the original UI state, not the which-key overlay. */
 	async executeBinding(binding: WhichKeyBinding): Promise<void> {
 		await this.close();
 
@@ -630,6 +687,10 @@ export class DoomWhichKeyMenu {
 		});
 	}
 
+	/**
+	 * A conditional binding can resolve to another bindings group, so we push onto the navigation stack
+	 * instead of executing — this keeps back-navigation consistent with regular group traversal.
+	 */
 	private async handleMessage(message: WebviewMessage): Promise<void> {
 		if (message.type === 'ready') {
 			this.ready = true;
@@ -699,6 +760,10 @@ export class DoomWhichKeyMenu {
 		await this.executeBinding(binding);
 	}
 
+	/**
+	 * Drains one pending key per render pass; subsequent keys are handled via handleMessage → render recursion.
+	 * Pending keys let the host queue a chord before the webview is ready.
+	 */
 	private render(): void {
 		if (!this.view || !this.ready || !this.view.visible) {
 			return;
@@ -735,6 +800,7 @@ export class DoomWhichKeyMenu {
 		}
 	}
 
+	/** Intercepts `doom.bigModeEnabled` as a local flag before delegating to the shared context tracker. */
 	private trackContextCommand(command: string, arg?: unknown): void {
 		if (command !== 'setContext' || !Array.isArray(arg) || arg.length < 2) {
 			this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
@@ -749,6 +815,10 @@ export class DoomWhichKeyMenu {
 		this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 	}
 
+	/**
+	 * Posts 'hide' to the webview before closing to reset the blur guard.
+	 * Without this, the webview retains its `blurEnabled = true` state and spuriously closes on the next open.
+	 */
 	private async close(): Promise<void> {
 		this.isShowing = false;
 		this.hostPendingKeys = [];
@@ -757,10 +827,15 @@ export class DoomWhichKeyMenu {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
 
+	/** Drives the `whichkeyVisible` when-context that gates SPC and other keys routing to the menu. */
 	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
 		await vscode.commands.executeCommand('setContext', DoomWhichKeyMenu.visibleContextKey, isVisible);
 	}
 
+	/**
+	 * Generates fresh HTML with a per-load nonce on every attachment.
+	 * The blur listener is delayed 200ms post-render so VS Code can settle focus before the guard activates.
+	 */
 	private getHtml(webview: vscode.Webview): string {
 		const nonce = getNonce();
 		const csp = [
