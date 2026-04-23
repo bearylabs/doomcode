@@ -1,6 +1,6 @@
 {
   "name": "doom",
-  "displayName": "Doom Code",
+  "displayName": "Doom",
   "description": "Doom Code makes Visual Studio Code feel like Doom Emacs by applying a curated, opinionated set of settings that emphasize a fast, keyboard-first workflow and a clean, distraction-free editor.",
   "icon": "assets/icon.png",
   "version": "0.2.3",
@@ -97,6 +97,24 @@
         ],
         "commands": [
           "doom.whichKeyShow"
+        ]
+      },
+      {
+        "before": [
+          "<alt+x>"
+        ],
+        "commands": [
+          "workbench.action.showCommands"
+        ]
+      }
+    ],
+    "vim.insertModeKeyBindings": [
+      {
+        "before": [
+          "<alt+x>"
+        ],
+        "commands": [
+          "workbench.action.showCommands"
         ]
       }
     ],
@@ -1423,7 +1441,7 @@
       "window.commandCenter": false
     },
     "configuration": {
-      "title": "Doom Code",
+      "title": "Doom",
       "properties": {
         "doom.whichKey.menuStyle": {
           "type": "string",
@@ -1463,46 +1481,60 @@
     "commands": [
       {
         "command": "doom.install",
-        "title": "Install Doom Code"
+        "title": "Install",
+        "category": "Doom"
       },
       {
-        "command": "doom.showStartPage",
-        "title": "Doom Code: Show Start Page"
+        "command": "doom.dashboard",
+        "title": "Show Dashboard",
+        "category": "Doom"
       },
       {
         "command": "doom.reloadLastSession",
-        "title": "Doom Code: Reload Last Session"
+        "title": "Reload Last Session",
+        "category": "Doom"
       },
       {
         "command": "doom.cleanup",
-        "title": "Doom Code: Clean Up Stale Settings"
+        "title": "Clean Up Stale Settings",
+        "category": "Doom"
       },
       {
         "command": "doom.windowMru",
-        "title": "Doom Code: Toggle Last Editor Group"
+        "title": "Toggle Last Editor Group",
+        "category": "Doom"
       },
       {
         "command": "doom.whichKeyShow",
-        "title": "Doom Code: Show Which Key"
+        "title": "Show Which Key",
+        "category": "Doom"
       },
       {
         "command": "doom.whichKeyShowBindings",
-        "title": "Doom Code: Show Which-Key Bindings"
+        "title": "Show Which-Key Bindings",
+        "category": "Doom"
       },
       {
         "command": "doom.fuzzySearchActiveTextEditor",
-        "title": "Doom Code: Fuzzy Search in Current File"
+        "title": "Fuzzy Search in Current File",
+        "category": "Doom"
       },
       {
         "command": "doom.fuzzySearchWorkspace",
-        "title": "Doom Code: Fuzzy Search in Project"
+        "title": "Fuzzy Search in Project",
+        "category": "Doom"
       },
       {
         "command": "doom.showOpenEditors",
-        "title": "Doom Code: Switch Workspace Buffer"
+        "title": "Switch Workspace Buffer",
+        "category": "Doom"
       }
     ],
     "keybindings": [
+      {
+        "key": "alt+x",
+        "command": "workbench.action.showCommands"
+      },
       {
         "key": "tab",
         "command": "whichkey.triggerKey",

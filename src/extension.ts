@@ -4,14 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
-import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import {
 	detectStartPageMode,
 	DoomStartPage,
 	evaluateInstalledDefaults,
 	resolveStartupCommandsFromBindings,
 	START_PAGE_OPEN_ON_ACTIVATION_SETTING,
-} from './onboarding/startPage';
+} from './onboarding/dashboard';
+import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
@@ -760,7 +760,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	const showStartPageCmd = vscode.commands.registerCommand(
-		"doom.showStartPage",
+		"doom.dashboard",
 		async () => {
 			await showStartupPage(context, startPage, 'startup', installDefaults);
 		}

@@ -1,19 +1,19 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
-    computeWorkspaceHistoryUpdate,
-    resolveWindowDeleteAction,
-    selectReloadWorkspaceTarget,
-    type StoredWorkspaceTarget,
+	computeWorkspaceHistoryUpdate,
+	resolveWindowDeleteAction,
+	selectReloadWorkspaceTarget,
+	type StoredWorkspaceTarget,
 } from '../extension';
-import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
-    detectStartPageMode,
-    evaluateInstalledDefaults,
-    extractCurrentReleaseNotes,
-    renderMarkdownFragment,
-    resolveStartupCommandsFromBindings,
-} from '../onboarding/startPage';
+	detectStartPageMode,
+	evaluateInstalledDefaults,
+	extractCurrentReleaseNotes,
+	renderMarkdownFragment,
+	resolveStartupCommandsFromBindings,
+} from '../onboarding/dashboard';
+import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
 	applyTrackedUiContextCommand,
 	evaluateWhenExpression,
@@ -30,7 +30,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
 		'doom.reloadLastSession',
-		'doom.showStartPage',
+		'doom.dashboard',
 		'doom.showOpenEditors',
 		'doom.whichKeyHide',
 		'doom.whichKeyShow',
@@ -43,7 +43,7 @@ suite('Extension Test Suite', () => {
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
 		'doom.reloadLastSession',
-		'doom.showStartPage',
+		'doom.dashboard',
 		'doom.showOpenEditors',
 		'doom.whichKeyShow',
 		'doom.whichKeyShowBindings',
