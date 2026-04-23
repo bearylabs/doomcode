@@ -865,9 +865,20 @@
                 },
                 {
                   "key": "c",
-                  "name": "Open Codex chat",
+                  "name": "Open Codex",
                   "type": "command",
-                  "command": "chatgpt.openSidebar"
+                  "command": "runCommands",
+                  "args": {
+                    "commands": [
+                      "workbench.action.createTerminalEditor",
+                      {
+                        "command": "workbench.action.terminal.sendSequence",
+                        "args": {
+                          "text": "codex\n"
+                        }
+                      }
+                    ]
+                  }
                 },
                 {
                   "key": "g",
@@ -1767,12 +1778,7 @@
       {
         "key": "escape",
         "command": "workbench.action.closeSidebar",
-        "when": "(sideBarVisible && !explorerViewletVisible && !view.workbench.explorer.openEditorsView.visible)"
-      },
-      {
-        "key": "escape",
-        "command": "workbench.action.closeSidebar",
-        "when": "sideBarFocus && activeViewlet == 'workbench.view.debug' && !inputFocus"
+        "when": "(sideBarVisible && !explorerViewletVisible && !view.workbench.explorer.openEditorsView.visible && !(activeViewlet == 'workbench.view.debug'))"
       },
       {
         "key": "escape",

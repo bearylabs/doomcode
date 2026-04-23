@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `SPC o a c` now opens Codex CLI in a terminal editor instead of the ChatGPT sidebar
+
 ## [0.2.5] - 2026-04-23
 
 ### Added
