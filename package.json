@@ -1445,7 +1445,13 @@
       "workbench.editor.showTabs": "none",
       "workbench.startupEditor": "none",
       "window.commandCenter": false,
-      "magit.display-buffer-function": "same-column"
+      "magit.display-buffer-function": "same-column",
+      "scm.diffDecorations": "gutter",
+      "editor.scrollbar.verticalScrollbarSize": 0,
+      "editor.scrollbar.horizontalScrollbarSize": 0,
+      "editor.scrollbar.ignoreHorizontalScrollbarInContentHeight": true,
+      "editor.scrollbar.vertical": "hidden",
+      "editor.scrollbar.horizontal": "hidden"
     },
     "configuration": {
       "title": "Doom",

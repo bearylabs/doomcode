@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Git whichkey: `SPC g [` jump to previous hunk, `SPC g ]` jump to next hunk
+- Default scrollbar hidden (`editor.scrollbar.vertical/horizontal: hidden`)
+- SCM diff decorations default to gutter only (`scm.diffDecorations: gutter`)
+
 ## [0.2.6] - 2026-04-23
 
 ### Added
