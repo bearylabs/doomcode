@@ -1694,13 +1694,13 @@
         "when": "filesExplorerFocus && !inputFocus"
       },
       {
-        "command": "renameFile",
         "key": "shift+r",
+        "command": "renameFile",
         "when": "filesExplorerFocus && !inputFocus"
       },
       {
-        "command": "workbench.files.action.refreshFilesExplorer",
         "key": "r",
+        "command": "workbench.files.action.refreshFilesExplorer",
         "when": "filesExplorerFocus && !inputFocus"
       },
       {
@@ -1709,13 +1709,13 @@
         "when": "explorerViewletFocus && !inputFocus"
       },
       {
-        "command": "deleteFile",
         "key": "d",
+        "command": "deleteFile",
         "when": "filesExplorerFocus && !inputFocus"
       },
       {
-        "command": "workbench.action.closeActiveEditor",
         "key": "d",
+        "command": "workbench.action.closeActiveEditor",
         "when": "openEditorsFocus && !inputFocus"
       },
       {
