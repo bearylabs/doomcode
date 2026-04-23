@@ -1552,7 +1552,7 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible"
       },
       {
         "key": "alt+space",

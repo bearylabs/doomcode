@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import {
-    executeWhichKeyBindingCommands,
-    getConfiguredWhichKeyBindings,
-    type WhichKeyBinding,
+	executeWhichKeyBindingCommands,
+	getConfiguredWhichKeyBindings,
+	type WhichKeyBinding,
 } from './bindings';
 
 // ---------------------------------------------------------------------------
