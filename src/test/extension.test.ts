@@ -91,7 +91,7 @@ suite('Extension Test Suite', () => {
 		);
 		assert.strictEqual(packageJson.contributes?.configurationDefaults?.['whichkey.sortOrder'], 'none');
 		assert.deepStrictEqual(packageJson.extensionDependencies, ['vscodevim.vim', 'VSpaceCode.whichkey']);
-		assert.deepStrictEqual(packageJson.extensionPack, ['wayou.vscode-todo-highlight']);
+		assert.deepStrictEqual(packageJson.extensionPack, ['wayou.vscode-todo-highlight', 'kahole.magit']);
 	});
 
 	test('treats every user-owned scope as existing user config', () => {
