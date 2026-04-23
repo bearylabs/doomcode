@@ -782,6 +782,11 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
+			if (whichKeyMenu.isCurrentlyShowing) {
+				whichKeyMenu.queueKey('SPC');
+				return;
+			}
+
 			void sharedPanel.showWhichKeyWithContext(showContext);
 		}
 	);

@@ -517,6 +517,8 @@ export class DoomWhichKeyMenu {
 	private currentShowContext: ShowContext = {
 		terminalFocus: false,
 	};
+	private hostPendingKeys: string[] = [];
+	private isShowing = false;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
@@ -535,11 +537,21 @@ export class DoomWhichKeyMenu {
 		return this.currentShowContext;
 	}
 
+	get isCurrentlyShowing(): boolean {
+		return this.isShowing;
+	}
+
 	get trackedUiContext(): TrackedUiContext {
 		return this.trackedContext;
 	}
 
+	queueKey(key: string): void {
+		this.hostPendingKeys.push(key);
+	}
+
 	prepareShow(showContext?: Partial<ShowContext>): void {
+		this.isShowing = true;
+		this.hostPendingKeys = [];
 		this.currentShowContext = {
 			terminalFocus: showContext?.terminalFocus === true,
 		};
@@ -708,6 +720,14 @@ export class DoomWhichKeyMenu {
 			type: 'render',
 			state,
 		});
+
+		if (this.hostPendingKeys.length > 0 && this.currentItems.length > 0) {
+			const key = this.hostPendingKeys.shift()!;
+			const index = this.currentItems.findIndex((item) => item.key === key);
+			if (index >= 0) {
+				void this.handleMessage({ type: 'activate', index });
+			}
+		}
 	}
 
 	private trackContextCommand(command: string, arg?: unknown): void {
@@ -725,6 +745,8 @@ export class DoomWhichKeyMenu {
 	}
 
 	private async close(): Promise<void> {
+		this.isShowing = false;
+		this.hostPendingKeys = [];
 		await this.updateVisibilityContext(false);
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
@@ -913,6 +935,7 @@ export class DoomWhichKeyMenu {
 		const empty = document.getElementById('empty');
 		const path = document.getElementById('path');
 		let items = [];
+		let pendingKeys = [];
 
 		function updateGridRowCount() {
 			if (items.length === 0) {
@@ -965,6 +988,14 @@ export class DoomWhichKeyMenu {
 			if (shell instanceof HTMLElement && document.activeElement === document.body) {
 				shell.focus();
 			}
+
+			if (pendingKeys.length > 0 && items.length > 0) {
+				const key = pendingKeys.shift();
+				const index = items.findIndex((item) => item.key === key);
+				if (index >= 0) {
+					vscode.postMessage({ type: 'activate', index });
+				}
+			}
 		}
 
 		function toBindingKey(event) {
@@ -996,18 +1027,26 @@ export class DoomWhichKeyMenu {
 
 			if (event.key === 'Escape') {
 				event.preventDefault();
+				pendingKeys = [];
 				vscode.postMessage({ type: 'close' });
 				return;
 			}
 
 			if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
 				event.preventDefault();
+				pendingKeys = [];
 				vscode.postMessage({ type: 'back' });
 				return;
 			}
 
 			const bindingKey = toBindingKey(event);
 			if (!bindingKey) {
+				return;
+			}
+
+			if (items.length === 0) {
+				event.preventDefault();
+				pendingKeys.push(bindingKey);
 				return;
 			}
 
