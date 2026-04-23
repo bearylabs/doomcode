@@ -4,11 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-04-23
+
 ### Added
 
 - Magit (`kahole.magit`) added to extension pack
 - Git keybindings: `SPC g g` status, `SPC g /` dispatch, `SPC g b` checkout, `SPC g B` blame
 - `magit.display-buffer-function` defaults to `same-column`
+- Magit buffer keybindings: `g g` top, `g r` refresh, `x` discard, `-` reverse, `_` reverting, `O` resetting
 
 ### Changed
 
