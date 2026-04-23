@@ -1551,7 +1551,7 @@
       {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
-        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive) && !whichkeyVisible"
+        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
@@ -1569,7 +1569,7 @@
       {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
-        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive) && !whichkeyVisible"
+        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !whichkeyVisible"
       },
       {
         "key": "t",
