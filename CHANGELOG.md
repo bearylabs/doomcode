@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-04-23
+
+### Added
+
+- Which-key buffers keys pressed before the menu finishes rendering
+
+### Fixed
+
+- Space no longer triggers which-key when Claude or GitHub Copilot chat is open in editor view
+
+### Changed
+
+- Workspace search performance improvements
+
 ## [0.2.4] - 2026-04-23
 
 ### Changed
