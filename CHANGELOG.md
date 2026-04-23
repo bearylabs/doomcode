@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Magit (`kahole.magit`) added to extension pack
+- Git keybindings: `SPC g g` status, `SPC g /` dispatch, `SPC g b` checkout, `SPC g B` blame
+- `magit.display-buffer-function` defaults to `same-column`
+
 ### Changed
 
 - `SPC o a c` now opens Codex CLI in a terminal editor instead of the ChatGPT sidebar

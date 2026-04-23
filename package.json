@@ -42,7 +42,8 @@
     "VSpaceCode.whichkey"
   ],
   "extensionPack": [
-    "wayou.vscode-todo-highlight"
+    "wayou.vscode-todo-highlight",
+    "kahole.magit"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -748,46 +749,46 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": ".",
+              "name": "Magit file dispatch",
+              "type": "command",
+              "command": "magit.file-popup"
+            },
+            {
+              "key": "/",
+              "name": "Magit dispatch",
+              "type": "command",
+              "command": "magit.dispatch"
+            },
+            {
+              "key": "g",
+              "name": "Magit status",
+              "type": "command",
+              "command": "magit.status"
+            },
+            {
               "key": "b",
-              "name": "Checkout",
+              "name": "Magit switch branch",
               "type": "command",
               "command": "git.checkout"
             },
             {
-              "key": "c",
-              "name": "Commit",
+              "key": "B",
+              "name": "Magit blame",
               "type": "command",
-              "command": "git.commit"
+              "command": "magit.blame-file"
             },
             {
-              "key": "d",
-              "name": "Delete Branch",
-              "type": "command",
-              "command": "git.deleteBranch"
-            },
-            {
-              "key": "f",
-              "name": "Fetch",
+              "key": "F",
+              "name": "Git fetch",
               "type": "command",
               "command": "git.fetch"
             },
             {
-              "key": "i",
-              "name": "Init",
+              "key": "L",
+              "name": "Magit buffer log",
               "type": "command",
-              "command": "git.init"
-            },
-            {
-              "key": "m",
-              "name": "Merge",
-              "type": "command",
-              "command": "git.merge"
-            },
-            {
-              "key": "p",
-              "name": "Publish",
-              "type": "command",
-              "command": "git.publish"
+              "command": "magit.log-file"
             },
             {
               "key": "s",
@@ -1431,7 +1432,8 @@
       "workbench.editor.enablePreview": false,
       "workbench.editor.showTabs": "none",
       "workbench.startupEditor": "none",
-      "window.commandCenter": false
+      "window.commandCenter": false,
+      "magit.display-buffer-function": "same-column"
     },
     "configuration": {
       "title": "Doom",
@@ -1527,6 +1529,46 @@
       {
         "key": "alt+x",
         "command": "workbench.action.showCommands"
+      },
+      {
+        "key": "alt+x g",
+        "command": "-magit.status"
+      },
+      {
+        "key": "alt+x ctrl+g",
+        "command": "-magit.dispatch"
+      },
+      {
+        "key": "alt+x alt+g",
+        "command": "-magit.file-popup"
+      },
+      {
+        "key": "tab",
+        "command": "extension.vim_tab",
+        "when": "editorTextFocus && vim.active && !inDebugRepl && vim.mode != 'Insert' && editorLangId != 'magit'"
+      },
+      {
+        "key": "tab",
+        "command": "-extension.vim_tab",
+        "when": "editorTextFocus && vim.active && !inDebugRepl && vim.mode != 'Insert'"
+      },
+      {
+        "key": "k",
+        "command": "-magit.discard-at-point",
+        "when": "editorTextFocus && editorLangId == 'magit' && vim.mode =~ /^(?!SearchInProgressMode|CommandlineInProgress).*$/"
+      },
+      {
+        "key": "x",
+        "command": "-magit.reset-mixed"
+      },
+      {
+        "key": "ctrl+u x",
+        "command": "-magit.reset-hard"
+      },
+      {
+        "key": "x",
+        "command": "magit.discard-at-point",
+        "when": "editorTextFocus && editorLangId == 'magit' && vim.mode == 'Normal'"
       },
       {
         "key": "tab",
