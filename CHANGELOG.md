@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-04-23
+
+### Added
+
+- `SPC o a a` keybinding to open Claude chat
+
+### Changed
+
+- GitHub Copilot chat keybinding moved to `SPC o a g`
+- Removed Gemini keybinding from `SPC o a g`
+
+### Fixed
+
+- Buffer switcher now previews the first item on open
+- GitHub Copilot which-key triggers work correctly
+
 ## [0.2.2] - 2026-04-22
 
 ### Fixed
