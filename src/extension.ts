@@ -14,6 +14,7 @@ import {
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
+import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -879,11 +880,13 @@ export function activate(context: vscode.ExtensionContext) {
 	registerWindowMru(context);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
+	const projectFilePanel = new DoomProjectFilePanel();
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
 		fuzzySearchPanel,
 		openEditorsPanel,
 		whichKeyBindingsPanel,
+		projectFilePanel,
 	);
 
 	// Manual install command
@@ -1042,6 +1045,27 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const findFileInProjectCmd = vscode.commands.registerCommand(
+		'doom.findFileInProject',
+		() => {
+			void sharedPanel.showProjectFiles();
+		}
+	);
+
+	const projectFileMoveDownCmd = vscode.commands.registerCommand(
+		'doom.projectFileMoveDown',
+		() => {
+			void projectFilePanel.moveSelection(1);
+		}
+	);
+
+	const projectFileMoveUpCmd = vscode.commands.registerCommand(
+		'doom.projectFileMoveUp',
+		() => {
+			void projectFilePanel.moveSelection(-1);
+		}
+	);
+
 	const openEditorsCmd = vscode.commands.registerCommand(
 		"doom.showOpenEditors",
 		() => {
@@ -1109,6 +1133,9 @@ export function activate(context: vscode.ExtensionContext) {
 		openEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
+		findFileInProjectCmd,
+		projectFileMoveDownCmd,
+		projectFileMoveUpCmd,
 		sharedPanelViewProvider,
 		new vscode.Disposable(() => {
 			if (startupPageRefreshTimer) {

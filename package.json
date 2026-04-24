@@ -178,7 +178,7 @@
           "key": "SPC",
           "name": "Find file in project",
           "type": "command",
-          "command": "workbench.action.quickOpen"
+          "command": "doom.findFileInProject"
         },
         {
           "key": "TAB",
@@ -1045,7 +1045,7 @@
               "key": "f",
               "name": "Find file in project",
               "type": "command",
-              "command": "workbench.action.quickOpen"
+              "command": "doom.findFileInProject"
             },
             {
               "key": "o",
@@ -1541,6 +1541,21 @@
         "command": "doom.showOpenEditors",
         "title": "Switch Workspace Buffer",
         "category": "Doom"
+      },
+      {
+        "command": "doom.findFileInProject",
+        "title": "Find File in Project",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.projectFileMoveDown",
+        "title": "Project File: Move Selection Down",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.projectFileMoveUp",
+        "title": "Project File: Move Selection Up",
+        "category": "Doom"
       }
     ],
     "keybindings": [
@@ -1659,22 +1674,22 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible"
+        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible"
       },
       {
         "key": "alt+space",
@@ -1943,6 +1958,16 @@
         "key": "ctrl+h",
         "command": "workbench.action.quickInputBack",
         "when": "inQuickInput && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "doom.projectFileMoveDown",
+        "when": "doom.projectFileVisible"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "doom.projectFileMoveUp",
+        "when": "doom.projectFileVisible"
       },
       {
         "key": "ctrl+j",

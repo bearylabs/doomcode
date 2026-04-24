@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
 import { DoomFuzzySearchPanel } from '../search/fuzzy';
+import { DoomProjectFilePanel } from '../search/projectFile';
 import { DoomWhichKeyBindingsPanel } from '../whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
 
@@ -8,7 +9,7 @@ import { DoomWhichKeyMenu } from '../whichkey/menu';
 // Shared panel modes
 // ---------------------------------------------------------------------------
 
-type SharedPanelMode = 'bindings' | 'buffers' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'project' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -33,6 +34,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		private readonly fuzzySearchPanel: DoomFuzzySearchPanel,
 		private readonly openEditorsPanel: DoomOpenEditorsPanel,
 		private readonly whichKeyBindingsPanel: DoomWhichKeyBindingsPanel,
+		private readonly projectFilePanel: DoomProjectFilePanel,
 	) {}
 
 	/**
@@ -110,6 +112,16 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.showMode('buffers', this.openEditorsPanel);
 	}
 
+	/** Opens the project file picker (Doom SPC SPC). No-op if no workspace folder is open. */
+	async showProjectFiles(): Promise<void> {
+		if (!this.projectFilePanel.prepareShow()) {
+			return;
+		}
+
+		await this.showMode('project', this.projectFilePanel);
+		await this.projectFilePanel.loadItems();
+	}
+
 	/** Opens the searchable which-key bindings list. */
 	async showWhichKeyBindings(): Promise<void> {
 		this.whichKeyBindingsPanel.prepareShow();
@@ -148,7 +160,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		this.activeMode = mode;
 	}
 
-	/** Updates which-key and search visibility context keys so their keybindings activate only when the right mode is shown. */
+	/** Updates which-key, search, and project-file visibility context keys so their keybindings activate only when the right mode is shown. */
 	private async syncVisibilityContexts(isVisible: boolean): Promise<void> {
 		await vscode.commands.executeCommand(
 			'setContext',
@@ -159,6 +171,11 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			'setContext',
 			DoomFuzzySearchPanel.visibleContextKey,
 			isVisible && this.activeMode === 'search'
+		);
+		await vscode.commands.executeCommand(
+			'setContext',
+			DoomProjectFilePanel.visibleContextKey,
+			isVisible && this.activeMode === 'project'
 		);
 	}
 
