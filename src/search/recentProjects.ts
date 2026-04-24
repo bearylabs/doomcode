@@ -141,13 +141,22 @@ export class DoomRecentProjectsPanel {
 	private allItems: RecentProjectItem[] = [];
 	private filteredItems: RecentProjectMatch[] = [];
 	private loading = false;
+	/**
+	 * When set, selection calls this instead of opening the folder directly.
+	 * Used by the "spc spc with no workspace" flow to chain into a file picker.
+	 */
+	private onProjectSelected: ((item: RecentProjectItem) => Promise<void>) | undefined;
 	private query = '';
 	private ready = false;
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
 
-	/** Resets state. Always returns true — no precondition needed. */
-	prepareShow(): boolean {
+	/**
+	 * Resets state. Always returns true — no precondition needed.
+	 * Pass `onProjectSelected` to intercept selection instead of opening the folder.
+	 */
+	prepareShow(onProjectSelected?: (item: RecentProjectItem) => Promise<void>): boolean {
+		this.onProjectSelected = onProjectSelected;
 		this.query = '';
 		this.activeIndex = 0;
 		this.allItems = [];
@@ -197,19 +206,24 @@ export class DoomRecentProjectsPanel {
 		this.render();
 	}
 
-	/** Opens the selected workspace in the current window and closes the panel. */
+	/** Opens the selected workspace, or calls `onProjectSelected` if set. */
 	async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
 
-		const item = this.filteredItems[this.activeIndex];
-		if (!item) {
+		const entry = this.filteredItems[this.activeIndex];
+		if (!entry) {
 			return;
 		}
 
 		await this.close();
-		await vscode.commands.executeCommand('vscode.openFolder', item.item.uri, { forceReuseWindow: true });
+
+		if (this.onProjectSelected) {
+			await this.onProjectSelected(entry.item);
+		} else {
+			await vscode.commands.executeCommand('vscode.openFolder', entry.item.uri, { forceReuseWindow: true });
+		}
 	}
 
 	/**

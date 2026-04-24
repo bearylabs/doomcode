@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
+import { DoomCrossProjectFilePanel } from '../search/crossProjectFile';
 import { DoomFuzzySearchPanel } from '../search/fuzzy';
 import { DoomProjectFilePanel } from '../search/projectFile';
 import { DoomRecentProjectsPanel } from '../search/recentProjects';
@@ -10,7 +11,7 @@ import { DoomWhichKeyMenu } from '../whichkey/menu';
 // Shared panel modes
 // ---------------------------------------------------------------------------
 
-type SharedPanelMode = 'bindings' | 'buffers' | 'project' | 'recent' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'crossProject' | 'project' | 'recent' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -37,6 +38,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		private readonly whichKeyBindingsPanel: DoomWhichKeyBindingsPanel,
 		private readonly projectFilePanel: DoomProjectFilePanel,
 		private readonly recentProjectsPanel: DoomRecentProjectsPanel,
+		private readonly crossProjectFilePanel: DoomCrossProjectFilePanel,
 	) {}
 
 	/**
@@ -125,6 +127,35 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.projectFilePanel.loadItems();
 	}
 
+	/**
+	 * Opens the recent-projects picker in "file-pick" mode.
+	 * When the user selects a project, instead of opening the folder immediately,
+	 * `onProjectSelected` is called so the caller can chain to a file picker.
+	 */
+	async showRecentProjectsForFilePick(
+		onProjectSelected: (projectUri: vscode.Uri, projectLabel: string) => Promise<void>,
+	): Promise<void> {
+		this.recentProjectsPanel.prepareShow(async (item) => {
+			await onProjectSelected(item.uri, item.label);
+		});
+		await this.showMode('recent', this.recentProjectsPanel);
+		await this.recentProjectsPanel.loadItems();
+	}
+
+	/**
+	 * Opens a file picker that browses `projectUri` without requiring it to be an
+	 * open workspace. `onFileSelected` is called with the chosen file's absolute URI.
+	 */
+	async showCrossProjectFiles(
+		projectUri: vscode.Uri,
+		projectLabel: string,
+		onFileSelected: (fileUri: vscode.Uri) => Promise<void>,
+	): Promise<void> {
+		this.crossProjectFilePanel.prepareShow(projectUri, projectLabel, onFileSelected);
+		await this.showMode('crossProject', this.crossProjectFilePanel);
+		await this.crossProjectFilePanel.loadItems();
+	}
+
 	/** Opens the recent-projects picker. Can also be invoked directly from other locations. */
 	async showRecentProjects(): Promise<void> {
 		this.recentProjectsPanel.prepareShow();
@@ -186,6 +217,11 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			'setContext',
 			DoomProjectFilePanel.visibleContextKey,
 			isVisible && this.activeMode === 'project'
+		);
+		await vscode.commands.executeCommand(
+			'setContext',
+			DoomCrossProjectFilePanel.visibleContextKey,
+			isVisible && this.activeMode === 'crossProject'
 		);
 		await vscode.commands.executeCommand(
 			'setContext',

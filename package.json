@@ -1689,22 +1689,22 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !inputFocus && (!activeEditor || doom.startPageVisible) && (!auxiliaryBarVisible || view.workbench.panel.chat.view.copilot.visible)"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible"
+        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible"
       },
       {
         "key": "alt+space",
@@ -1993,6 +1993,16 @@
         "key": "ctrl+k",
         "command": "doom.projectFileMoveUp",
         "when": "doom.projectFileVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "doom.crossProjectFileMoveDown",
+        "when": "doom.crossProjectFileVisible"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "doom.crossProjectFileMoveUp",
+        "when": "doom.crossProjectFileVisible"
       },
       {
         "key": "ctrl+j",
