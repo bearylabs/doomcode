@@ -1074,7 +1074,12 @@ export function activate(context: vscode.ExtensionContext) {
 	const showRecentProjectsCmd = vscode.commands.registerCommand(
 		'doom.showRecentProjects',
 		() => {
-			void sharedPanel.showRecentProjects();
+			void sharedPanel.showRecentProjectsForFilePick(async (projectUri, projectLabel) => {
+				await sharedPanel.showCrossProjectFiles(projectUri, projectLabel, async (fileUri) => {
+					await context.globalState.update(PENDING_OPEN_FILE_KEY, fileUri.toString());
+					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+				});
+			});
 		}
 	);
 
@@ -1159,6 +1164,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const pendingFile = context.globalState.get<string>(PENDING_OPEN_FILE_KEY);
 		if (pendingFile) {
 			await context.globalState.update(PENDING_OPEN_FILE_KEY, undefined);
+			await vscode.commands.executeCommand('workbench.action.editorLayoutSingle');
+			await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 			try {
 				const fileUri = vscode.Uri.parse(pendingFile, true);
 				const document = await vscode.workspace.openTextDocument(fileUri);
