@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createNonce, fuzzyMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatRelativeTime, fuzzyMatch } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Project file models
@@ -7,6 +7,7 @@ import { createNonce, fuzzyMatch } from '../panel/helpers';
 
 interface ProjectFileItem {
 	basename: string;
+	lastModifiedMs: number | undefined;
 	relativePath: string;
 	searchText: string;
 	uri: vscode.Uri;
@@ -20,6 +21,7 @@ interface ProjectFileMatch {
 
 interface ProjectFileRenderItem {
 	index: number;
+	lastModified: string;
 	matches: number[];
 	path: string;
 	type: 'result';
@@ -78,7 +80,6 @@ export class DoomProjectFilePanel {
 	/** Resets query/index and validates a workspace exists. Returns false if not. */
 	prepareShow(): boolean {
 		if (!vscode.workspace.workspaceFolders?.length) {
-			void vscode.window.showInformationMessage('Open a folder or workspace first to find project files.');
 			return false;
 		}
 
@@ -204,14 +205,25 @@ export class DoomProjectFilePanel {
 			return;
 		}
 
-		const items: ProjectFileItem[] = uris
-			.filter((uri) => uri.scheme === 'file')
-			.map((uri) => {
+		const fileUris = uris.filter((uri) => uri.scheme === 'file');
+		const stats = await Promise.allSettled(
+			fileUris.map((uri) => vscode.workspace.fs.stat(uri))
+		);
+
+		if (loadId !== this.loadSequence) {
+			return;
+		}
+
+		const items: ProjectFileItem[] = fileUris
+			.map((uri, i) => {
 				const relativePath = vscode.workspace.asRelativePath(uri, false);
 				const slashIndex = relativePath.lastIndexOf('/');
 				const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
+				const stat = stats[i];
+				const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtime : undefined;
 				return {
 					basename,
+					lastModifiedMs,
 					relativePath,
 					searchText: relativePath.toLowerCase(),
 					uri,
@@ -271,7 +283,7 @@ export class DoomProjectFilePanel {
 					const relativePath = vscode.workspace.asRelativePath(uri, false);
 					const slashIndex = relativePath.lastIndexOf('/');
 					const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
-					openItems.push({ basename, relativePath, searchText: relativePath.toLowerCase(), uri });
+					openItems.push({ basename, lastModifiedMs: undefined, relativePath, searchText: relativePath.toLowerCase(), uri });
 				}
 			}
 		}
@@ -367,6 +379,9 @@ export class DoomProjectFilePanel {
 
 		const items: ProjectFileRenderItem[] = this.filteredItems.map((entry, index) => ({
 			index,
+			lastModified: entry.item.lastModifiedMs !== undefined
+				? formatRelativeTime(entry.item.lastModifiedMs, Date.now())
+				: '',
 			matches: entry.matches,
 			path: entry.item.relativePath,
 			type: 'result',
@@ -407,308 +422,12 @@ export class DoomProjectFilePanel {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 	}
 
-	/**
-	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
-	 * Items are single-column file paths with fuzzy-match highlights.
-	 */
+	/** Generates the webview HTML using the shared file-picker template. */
 	private getHtml(webview: vscode.Webview): string {
-		const nonce = createNonce();
-		const csp = [
-			"default-src 'none'",
-			`style-src ${webview.cspSource} 'unsafe-inline'`,
-			`script-src 'nonce-${nonce}'`,
-		].join('; ');
-
-		return `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta http-equiv="Content-Security-Policy" content="${csp}">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Find File in Project</title>
-	<style>
-		html {
-			height: 100%;
-		}
-
-		:root {
-			color-scheme: dark;
-			--bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-			--border: var(--vscode-panel-border, color-mix(in srgb, var(--bg) 82%, white 18%));
-			--input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground));
-			--muted: var(--vscode-editorLineNumber-foreground, var(--vscode-descriptionForeground));
-			--text: var(--vscode-editor-foreground);
-			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
-			--selected-text: var(--vscode-editor-foreground);
-			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
-			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
-			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
-			--font-family: var(--vscode-editor-font-family, monospace);
-			--font-size: var(--vscode-editor-font-size, 13px);
-			--line-height: var(--vscode-editor-line-height, 20px);
-		}
-
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			margin: 0;
-			height: 100%;
-			background: var(--bg);
-			color: var(--text);
-			font-family: var(--font-family);
-			font-size: var(--font-size);
-			line-height: var(--line-height);
-			overflow: hidden;
-			display: flex;
-		}
-
-		.shell {
-			display: flex;
-			flex-direction: column;
-			flex: 1 1 auto;
-			min-height: 0;
-			overflow: hidden;
-		}
-
-		.promptbar {
-			display: grid;
-			grid-template-columns: auto auto 1fr;
-			align-items: center;
-			gap: 8px;
-			min-height: calc(var(--line-height) + 8px);
-			padding: 2px 8px;
-			background: var(--bg);
-		}
-
-		.status,
-		.prompt {
-			color: var(--muted);
-			white-space: nowrap;
-		}
-
-		.status {
-			font-variant-numeric: tabular-nums;
-			text-align: right;
-		}
-
-		.input {
-			width: 100%;
-			padding: 0;
-			border: none;
-			outline: none;
-			background: transparent;
-			color: var(--input-fg);
-			font: inherit;
-			caret-color: var(--accent);
-		}
-
-		.input::placeholder {
-			color: color-mix(in srgb, var(--muted) 72%, transparent);
-		}
-
-		.results {
-			flex: 1 1 0;
-			min-height: 0;
-			overflow: auto;
-			display: flex;
-			flex-direction: column;
-			padding: 2px 0 0;
-		}
-
-		.item {
-			display: block;
-			flex: 0 0 auto;
-			padding: 0 10px;
-			border: none;
-			background: transparent;
-			color: inherit;
-			text-align: left;
-			font: inherit;
-			cursor: pointer;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			width: 100%;
-		}
-
-		.content {
-			display: inline;
-		}
-
-		.item.active .content {
-			background: var(--selected);
-			color: var(--selected-text);
-			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-			outline-offset: -1px;
-		}
-
-		.match {
-			background: var(--match-bg);
-			color: var(--match-fg);
-		}
-
-		.empty {
-			color: var(--muted);
-			white-space: nowrap;
-			padding: 0 10px;
-		}
-	</style>
-</head>
-<body>
-	<div class="shell">
-		<div class="promptbar">
-			<div class="status" id="status">0/0</div>
-			<label class="prompt" id="prompt" for="query">Open:</label>
-			<input class="input" id="query" type="text" spellcheck="false" placeholder="Filter files..." />
-		</div>
-		<div class="results" id="results"></div>
-		<div class="empty" id="empty" hidden>No matches.</div>
-	</div>
-	<script nonce="${nonce}">
-		const vscode = acquireVsCodeApi();
-		const empty = document.getElementById('empty');
-		const prompt = document.getElementById('prompt');
-		const query = document.getElementById('query');
-		const results = document.getElementById('results');
-		const status = document.getElementById('status');
-		let items = [];
-
-		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
-		function appendHighlightedText(container, text, matches) {
-			if (!matches || matches.length === 0) {
-				container.textContent = text;
-				return;
-			}
-
-			let cursor = 0;
-			let matchCursor = 0;
-			while (cursor < text.length) {
-				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
-					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
-					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
-					cursor = nextMatch;
-					continue;
-				}
-
-				let end = cursor;
-				while (matchCursor < matches.length && matches[matchCursor] === end) {
-					end++;
-					matchCursor++;
-				}
-
-				const mark = document.createElement('span');
-				mark.className = 'match';
-				mark.textContent = text.slice(cursor, end);
-				container.append(mark);
-				cursor = end;
-			}
-		}
-
-		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump.
-		function render(state) {
-			items = state.items;
-			document.title = state.title;
-			prompt.textContent = state.promptLabel;
-			query.placeholder = state.placeholder;
-			empty.textContent = state.emptyText;
-
-			if (document.activeElement !== query) {
-				query.value = state.query;
-			}
-
-			results.innerHTML = '';
-			empty.hidden = items.length > 0;
-			status.style.width = state.statusWidthCh + 'ch';
-			status.textContent = state.statusLabel;
-
-			items.forEach((item) => {
-				const button = document.createElement('button');
-				button.type = 'button';
-				button.className = item.index === state.activeIndex ? 'item active' : 'item';
-				button.dataset.index = String(item.index);
-
-				const content = document.createElement('span');
-				content.className = 'content';
-				appendHighlightedText(content, item.path, item.matches);
-
-				button.append(content);
-				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index: item.index });
-				});
-				results.appendChild(button);
-			});
-
-			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
-			if (activeButton instanceof HTMLElement) {
-				activeButton.scrollIntoView({ block: 'nearest' });
-			}
-
-			query.focus();
-			query.setSelectionRange(query.value.length, query.value.length);
-		}
-
-		query.addEventListener('input', () => {
-			vscode.postMessage({ type: 'query', query: query.value });
+		return createFilePickerHtml({
+			cspSource: webview.cspSource,
+			nonce: createNonce(),
+			title: 'Find File in Project',
 		});
-
-		window.addEventListener('message', (event) => {
-			if (event.data.type === 'render') {
-				render(event.data.state);
-			}
-		});
-
-		window.addEventListener('keydown', (event) => {
-			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
-			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
-
-			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
-				return;
-			}
-
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				vscode.postMessage({ type: 'close' });
-				return;
-			}
-
-			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, items.length - 1) });
-				return;
-			}
-
-			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
-				return;
-			}
-
-			if (event.key === 'Enter') {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
-			}
-		});
-
-		vscode.postMessage({ type: 'ready' });
-	</script>
-</body>
-</html>`;
 	}
 }

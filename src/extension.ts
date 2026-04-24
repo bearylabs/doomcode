@@ -15,6 +15,7 @@ import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } fro
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomProjectFilePanel } from './search/projectFile';
+import { DoomRecentProjectsPanel } from './search/recentProjects';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -881,12 +882,14 @@ export function activate(context: vscode.ExtensionContext) {
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
 	const projectFilePanel = new DoomProjectFilePanel();
+	const recentProjectsPanel = new DoomRecentProjectsPanel();
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
 		fuzzySearchPanel,
 		openEditorsPanel,
 		whichKeyBindingsPanel,
 		projectFilePanel,
+		recentProjectsPanel,
 	);
 
 	// Manual install command
@@ -1052,6 +1055,27 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const showRecentProjectsCmd = vscode.commands.registerCommand(
+		'doom.showRecentProjects',
+		() => {
+			void sharedPanel.showRecentProjects();
+		}
+	);
+
+	const recentProjectsMoveDownCmd = vscode.commands.registerCommand(
+		'doom.recentProjectsMoveDown',
+		() => {
+			void recentProjectsPanel.moveSelection(1);
+		}
+	);
+
+	const recentProjectsMoveUpCmd = vscode.commands.registerCommand(
+		'doom.recentProjectsMoveUp',
+		() => {
+			void recentProjectsPanel.moveSelection(-1);
+		}
+	);
+
 	const projectFileMoveDownCmd = vscode.commands.registerCommand(
 		'doom.projectFileMoveDown',
 		() => {
@@ -1134,6 +1158,9 @@ export function activate(context: vscode.ExtensionContext) {
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		findFileInProjectCmd,
+		showRecentProjectsCmd,
+		recentProjectsMoveDownCmd,
+		recentProjectsMoveUpCmd,
 		projectFileMoveDownCmd,
 		projectFileMoveUpCmd,
 		sharedPanelViewProvider,
