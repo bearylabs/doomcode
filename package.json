@@ -1607,7 +1607,7 @@
         "command": "-magit.reverse-at-point"
       },
       {
-        "key": "shift+-",
+        "key": "_",
         "command": "magit.reverting",
         "when": "editorTextFocus && editorLangId == 'magit' && vim.mode =~ /^(?!SearchInProgressMode|CommandlineInProgress).*$/"
       },
@@ -1623,6 +1623,21 @@
       {
         "key": "shift+x",
         "command": "-magit.resetting"
+      },
+      {
+        "key": "!",
+        "command": "magit.running",
+        "when": "editorTextFocus && editorLangId == 'magit' && vim.mode =~ /^(?!SearchInProgressMode|CommandlineInProgress).*$/"
+      },
+      {
+        "key": "%",
+        "command": "magit.worktree",
+        "when": "editorTextFocus && editorLangId == 'magit' && vim.mode =~ /^(?!SearchInProgressMode|CommandlineInProgress).*$/"
+      },
+      {
+        "key": "$",
+        "command": "magit.process-log",
+        "when": "editorTextFocus && editorLangId == 'magit' && vim.mode =~ /^(?!SearchInProgressMode|CommandlineInProgress).*$/"
       },
       {
         "key": "tab",

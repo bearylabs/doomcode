@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - `SPC g s` changed from "Status" (opens SCM panel) to "Stage hunk at point" (`git.stageSelectedRanges`)
+- Magit: remap shift keybinds to literal symbols
 
 ## [0.2.7] - 2026-04-23
 
