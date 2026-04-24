@@ -496,6 +496,114 @@ function getKeybindingsPath(context: vscode.ExtensionContext): string | undefine
 	return path.join(profileDir, 'keybindings.json');
 }
 
+/**
+ * Returns the magit-related keybindings from Doom's own contributes.keybindings:
+ * entries scoped to the magit editor language and negation entries that disable
+ * kahole.magit's default key assignments.
+ */
+function getDoomUserKeybindings(context: vscode.ExtensionContext): Array<Record<string, unknown>> {
+	const doomKeybindings = (context.extension.packageJSON as {
+		contributes?: { keybindings?: Array<Record<string, unknown>> };
+	}).contributes?.keybindings;
+
+	if (!Array.isArray(doomKeybindings)) {
+		return [];
+	}
+
+	const magitKeybindings = doomKeybindings.filter((kb) => {
+		const when = kb['when'];
+		return typeof when === 'string' && when.includes("editorLangId == 'magit'");
+	});
+
+	// Negation entries that disable kahole.magit's default key assignments.
+	const negationKeybindings = doomKeybindings.filter((kb) => {
+		const cmd = kb['command'];
+		return typeof cmd === 'string' && cmd.startsWith('-magit.');
+	});
+
+	return [...magitKeybindings, ...negationKeybindings];
+}
+
+/**
+ * Read the user keybindings.json, add any magit-related keybindings declared
+ * in Doom's own contributes.keybindings that are not already present, and
+ * write back.  User-level keybindings have higher precedence than all
+ * extension keybindings, which is necessary for magit.dispatch to display the
+ * correct key hints.
+ * Returns the number of keybindings added.
+ */
+async function installDoomKeybindings(context: vscode.ExtensionContext): Promise<number> {
+	const allMagitRelated = getDoomUserKeybindings(context);
+
+	if (allMagitRelated.length === 0) {
+		return 0;
+	}
+
+	const keybindingsPath = getKeybindingsPath(context);
+	if (!keybindingsPath) {
+		return 0;
+	}
+
+	let existing: Array<Record<string, unknown>> = [];
+	let rawContent: string | undefined;
+	if (fs.existsSync(keybindingsPath)) {
+		try {
+			rawContent = fs.readFileSync(keybindingsPath, 'utf-8');
+			const stripped = rawContent.replace(/^\s*\/\/.*$/gm, '');
+			const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
+			const parsed = JSON.parse(sanitized);
+			if (Array.isArray(parsed)) {
+				existing = parsed as Array<Record<string, unknown>>;
+			}
+		} catch {
+			console.warn("Doom Code: could not parse keybindings.json, skipping magit install.");
+			return 0;
+		}
+	}
+
+	const toAdd = allMagitRelated.filter((kb) =>
+		!existing.some((e) => e['key'] === kb['key'] && e['command'] === kb['command'] && e['when'] === kb['when']),
+	);
+
+	if (toAdd.length === 0) {
+		return 0;
+	}
+
+	let output: string;
+	const newEntries = toAdd.map((kb) => '\t' + JSON.stringify(kb)).join(',\n');
+	const block = '\t// #region Doom Code keybindings\n' + newEntries + '\n\t// #endregion Doom Code keybindings';
+
+	if (rawContent !== undefined && existing.length > 0) {
+		// Append to existing file — preserve original content and comments.
+		const lastBracket = rawContent.lastIndexOf(']');
+		if (lastBracket !== -1) {
+			const beforeBracket = rawContent.slice(0, lastBracket).trimEnd();
+			const rest = rawContent.slice(lastBracket + 1);
+			output = beforeBracket + ',\n' + block + '\n]' + rest;
+		} else {
+			// Malformed — fall back to full rewrite.
+			output = "// Place your key bindings in this file to override the defaults\n"
+				+ JSON.stringify([...existing, ...toAdd], null, '\t')
+				+ '\n';
+		}
+	} else {
+		// File doesn't exist or is empty — write fresh.
+		output = "// Place your key bindings in this file to override the defaults\n[\n"
+			+ block
+			+ '\n]\n';
+	}
+
+	try {
+		fs.mkdirSync(path.dirname(keybindingsPath), { recursive: true });
+		fs.writeFileSync(keybindingsPath, output, 'utf-8');
+	} catch (err) {
+		console.warn("Doom Code: failed to write magit keybindings to keybindings.json:", err);
+		return 0;
+	}
+
+	return toAdd.length;
+}
+
 // ---------------------------------------------------------------------------
 // Detection-only check (reads state, never mutates)
 // ---------------------------------------------------------------------------
@@ -504,6 +612,7 @@ interface StaleDetectionResult {
 	conflicts: typeof CONFLICTING_EXTENSIONS;
 	hasStaleSettings: boolean;
 	hasStaleKeybindings: boolean;
+	hasMagitKeybindings: boolean;
 }
 
 /** Read-only stale detection: scans vim settings and keybindings.json without writing anything. */
@@ -545,7 +654,25 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 		}
 	}
 
-	return { conflicts, hasStaleSettings, hasStaleKeybindings };
+	let hasMagitKeybindings = false;
+	const magitKbs = getDoomUserKeybindings(context);
+	if (magitKbs.length > 0 && keybindingsPath && fs.existsSync(keybindingsPath)) {
+		try {
+			const raw = fs.readFileSync(keybindingsPath, 'utf-8');
+			const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
+			const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
+			const bindings = JSON.parse(sanitized) as Array<Record<string, unknown>>;
+			if (Array.isArray(bindings)) {
+				hasMagitKeybindings = magitKbs.every((kb) =>
+					bindings.some((e) => e['key'] === kb['key'] && e['command'] === kb['command'] && e['when'] === kb['when']),
+				);
+			}
+		} catch {
+			// If we can't parse it, don't flag it
+		}
+	}
+
+	return { conflicts, hasStaleSettings, hasStaleKeybindings, hasMagitKeybindings };
 }
 
 // ---------------------------------------------------------------------------
@@ -621,6 +748,7 @@ function createStartupPageState(
 		defaultCount: Object.keys(installDefaults).length,
 		installedDefaultCount: installState.matchingDefaults,
 		hasInstalledDefaults: installState.isInstalled,
+		hasMagitKeybindings: staleState.hasMagitKeybindings,
 		hasStaleSettings: staleState.hasStaleSettings,
 		hasStaleKeybindings: staleState.hasStaleKeybindings,
 		openOnActivation: configuration.get<boolean>(START_PAGE_OPEN_ON_ACTIVATION_SETTING, true),
@@ -765,7 +893,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const result = await runInstallFlow(
 				async () => {
 					const choice = await vscode.window.showWarningMessage(
-						"Apply Doom default settings to your User settings? Existing user-owned values will be left alone.",
+						"Apply Doom default settings and keybindings to your User settings? Existing user-owned values will be left alone.",
 						{ modal: true },
 						"Apply"
 					);
@@ -773,7 +901,14 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				async () => {
 					await migrateLegacyWhichKeyShowBindings();
-					return applyDefaultsToUserSettings(installDefaults, true);
+					const settingsResult = await applyDefaultsToUserSettings(installDefaults, true);
+					const addedKeybindings = await installDoomKeybindings(context);
+					if (addedKeybindings > 0) {
+						void vscode.window.showInformationMessage(
+							`Doom Code: installed ${addedKeybindings} magit keybinding(s) into keybindings.json so the magit dispatch recognises them.`
+						);
+					}
+					return settingsResult;
 				},
 			);
 

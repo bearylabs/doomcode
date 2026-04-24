@@ -17,6 +17,7 @@ export interface DoomStartPageState {
 	defaultCount: number;
 	installedDefaultCount: number;
 	hasInstalledDefaults: boolean;
+	hasMagitKeybindings: boolean;
 	hasStaleSettings: boolean;
 	hasStaleKeybindings: boolean;
 	openOnActivation: boolean;
@@ -406,7 +407,9 @@ export class DoomStartPage {
 			? '<p class="status-line">No Doom defaults configured.</p>'
 			: !state.hasInstalledDefaults
 				? `<p class="status-line">Doom settings missing (${state.installedDefaultCount}/${state.defaultCount}). <button class="inline-link" data-command="install">Install now</button></p>`
-				: '';
+				: !state.hasMagitKeybindings
+					? `<p class="status-line">Doom keybindings missing. <button class="inline-link" data-command="install">Install now</button></p>`
+					: '';
 		const startupCommandsMarkup = state.startupCommands.length > 0
 			? state.startupCommands.map((entry) => `
 				<li class="menu-item">

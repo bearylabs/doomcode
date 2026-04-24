@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Dashboard now shows a prompt when Doom keybindings are missing from your user `keybindings.json`
+- Install now writes Doom's keybindings into your user `keybindings.json` so magit dispatch displays the correct key hints — existing content and comments are preserved
+
 ## [0.2.7] - 2026-04-23
 
 ### Added
