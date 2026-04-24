@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `SPC SPC` / `SPC p f` — new "find file in project" panel, Doom Emacs-style file picker
+- Orderless AND matching in file and project pickers — space-separate terms to filter by multiple words in any order
+- File picker shows last modified time alongside each file
+- Opening a project now chains directly into the file picker; editor layout resets on project open
+
+### Changed
+
+- Current workspace no longer appears in the recent projects list
+- `SPC SPC` reuses an existing editor tab when opening a file instead of always opening a new one
+
+### Fixed
+
+- `.gitignore` respected in project file picker
+- `.gitignore` respected in `SPC SPC` file search (uses `git ls-files`)
+- `SPC` which-key works correctly on the dashboard and in empty editors
+
 ## [0.2.8] - 2026-04-24
 
 ### Fixed
