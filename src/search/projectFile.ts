@@ -1,5 +1,9 @@
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+
+const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Project file models
@@ -43,6 +47,38 @@ interface ProjectFileMessage {
 	index?: number;
 	query?: string;
 	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
+}
+
+// ---------------------------------------------------------------------------
+// File listing
+// ---------------------------------------------------------------------------
+
+/**
+ * Lists project files using `git ls-files` (respects .gitignore exactly).
+ * Falls back to VS Code's findFiles if git is unavailable or the folder isn't a repo.
+ * Uses null-terminated output (-z) to safely handle filenames with spaces.
+ */
+async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequence: number): Promise<vscode.Uri[]> {
+	try {
+		const { stdout } = await execFileAsync(
+			'git',
+			['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+			{ cwd: rootUri.fsPath, maxBuffer: 50 * 1024 * 1024 },
+		);
+		if (loadId !== loadSequence) {
+			return [];
+		}
+		return stdout
+			.split('\0')
+			.filter(Boolean)
+			.map((rel) => vscode.Uri.joinPath(rootUri, rel));
+	} catch {
+		if (loadId !== loadSequence) {
+			return [];
+		}
+		const uris = await vscode.workspace.findFiles('**/*');
+		return uris.filter((u) => u.scheme === 'file');
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -197,14 +233,12 @@ export class DoomProjectFilePanel {
 		this.loading = true;
 		this.render();
 
-		// Omitting exclude lets VS Code apply default excludes (search.exclude, files.exclude, .gitignore).
-		const uris = await vscode.workspace.findFiles('**/*');
+		const rootUri = vscode.workspace.workspaceFolders![0].uri;
+		const fileUris = await listProjectFiles(rootUri, loadId, this.loadSequence);
 
 		if (loadId !== this.loadSequence) {
 			return;
 		}
-
-		const fileUris = uris.filter((uri) => uri.scheme === 'file');
 		const stats = await Promise.allSettled(
 			fileUris.map((uri) => vscode.workspace.fs.stat(uri))
 		);
