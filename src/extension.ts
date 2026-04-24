@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
@@ -14,6 +15,7 @@ import {
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomCrossProjectFilePanel } from './search/crossProjectFile';
+import { DoomFindFilePanel } from './search/findFile';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
@@ -887,6 +889,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const projectFilePanel = new DoomProjectFilePanel();
 	const recentProjectsPanel = new DoomRecentProjectsPanel();
 	const crossProjectFilePanel = new DoomCrossProjectFilePanel();
+	const findFilePanel = new DoomFindFilePanel();
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
 		fuzzySearchPanel,
@@ -895,6 +898,7 @@ export function activate(context: vscode.ExtensionContext) {
 		projectFilePanel,
 		recentProjectsPanel,
 		crossProjectFilePanel,
+		findFilePanel,
 	);
 
 	// Manual install command
@@ -1071,6 +1075,36 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const findFileCmd = vscode.commands.registerCommand(
+		'doom.findFile',
+		() => {
+			const activeUri = vscode.window.activeTextEditor?.document.uri;
+			let initialQuery: string;
+			if (activeUri && activeUri.scheme === 'file') {
+				initialQuery = activeUri.fsPath.replace(/\/[^/]+$/, '/');
+			} else if (vscode.workspace.workspaceFolders?.length) {
+				initialQuery = vscode.workspace.workspaceFolders[0].uri.fsPath + '/';
+			} else {
+				initialQuery = os.homedir() + '/';
+			}
+			void sharedPanel.showFindFile(initialQuery);
+		}
+	);
+
+	const findFileMoveDownCmd = vscode.commands.registerCommand(
+		'doom.findFileMoveDown',
+		() => {
+			void findFilePanel.moveSelection(1);
+		}
+	);
+
+	const findFileMoveUpCmd = vscode.commands.registerCommand(
+		'doom.findFileMoveUp',
+		() => {
+			void findFilePanel.moveSelection(-1);
+		}
+	);
+
 	const showRecentProjectsCmd = vscode.commands.registerCommand(
 		'doom.showRecentProjects',
 		() => {
@@ -1211,6 +1245,9 @@ export function activate(context: vscode.ExtensionContext) {
 		openEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
+		findFileCmd,
+		findFileMoveDownCmd,
+		findFileMoveUpCmd,
 		findFileInProjectCmd,
 		showRecentProjectsCmd,
 		recentProjectsMoveDownCmd,

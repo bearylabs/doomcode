@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `SPC .` / `SPC f f` — new directory browser panel, mirrors Doom Emacs `find-file`; starts in the current file's directory (falls back to project root, then `$HOME`); lists files and subdirectories; typing filters by name within the current directory; Tab completes the active item into the path; backspacing past a `/` removes the whole directory component for rapid upward traversal
 - `SPC SPC` / `SPC p f` — new "find file in project" panel, Doom Emacs-style file picker
 - Orderless AND matching in file and project pickers — space-separate terms to filter by multiple words in any order
 - File picker shows last modified time alongside each file
@@ -13,14 +14,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Current workspace no longer appears in the recent projects list
 - `SPC SPC` reuses an existing editor tab when opening a file instead of always opening a new one
 
 ### Fixed
 
 - `.gitignore` respected in project file picker
 - `.gitignore` respected in `SPC SPC` file search (uses `git ls-files`)
-- `SPC` which-key works correctly on the dashboard and in empty editors
 
 ## [0.2.8] - 2026-04-24
 

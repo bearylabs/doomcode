@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
 import { DoomCrossProjectFilePanel } from '../search/crossProjectFile';
+import { DoomFindFilePanel } from '../search/findFile';
 import { DoomFuzzySearchPanel } from '../search/fuzzy';
 import { DoomProjectFilePanel } from '../search/projectFile';
 import { DoomRecentProjectsPanel } from '../search/recentProjects';
@@ -11,7 +12,7 @@ import { DoomWhichKeyMenu } from '../whichkey/menu';
 // Shared panel modes
 // ---------------------------------------------------------------------------
 
-type SharedPanelMode = 'bindings' | 'buffers' | 'crossProject' | 'project' | 'recent' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'crossProject' | 'findFile' | 'project' | 'recent' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -39,6 +40,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		private readonly projectFilePanel: DoomProjectFilePanel,
 		private readonly recentProjectsPanel: DoomRecentProjectsPanel,
 		private readonly crossProjectFilePanel: DoomCrossProjectFilePanel,
+		private readonly findFilePanel: DoomFindFilePanel,
 	) {}
 
 	/**
@@ -156,6 +158,13 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.crossProjectFilePanel.loadItems();
 	}
 
+	/** Opens the directory browser (Doom SPC . / SPC f f) starting in `startDir`. */
+	async showFindFile(startDir: string): Promise<void> {
+		this.findFilePanel.prepareShow(startDir);
+		await this.showMode('findFile', this.findFilePanel);
+		await this.findFilePanel.loadItems();
+	}
+
 	/** Opens the recent-projects picker. Can also be invoked directly from other locations. */
 	async showRecentProjects(): Promise<void> {
 		this.recentProjectsPanel.prepareShow();
@@ -222,6 +231,11 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			'setContext',
 			DoomCrossProjectFilePanel.visibleContextKey,
 			isVisible && this.activeMode === 'crossProject'
+		);
+		await vscode.commands.executeCommand(
+			'setContext',
+			DoomFindFilePanel.visibleContextKey,
+			isVisible && this.activeMode === 'findFile'
 		);
 		await vscode.commands.executeCommand(
 			'setContext',

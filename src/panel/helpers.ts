@@ -294,6 +294,7 @@ export function createFilePickerHtml(options: {
 		const results = document.getElementById('results');
 		const status = document.getElementById('status');
 		let items = [];
+		let maxStatusWidth = 0;
 
 		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
 		function appendHighlightedText(container, text, matches) {
@@ -334,13 +335,14 @@ export function createFilePickerHtml(options: {
 			query.placeholder = state.placeholder;
 			empty.textContent = state.emptyText;
 
-			if (document.activeElement !== query) {
+			if (state.forceQuery || document.activeElement !== query) {
 				query.value = state.query;
 			}
 
 			results.innerHTML = '';
 			empty.hidden = items.length > 0;
-			status.style.width = state.statusWidthCh + 'ch';
+			maxStatusWidth = Math.max(maxStatusWidth, state.statusWidthCh);
+			status.style.width = maxStatusWidth + 'ch';
 			status.textContent = state.statusLabel;
 
 			items.forEach((item) => {
@@ -384,11 +386,25 @@ export function createFilePickerHtml(options: {
 		});
 
 		window.addEventListener('keydown', (event) => {
-			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
-			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
-
-			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
+			if (event.metaKey || event.altKey || event.ctrlKey) {
 				return;
+			}
+
+			if (event.key === 'Backspace') {
+				const val = query.value;
+				const selStart = query.selectionStart ?? val.length;
+				const selEnd = query.selectionEnd ?? val.length;
+				// When cursor is at end with no selection and preceding char is /, remove
+				// the whole path component back to the previous / (rapid dir traversal).
+				if (selStart === selEnd && selStart === val.length && val.length > 1 && val[val.length - 1] === '/') {
+					event.preventDefault();
+					const withoutSlash = val.slice(0, -1);
+					const prevSlash = withoutSlash.lastIndexOf('/');
+					const newVal = prevSlash >= 0 ? withoutSlash.slice(0, prevSlash + 1) : '';
+					query.value = newVal;
+					vscode.postMessage({ type: 'query', query: newVal });
+					return;
+				}
 			}
 
 			if (event.key === 'Escape') {
@@ -397,7 +413,7 @@ export function createFilePickerHtml(options: {
 				return;
 			}
 
-			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
+			if (event.key === 'ArrowDown') {
 				if (items.length === 0) {
 					return;
 				}
@@ -408,7 +424,7 @@ export function createFilePickerHtml(options: {
 				return;
 			}
 
-			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
+			if (event.key === 'ArrowUp') {
 				if (items.length === 0) {
 					return;
 				}
@@ -416,6 +432,17 @@ export function createFilePickerHtml(options: {
 				event.preventDefault();
 				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
 				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
+				return;
+			}
+
+			if (event.key === 'Tab') {
+				if (items.length === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
+				vscode.postMessage({ type: 'tab', index: activeIndex });
 				return;
 			}
 

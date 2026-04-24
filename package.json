@@ -203,7 +203,7 @@
           "key": ".",
           "name": "Find file",
           "type": "command",
-          "command": "workbench.action.files.openFile"
+          "command": "doom.findFile"
         },
         {
           "key": ",",
@@ -613,9 +613,9 @@
           "bindings": [
             {
               "key": "f",
-              "name": "Open file/folder",
+              "name": "Find file",
               "type": "command",
-              "command": "whichkey.openFile"
+              "command": "doom.findFile"
             },
             {
               "key": "n",
@@ -1571,6 +1571,11 @@
         "command": "doom.recentProjectsMoveUp",
         "title": "Recent Projects: Move Selection Up",
         "category": "Doom"
+      },
+      {
+        "command": "doom.findFile",
+        "title": "Find File",
+        "category": "Doom"
       }
     ],
     "keybindings": [
@@ -1689,27 +1694,27 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !inputFocus && !activeEditor"
+        "when": "focusedView == '' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible && !inputFocus && !activeEditor"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible"
+        "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "doom.startPageVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible"
+        "when": "doom.startPageVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible"
       },
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible"
       },
       {
         "key": "alt+space",
@@ -2008,6 +2013,16 @@
         "key": "ctrl+k",
         "command": "doom.crossProjectFileMoveUp",
         "when": "doom.crossProjectFileVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "doom.findFileMoveDown",
+        "when": "doom.findFileVisible"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "doom.findFileMoveUp",
+        "when": "doom.findFileVisible"
       },
       {
         "key": "ctrl+j",
