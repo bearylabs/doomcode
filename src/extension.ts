@@ -915,6 +915,8 @@ export function activate(context: vscode.ExtensionContext) {
 			if (!result) {
 				return;
 			}
+
+			scheduleStartupPageRefresh(0);
 		}
 	);
 

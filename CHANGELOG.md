@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Dashboard "Install now" button now refreshes the page after install, hiding the prompt once everything is applied
+
 ### Added
 
 - Dashboard now shows a prompt when Doom keybindings are missing from your user `keybindings.json`
