@@ -171,8 +171,28 @@ export class DoomProjectFilePanel {
 		}
 
 		const uri = item.item.uri;
+		// Capture before close() shifts focus.
+		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		await this.close();
 		const document = await vscode.workspace.openTextDocument(uri);
+
+		for (const group of vscode.window.tabGroups.all) {
+			for (const tab of group.tabs) {
+				if (!(tab.input instanceof vscode.TabInputText) || tab.input.uri.fsPath !== uri.fsPath) {
+					continue;
+				}
+				// Visible (active) in a different group → open new copy in our group.
+				if (group !== activeGroup && tab === group.activeTab) {
+					await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false, viewColumn: activeGroup.viewColumn });
+					return;
+				}
+				// Exists somewhere (inactive or same group) → switch to it.
+				await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false, viewColumn: group.viewColumn });
+				return;
+			}
+		}
+
+		// Not open anywhere → open in active group.
 		await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false });
 	}
 
