@@ -804,9 +804,9 @@
             },
             {
               "key": "s",
-              "name": "Status",
+              "name": "Stage hunk at point",
               "type": "command",
-              "command": "workbench.view.scm"
+              "command": "git.stageSelectedRanges"
             },
             {
               "key": "S",

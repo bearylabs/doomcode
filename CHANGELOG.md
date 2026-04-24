@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - Dashboard now shows a prompt when Doom keybindings are missing from your user `keybindings.json`
 - Install now writes Doom's keybindings into your user `keybindings.json` so magit dispatch displays the correct key hints — existing content and comments are preserved
 
+### Changed
+
+- `SPC g s` changed from "Status" (opens SCM panel) to "Stage hunk at point" (`git.stageSelectedRanges`)
+
 ## [0.2.7] - 2026-04-23
 
 ### Added
