@@ -164,11 +164,15 @@ export class DoomRecentProjectsPanel {
 		return true;
 	}
 
-	/** Loads recent projects from VS Code's MRU list and renders them. */
+	/** Loads recent projects from VS Code's MRU list and renders them, excluding the current workspace. */
 	async loadItems(): Promise<void> {
 		this.loading = true;
 		this.render();
-		this.allItems = await getRecentProjects();
+		const currentPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+		const all = await getRecentProjects();
+		this.allItems = currentPath
+			? all.filter((item) => item.uri.fsPath !== currentPath)
+			: all;
 		this.loading = false;
 		this.filterItems();
 		this.render();
