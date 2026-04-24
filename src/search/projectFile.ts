@@ -63,8 +63,6 @@ interface ProjectFileMessage {
 export class DoomProjectFilePanel {
 	static readonly visibleContextKey = 'doom.projectFileVisible';
 
-	private static readonly excludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
-
 	private activeIndex = 0;
 	private allItems: ProjectFileItem[] = [];
 	private filteredItems: ProjectFileMatch[] = [];
@@ -199,7 +197,8 @@ export class DoomProjectFilePanel {
 		this.loading = true;
 		this.render();
 
-		const uris = await vscode.workspace.findFiles('**/*', DoomProjectFilePanel.excludeGlob);
+		// Omitting exclude lets VS Code apply default excludes (search.exclude, files.exclude, .gitignore).
+		const uris = await vscode.workspace.findFiles('**/*');
 
 		if (loadId !== this.loadSequence) {
 			return;
