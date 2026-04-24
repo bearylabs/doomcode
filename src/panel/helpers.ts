@@ -56,6 +56,40 @@ export function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined 
 }
 
 /**
+ * Orderless AND fuzzy match — mirrors Doom Emacs `orderless` style.
+ * Splits query on whitespace; ALL tokens must match independently as subsequences.
+ * Token order in the query does not matter. Score = sum of per-token scores.
+ * Indices = sorted union of per-token indices for highlight rendering.
+ */
+export function orderlessMatch(text: string, query: string): FuzzyMatch | undefined {
+	const tokens = query.split(/\s+/).filter(Boolean);
+	if (tokens.length === 0) {
+		return { indices: [], score: 0 };
+	}
+	if (tokens.length === 1) {
+		return fuzzyMatch(text, tokens[0]);
+	}
+
+	let totalScore = 0;
+	const allIndices: number[] = [];
+
+	for (const token of tokens) {
+		const match = fuzzyMatch(text, token);
+		if (!match) {
+			return undefined;
+		}
+		totalScore += match.score;
+		for (const idx of match.indices) {
+			allIndices.push(idx);
+		}
+	}
+
+	allIndices.sort((a, b) => a - b);
+	const indices = allIndices.filter((v, i) => i === 0 || allIndices[i - 1] !== v);
+	return { indices, score: totalScore };
+}
+
+/**
  * Formats a Unix timestamp (ms) as a human-readable relative time.
  *
  * - < 1 min  : "just now"

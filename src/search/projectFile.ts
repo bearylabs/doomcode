@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatRelativeTime, fuzzyMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Project file models
@@ -300,8 +300,7 @@ export class DoomProjectFilePanel {
 	 */
 	private filterItems(): void {
 		this.activeIndex = 0;
-		// Collapse spaces so multi-word queries match across path separators as a single subsequence.
-		const query = this.query.trim().toLowerCase().replace(/\s+/g, '');
+		const query = this.query.trim().toLowerCase();
 
 		if (query.length === 0) {
 			this.filteredItems = this.allItems.slice(0, 200).map((item) => ({
@@ -314,7 +313,7 @@ export class DoomProjectFilePanel {
 
 		this.filteredItems = this.allItems
 			.map((item) => {
-				const match = fuzzyMatch(item.searchText, query);
+				const match = orderlessMatch(item.searchText, query);
 				if (!match) {
 					return undefined;
 				}

@@ -24,12 +24,6 @@ This configuration works best for developers who value **efficiency over mouse u
 
 ## ✨ Features
 
-dadd
-dad
-adad
-ad
-ad
-
 This configuration includes:
 
 - Doom-style leader-key navigation centered around `SPC`, with the live which-key menu as the source of truth for available bindings

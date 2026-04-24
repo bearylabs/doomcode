@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatRelativeTime, fuzzyMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Recent project models
@@ -262,14 +262,13 @@ export class DoomRecentProjectsPanel {
 	}
 
 	/**
-	 * Fuzzy-filters `allItems` (already in MRU order).
+	 * Orderless-filters `allItems` (already in MRU order).
 	 * Runs against `searchText` (label + path); splits match indices into separate
 	 * label and path arrays so both portions can be highlighted independently.
-	 * Spaces in the query are collapsed before matching.
 	 */
 	private filterItems(): void {
 		this.activeIndex = 0;
-		const query = this.query.trim().toLowerCase().replace(/\s+/g, '');
+		const query = this.query.trim().toLowerCase();
 
 		if (query.length === 0) {
 			this.filteredItems = this.allItems.map((item) => ({
@@ -283,7 +282,7 @@ export class DoomRecentProjectsPanel {
 
 		this.filteredItems = this.allItems
 			.map((item) => {
-				const match = fuzzyMatch(item.searchText, query);
+				const match = orderlessMatch(item.searchText, query);
 				if (!match) {
 					return undefined;
 				}
