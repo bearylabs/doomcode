@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-04-24
+
 ### Fixed
 
 - Dashboard "Install now" button now refreshes the page after install, hiding the prompt once everything is applied
