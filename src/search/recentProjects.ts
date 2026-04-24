@@ -1,5 +1,6 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Recent project models
@@ -10,8 +11,10 @@ export interface RecentProjectItem {
 	/** Unix timestamp (ms) of the workspace folder/file mtime, or undefined if stat failed. */
 	lastModifiedMs: number | undefined;
 	path: string;
+	permissions: string;
 	/** Concatenation `label + ' ' + path` (lower-cased) used as the fuzzy search target. */
 	searchText: string;
+	size: string;
 	uri: vscode.Uri;
 }
 
@@ -29,6 +32,8 @@ interface RecentProjectRenderItem {
 	lastModified: string;
 	matches: number[];
 	path: string;
+	permissions: string;
+	size: string;
 	type: 'result';
 }
 
@@ -107,17 +112,21 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 	}
 
 	const stats = await Promise.allSettled(
-		uriList.map(({ uri }) => vscode.workspace.fs.stat(uri))
+		uriList.map(({ uri }) => fs.promises.stat(uri.fsPath))
 	);
 
 	return uriList.map(({ uri, label, path }, i) => {
 		const stat = stats[i];
-		const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtime : undefined;
+		const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
+		const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
+		const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
 		return {
 			label,
 			lastModifiedMs,
 			path,
+			permissions,
 			searchText: `${label} ${path}`.toLowerCase(),
+			size,
 			uri,
 		};
 	});
@@ -359,6 +368,8 @@ export class DoomRecentProjectsPanel {
 				: '',
 			matches: entry.pathMatches,
 			path: entry.item.path,
+			permissions: entry.item.permissions,
+			size: entry.item.size,
 			type: 'result',
 		}));
 

@@ -1,7 +1,8 @@
 import { execFile } from 'child_process';
+import * as fs from 'fs';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 
 const execFileAsync = promisify(execFile);
 
@@ -12,8 +13,10 @@ const execFileAsync = promisify(execFile);
 interface ProjectFileItem {
 	basename: string;
 	lastModifiedMs: number | undefined;
+	permissions: string;
 	relativePath: string;
 	searchText: string;
+	size: string;
 	uri: vscode.Uri;
 }
 
@@ -28,6 +31,8 @@ interface ProjectFileRenderItem {
 	lastModified: string;
 	matches: number[];
 	path: string;
+	permissions: string;
+	size: string;
 	type: 'result';
 }
 
@@ -260,7 +265,7 @@ export class DoomProjectFilePanel {
 			return;
 		}
 		const stats = await Promise.allSettled(
-			fileUris.map((uri) => vscode.workspace.fs.stat(uri))
+			fileUris.map((uri) => fs.promises.stat(uri.fsPath))
 		);
 
 		if (loadId !== this.loadSequence) {
@@ -273,12 +278,16 @@ export class DoomProjectFilePanel {
 				const slashIndex = relativePath.lastIndexOf('/');
 				const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
 				const stat = stats[i];
-				const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtime : undefined;
+				const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
+				const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
+				const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
 				return {
 					basename,
 					lastModifiedMs,
+					permissions,
 					relativePath,
 					searchText: relativePath.toLowerCase(),
+					size,
 					uri,
 				};
 			})
@@ -336,7 +345,7 @@ export class DoomProjectFilePanel {
 					const relativePath = vscode.workspace.asRelativePath(uri, false);
 					const slashIndex = relativePath.lastIndexOf('/');
 					const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
-					openItems.push({ basename, lastModifiedMs: undefined, relativePath, searchText: relativePath.toLowerCase(), uri });
+					openItems.push({ basename, lastModifiedMs: undefined, permissions: '', relativePath, searchText: relativePath.toLowerCase(), size: '', uri });
 				}
 			}
 		}
@@ -436,6 +445,8 @@ export class DoomProjectFilePanel {
 				: '',
 			matches: entry.matches,
 			path: entry.item.relativePath,
+			permissions: entry.item.permissions,
+			size: entry.item.size,
 			type: 'result',
 		}));
 

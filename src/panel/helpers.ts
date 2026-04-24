@@ -1,3 +1,43 @@
+/**
+ * Formats a byte count as a human-readable size (ls -lh style).
+ * < 1 KiB → raw bytes, >= 1 KiB → `Xk`, >= 1 MiB → `XM`, >= 1 GiB → `XG`.
+ */
+export function formatFileSize(bytes: number): string {
+	if (bytes < 1024) { return String(bytes); }
+	if (bytes < 1024 * 1024) {
+		const k = bytes / 1024;
+		const s = k < 10 ? String(Math.round(k * 10) / 10) : String(Math.round(k));
+		return s + 'k';
+	}
+	if (bytes < 1024 * 1024 * 1024) {
+		const m = bytes / (1024 * 1024);
+		const s = m < 10 ? String(Math.round(m * 10) / 10) : String(Math.round(m));
+		return s + 'M';
+	}
+	const g = bytes / (1024 * 1024 * 1024);
+	const s = g < 10 ? String(Math.round(g * 10) / 10) : String(Math.round(g));
+	return s + 'G';
+}
+
+/**
+ * Converts a Unix file mode integer to a `ls`-style permission string, e.g. `drwxr-xr-x`.
+ */
+export function formatPermissions(mode: number): string {
+	const type = (mode & 0o170000) === 0o040000 ? 'd'
+		: (mode & 0o170000) === 0o120000 ? 'l'
+		: '-';
+	return type
+		+ (mode & 0o400 ? 'r' : '-')
+		+ (mode & 0o200 ? 'w' : '-')
+		+ (mode & 0o100 ? 'x' : '-')
+		+ (mode & 0o040 ? 'r' : '-')
+		+ (mode & 0o020 ? 'w' : '-')
+		+ (mode & 0o010 ? 'x' : '-')
+		+ (mode & 0o004 ? 'r' : '-')
+		+ (mode & 0o002 ? 'w' : '-')
+		+ (mode & 0o001 ? 'x' : '-');
+}
+
 export interface FuzzyMatch {
 	indices: number[];
 	score: number;
@@ -157,6 +197,7 @@ export function createFilePickerHtml(options: {
 			--font-family: var(--vscode-editor-font-family, monospace);
 			--font-size: var(--vscode-editor-font-size, 13px);
 			--line-height: var(--vscode-editor-line-height, 20px);
+			--doom-orange: #ffb86c;
 		}
 
 		* {
@@ -230,7 +271,7 @@ export function createFilePickerHtml(options: {
 
 		.item {
 			display: grid;
-			grid-template-columns: minmax(0, 55ch) 8ch;
+			grid-template-columns: minmax(0, 55ch) 10ch 5ch 8ch;
 			align-items: center;
 			gap: 2ch;
 			flex: 0 0 auto;
@@ -248,6 +289,18 @@ export function createFilePickerHtml(options: {
 		.item-path {
 			overflow: hidden;
 			text-overflow: ellipsis;
+		}
+
+		.item-perm {
+			color: var(--muted);
+			white-space: nowrap;
+		}
+
+		.item-size {
+			color: var(--doom-orange);
+			font-variant-numeric: tabular-nums;
+			white-space: nowrap;
+			text-align: right;
 		}
 
 		.item-time {
@@ -355,11 +408,19 @@ export function createFilePickerHtml(options: {
 				pathEl.className = 'item-path';
 				appendHighlightedText(pathEl, item.path, item.matches);
 
+				const permEl = document.createElement('span');
+				permEl.className = 'item-perm';
+				permEl.textContent = item.permissions ?? '';
+
+				const sizeEl = document.createElement('span');
+				sizeEl.className = 'item-size';
+				sizeEl.textContent = item.size ?? '';
+
 				const timeEl = document.createElement('span');
 				timeEl.className = 'item-time';
 				timeEl.textContent = item.lastModified;
 
-				button.append(pathEl, timeEl);
+				button.append(pathEl, permEl, sizeEl, timeEl);
 				button.addEventListener('click', () => {
 					vscode.postMessage({ type: 'activate', index: item.index });
 				});

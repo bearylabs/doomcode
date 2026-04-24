@@ -1,5 +1,6 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatRelativeTime } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Models
@@ -10,7 +11,9 @@ interface FindFileItem {
 	lastModifiedMs: number | undefined;
 	name: string;      // display: dirs have trailing /
 	fsPath: string;    // absolute path (no trailing slash)
+	permissions: string;
 	searchText: string;
+	size: string;
 }
 
 interface FindFileRenderItem {
@@ -18,6 +21,8 @@ interface FindFileRenderItem {
 	lastModified: string;
 	matches: number[];
 	path: string;
+	permissions: string;
+	size: string;
 	type: 'result';
 }
 
@@ -230,21 +235,25 @@ export class DoomFindFilePanel {
 		const files: FindFileItem[] = [];
 
 		const stats = await Promise.allSettled(
-			entries.map(([name]) => vscode.workspace.fs.stat(vscode.Uri.joinPath(dirUri, name)))
+			entries.map(([name]) => fs.promises.stat(this.currentDir + '/' + name))
 		);
 
 		for (let i = 0; i < entries.length; i++) {
 			const [name, type] = entries[i];
 			const isDir = (type & vscode.FileType.Directory) !== 0;
 			const stat = stats[i];
-			const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtime : undefined;
+			const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
+			const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
+			const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
 			const displayName = isDir ? name + '/' : name;
 			const entry: FindFileItem = {
 				isDir,
 				lastModifiedMs,
 				name: displayName,
 				fsPath: this.currentDir + '/' + name,
+				permissions,
 				searchText: displayName.toLowerCase(),
+				size,
 			};
 			if (isDir) {
 				dirs.push(entry);
@@ -335,6 +344,8 @@ export class DoomFindFilePanel {
 				: '',
 			matches: [],
 			path: entry.name,
+			permissions: entry.permissions,
+			size: entry.size,
 			type: 'result',
 		}));
 
