@@ -2,15 +2,27 @@
   <h1>Doom Code – VS Code Extension</h1>
 </div>
 
-## ![screenshot ](assets/screenshot.png)
+![screenshot](assets/screenshot.png)
 
-> **Warning:** This extension is deeply opinionated. It hides the activity bar, disables tabs, overrides keybindings, and restructures VS Code's UI to replicate [Doom Emacs](https://github.com/hlissner/doom-emacs) workflows. If you are unfamiliar with Vim modal editing and Doom Emacs conventions, VS Code will feel broken. Install only if you know what you're getting into — or are ready to learn.
+> **Warning:** This extension is deeply opinionated. It hides the activity bar, disables tabs, overrides keybindings, and restructures VS Code's UI to replicate [Doom Emacs](https://github.com/doomemacs/doomemacs) workflows. If you are unfamiliar with Vim modal editing and Doom Emacs conventions, VS Code will feel broken. Install only if you know what you're getting into — or are ready to learn.
+
+## Table of Contents
+
+- [Introduction](#-introduction)
+- [Features](#-features)
+- [Modal Editing](#-modal-editing)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [UI Philosophy](#-ui-philosophy)
+- [Customization](#%EF%B8%8F-customization)
+- [Credits & Inspiration](#-credits--inspiration)
+- [Contributing](#-contributing)
 
 Bring the power and elegance of **Doom Emacs** to VS Code. This configuration transforms VS Code into a modal, keyboard-driven editor that closely mirrors Doom Emacs' workflows and philosophy – designed for developers who either want to learn Doom Emacs or are forced to use VS Code but prefer an Emacs-like experience.
 
 > **How it works:** This project is packaged as a **VS Code extension** that builds on top of the excellent **[VSCodeVim](https://github.com/vscodevim/vim)** and **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** extensions, which provide the core modal editing and which-key menu system. The primary contribution of this extension is a **carefully crafted which-key configuration** that extends VSpaceCode's standard bindings and organizes them to closely match **Doom Emacs' command structure and philosophy**. Required dependencies are installed automatically alongside this extension.
 
-## 🎯 Purpose
+## 📖 Introduction
 
 Doom Emacs is known for its efficient keybindings, modal editing, and a clean, distraction-free interface. However, not everyone can use Emacs – whether due to ecosystem constraints, team workflows, or specific tool requirements.
 
@@ -69,11 +81,11 @@ Explorer, Open Editors, Timeline, terminal, and other focused views also get con
 
 ## 📋 Requirements
 
-This configuration depends on three companion extensions:
+All companion extensions are installed automatically alongside Doom Code.
 
-### Core Dependencies
+### Extension Dependencies
 
-Core dependencies are declared in the extension manifest and are installed automatically when you install Doom Code:
+Declared as hard dependencies — installed automatically and required for Doom Code to function:
 
 1. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
    - Provides modal editing (normal, insert, visual modes)
@@ -82,11 +94,19 @@ Core dependencies are declared in the extension manifest and are installed autom
    - Displays keyboard command menus (like Doom's prefix menu)
    - The entire custom configuration is built on which-key's binding system
    - Standard VS Code command menus have been extended to match Doom Emacs' style as closely as possible
-3. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
-   - Required for Doom Code's default `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` comment highlighting
-   - Adds matching overview ruler markers with Doom Code's color palette
 
-Project search, in-file fuzzy search, workspace buffer switching, and the custom which-key panels are now built into Doom Code.
+### Extension Pack
+
+Bundled alongside Doom Code and installed automatically, but not hard dependencies:
+
+3. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
+   - Powers Doom Code's default `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` comment highlighting
+   - Adds matching overview ruler markers with Doom Code's color palette
+4. **[Magit for VS Code](https://marketplace.visualstudio.com/items?itemName=kahole.magit)** – Git interface modeled on Emacs Magit
+   - Provides a keyboard-driven git workflow inside VS Code
+   - Doom Code ships keybinding overrides that make it behave more like the original Magit
+
+Project search, in-file fuzzy search, workspace buffer switching, and the custom which-key panels are built into Doom Code.
 
 ## 🚀 Installation
 
@@ -98,7 +118,7 @@ Search for **Doom Code** in the VS Code Extensions marketplace and click Install
 
 On activation, Doom Code opens a start page with:
 
-- a button to run **Install Doom Code**
+- a button to run **Doom Code: Install**
 - a button to run **Doom Code: Clean Up Stale Settings**
 - repository and issue links
 - the current changelog
@@ -112,7 +132,7 @@ When install runs, Doom Code treats any existing value in these user-owned scope
 - workspace-folder scope
 - language-specific user/workspace/workspace-folder scopes
 
-If you want to reopen the page later, run **Doom Code: Show Start Page**.
+If you want to reopen the page later, run **Doom Code: Show Dashboard**.
 
 ### Step 3: Configure UI Layout
 
@@ -166,7 +186,7 @@ Refer to the [VSpaceCode documentation](https://github.com/VSpaceCode/vscode-whi
 
 This configuration stands on the shoulders of amazing projects:
 
-- **[Doom Emacs](https://github.com/hlissner/doom-emacs)** – The philosophical foundation and keybinding inspiration that makes this configuration possible
+- **[Doom Emacs](https://github.com/doomemacs/doomemacs)** – The philosophical foundation and keybinding inspiration that makes this configuration possible
 - **[VSCodeVim](https://github.com/vscodevim/vim)** – Bringing authentic Vim/Evil modal editing to VS Code
 - **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** – The which-key implementation that enables Doom-like leader-key menus
 
