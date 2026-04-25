@@ -818,13 +818,21 @@ export class DoomWhichKeyMenu {
 	/**
 	 * Posts 'hide' to the webview before closing to reset the blur guard.
 	 * Without this, the webview retains its `blurEnabled = true` state and spuriously closes on the next open.
+	 * If the terminal was the active panel before which-key opened, restore it instead of closing the panel.
 	 */
 	private async close(): Promise<void> {
 		this.isShowing = false;
 		this.hostPendingKeys = [];
 		void this.view?.webview.postMessage({ type: 'hide' });
 		await this.updateVisibilityContext(false);
-		await vscode.commands.executeCommand('workbench.action.closePanel');
+		if (this.trackedContext.activePanel === 'terminal') {
+			await vscode.commands.executeCommand('workbench.action.terminal.focus');
+			if (!this.currentShowContext.terminalFocus) {
+				await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+			}
+		} else {
+			await vscode.commands.executeCommand('workbench.action.closePanel');
+		}
 	}
 
 	/** Drives the `whichkeyVisible` when-context that gates SPC and other keys routing to the menu. */

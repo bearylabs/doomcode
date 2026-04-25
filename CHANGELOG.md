@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 - `.gitignore` respected in project file picker
 - `.gitignore` respected in `SPC SPC` file search (uses `git ls-files`)
+- Which-key panel now restores the terminal tab after closing instead of collapsing the panel, when `SPC o t` had opened the terminal beforehand
 
 ## [0.2.8] - 2026-04-24
 
