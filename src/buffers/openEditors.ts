@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createNonce, fuzzyMatch } from '../panel/helpers';
+import { createNonce, formatFileSize, fuzzyMatch } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
 
 // ---------------------------------------------------------------------------
@@ -18,6 +18,7 @@ interface OpenEditorItem {
 	isPinned: boolean;
 	label: string;
 	searchText: string;
+	size: string;
 	tab: vscode.Tab;
 }
 
@@ -39,6 +40,7 @@ interface OpenEditorState {
 		label: string;
 		location: string;
 		matches: number[];
+		size: string;
 	}>;
 	promptLabel: string;
 	placeholder: string;
@@ -504,7 +506,7 @@ export class DoomOpenEditorsPanel {
 			this.query = '';
 		}
 
-		this.refreshItems();
+		void this.refreshItems();
 	}
 
 	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
@@ -546,16 +548,14 @@ export class DoomOpenEditorsPanel {
 					return;
 				}
 
-				this.refreshItems();
-				this.render();
+				void this.refreshItems();
 			}),
 			vscode.window.tabGroups.onDidChangeTabs(() => {
 				if (!webviewView.visible) {
 					return;
 				}
 
-				this.refreshItems();
-				this.render();
+				void this.refreshItems();
 			}),
 			webviewView.webview.onDidReceiveMessage((message: OpenEditorMessage) => {
 				void this.handleMessage(message);
@@ -574,8 +574,8 @@ export class DoomOpenEditorsPanel {
 	}
 
 	/** Rebuilds the flat item list from all tab groups, deduplicating by key and skipping hidden tabs. */
-	private refreshItems(): void {
-		const items: OpenEditorItem[] = [];
+	private async refreshItems(): Promise<void> {
+		const raw: Array<{ tab: vscode.Tab; group: vscode.TabGroup; details: ReturnType<typeof getTabInputDetails>; uri: vscode.Uri | undefined }> = [];
 		const seen = new Set<string>();
 
 		for (const group of vscode.window.tabGroups.all) {
@@ -591,24 +591,35 @@ export class DoomOpenEditorsPanel {
 
 				seen.add(dedupKey);
 				const details = getTabInputDetails(tab);
-				items.push({
-					description: details.description,
-					kind: details.kind,
-					groupColumn: group.viewColumn,
-					groupLabel: viewColumnToGroupLabel(group.viewColumn),
-					isDirty: tab.isDirty,
-					isRemote: isTabRemote(tab),
-					isReadonly: isTabReadonly(tab),
-					isPinned: tab.isPinned,
-					label: tab.label,
-					searchText: `${details.searchText} ${viewColumnToGroupLabel(group.viewColumn)}`.toLowerCase(),
-					tab,
-				});
+				const uri = tab.input instanceof vscode.TabInputText ? tab.input.uri : undefined;
+				raw.push({ tab, group, details, uri });
 			}
 		}
 
-		this.items = items;
+		const statResults = await Promise.allSettled(
+			raw.map(({ uri }) => uri?.scheme === 'file' ? fs.promises.stat(uri.fsPath) : Promise.reject())
+		);
+
+		this.items = raw.map(({ tab, group, details, uri: _ }, i) => {
+			const stat = statResults[i];
+			return {
+				description: details.description,
+				kind: details.kind,
+				groupColumn: group.viewColumn,
+				groupLabel: viewColumnToGroupLabel(group.viewColumn),
+				isDirty: tab.isDirty,
+				isRemote: isTabRemote(tab),
+				isReadonly: isTabReadonly(tab),
+				isPinned: tab.isPinned,
+				label: tab.label,
+				searchText: `${details.searchText} ${viewColumnToGroupLabel(group.viewColumn)}`.toLowerCase(),
+				size: stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '',
+				tab,
+			};
+		});
+
 		this.filterItems();
+		this.render();
 	}
 
 	/**
@@ -852,6 +863,7 @@ export class DoomOpenEditorsPanel {
 				label: entry.item.label,
 				location: entry.item.description,
 				matches: entry.displayMatches,
+				size: entry.item.size,
 			})),
 			promptLabel: `Switch to buffer (${getWorkspaceLabel()}):`,
 			placeholder: 'Type to narrow open editors',
@@ -899,6 +911,7 @@ export class DoomOpenEditorsPanel {
 			--text: var(--vscode-editor-foreground);
 			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
 			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
+			--warning: var(--vscode-editorWarning-foreground);
 			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
 			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
 			--font-family: var(--vscode-editor-font-family, monospace);
@@ -977,7 +990,7 @@ export class DoomOpenEditorsPanel {
 
 		.item {
 			display: grid;
-			grid-template-columns: minmax(18ch, 28ch) 4ch 10ch minmax(0, 1fr);
+			grid-template-columns: minmax(18ch, 28ch) 4ch 6ch 10ch minmax(0, 1fr);
 			gap: 2ch;
 			align-items: center;
 			min-height: var(--line-height);
@@ -997,9 +1010,14 @@ export class DoomOpenEditorsPanel {
 		}
 
 		.flags,
-		.kind,
 		.location {
 			color: var(--muted);
+			white-space: nowrap;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.kind {
+			color: var(--accent);
 			white-space: nowrap;
 			font-variant-numeric: tabular-nums;
 		}
@@ -1008,6 +1026,13 @@ export class DoomOpenEditorsPanel {
 		.kind {
 			overflow: hidden;
 			text-overflow: ellipsis;
+		}
+
+		.size {
+			color: var(--warning);
+			font-variant-numeric: tabular-nums;
+			text-align: right;
+			white-space: nowrap;
 		}
 
 		.label {
@@ -1121,11 +1146,15 @@ export class DoomOpenEditorsPanel {
 				kind.className = 'kind';
 				kind.textContent = item.kind;
 
+				const size = document.createElement('span');
+				size.className = 'size';
+				size.textContent = item.size ?? '';
+
 				const location = document.createElement('span');
 				location.className = 'location';
 				location.textContent = item.location;
 
-				button.append(label, flags, kind, location);
+				button.append(label, flags, size, kind, location);
 				button.addEventListener('click', () => {
 					vscode.postMessage({ type: 'activate', index: item.index });
 				});
