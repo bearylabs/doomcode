@@ -42,10 +42,17 @@ Doom Code ships its own file navigation panels that replace VS Code's built-in Q
 
 A Doom-style `find-file` panel that opens in the current file's directory (falling back to project root, then `$HOME`). Navigate directories by typing, use `Tab` to complete the selected item into the path, and backspace past a `/` to jump up a level without reaching for the mouse. Stock VS Code's Quick Open always roots at the workspace and has no directory-aware traversal — this panel lets you navigate the filesystem like you would in Emacs.
 
+![directory browser](assets/open-file.png)
+
 **`SPC SPC` / `SPC p f` — Project file picker**
 
 Orderless AND matching: space-separate terms to filter by multiple words in any order, matching files that contain all terms regardless of order. Each result shows the file's last modified time and size alongside the path. Stock Quick Open uses a single fuzzy string and shows no file metadata.
 
+**`SPC ,` — Buffer switcher**
+
+Lists all open editors across tab groups with vim-style dirty/readonly flags, file size, file type badge, and workspace-relative path. Paths under your home directory are shown with `~`. Fuzzy-filters as you type; live-previews the selected buffer without switching focus.
+
+![buffer switcher](assets/buffer-switcher.png)
 
 ## 🎮 Modal Editing
 
