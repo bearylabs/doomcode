@@ -4,6 +4,8 @@
 
 ## ![screenshot ](assets/screenshot.png)
 
+> **Warning:** This extension is deeply opinionated. It hides the activity bar, disables tabs, overrides keybindings, and restructures VS Code's UI to replicate [Doom Emacs](https://github.com/hlissner/doom-emacs) workflows. If you are unfamiliar with Vim modal editing and Doom Emacs conventions, VS Code will feel broken. Install only if you know what you're getting into — or are ready to learn.
+
 Bring the power and elegance of **Doom Emacs** to VS Code. This configuration transforms VS Code into a modal, keyboard-driven editor that closely mirrors Doom Emacs' workflows and philosophy – designed for developers who either want to learn Doom Emacs or are forced to use VS Code but prefer an Emacs-like experience.
 
 > **How it works:** This project is packaged as a **VS Code extension** that builds on top of the excellent **[VSCodeVim](https://github.com/vscodevim/vim)** and **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** extensions, which provide the core modal editing and which-key menu system. The primary contribution of this extension is a **carefully crafted which-key configuration** that extends VSpaceCode's standard bindings and organizes them to closely match **Doom Emacs' command structure and philosophy**. Required dependencies are installed automatically alongside this extension.
@@ -27,12 +29,22 @@ This configuration works best for developers who value **efficiency over mouse u
 This configuration includes:
 
 - Doom-style leader-key navigation centered around `SPC`, with the live which-key menu as the source of truth for available bindings
-- Fast file, buffer, project, and symbol navigation with representative entry points like `SPC .`, `SPC SPC`, `SPC /`, `SPC ,`, and `SPC c d`
 - Modal code actions for formatting, references, imports, rename, quick fixes, and refactors through grouped menus instead of scattered shortcuts
 - Integrated terminal, debug, AI assistant, and window-management menus exposed through which-key
-- Doom Code's own panel-based which-key, project search, and workspace buffer switcher
 - Opinionated editor defaults for a cleaner layout, including hidden activity bar, hidden tabs, disabled breadcrumbs, and a hidden command center
 - Required companion extensions for modal editing, which-key, and TODO highlighting
+
+### File Navigation
+
+Doom Code ships its own file navigation panels that replace VS Code's built-in Quick Open for common workflows.
+
+**`SPC .` / `SPC f f` — Directory browser**
+
+A Doom-style `find-file` panel that opens in the current file's directory (falling back to project root, then `$HOME`). Navigate directories by typing, use `Tab` to complete the selected item into the path, and backspace past a `/` to jump up a level without reaching for the mouse. Stock VS Code's Quick Open always roots at the workspace and has no directory-aware traversal — this panel lets you navigate the filesystem like you would in Emacs.
+
+**`SPC SPC` / `SPC p f` — Project file picker**
+
+Orderless AND matching: space-separate terms to filter by multiple words in any order, matching files that contain all terms regardless of order. Each result shows the file's last modified time and size alongside the path. Stock Quick Open uses a single fuzzy string and shows no file metadata.
 
 If a binding shown in the README ever disagrees with what you see in which-key, trust which-key. The shipped configuration in `whichkey.bindings` is authoritative.
 
