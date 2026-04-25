@@ -202,7 +202,7 @@ export class DoomFindFilePanel {
 	 */
 	private async applyQueryChange(): Promise<void> {
 		const lastSlash = this.query.lastIndexOf('/');
-		const newDir = lastSlash >= 0 ? this.query.slice(0, lastSlash) : '';
+		const newDir = lastSlash >= 0 ? (this.query.slice(0, lastSlash) || '/') : '';
 		const newFilter = lastSlash >= 0 ? this.query.slice(lastSlash + 1) : this.query;
 
 		const dirChanged = newDir !== this.currentDir && newDir.startsWith('/');
@@ -234,8 +234,11 @@ export class DoomFindFilePanel {
 		const dirs: FindFileItem[] = [];
 		const files: FindFileItem[] = [];
 
+		const joinPath = (name: string) =>
+			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
+
 		const stats = await Promise.allSettled(
-			entries.map(([name]) => fs.promises.stat(this.currentDir + '/' + name))
+			entries.map(([name]) => fs.promises.stat(joinPath(name)))
 		);
 
 		for (let i = 0; i < entries.length; i++) {
@@ -250,7 +253,7 @@ export class DoomFindFilePanel {
 				isDir,
 				lastModifiedMs,
 				name: displayName,
-				fsPath: this.currentDir + '/' + name,
+				fsPath: joinPath(name),
 				permissions,
 				searchText: displayName.toLowerCase(),
 				size,
