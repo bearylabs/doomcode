@@ -46,7 +46,6 @@ A Doom-style `find-file` panel that opens in the current file's directory (falli
 
 Orderless AND matching: space-separate terms to filter by multiple words in any order, matching files that contain all terms regardless of order. Each result shows the file's last modified time and size alongside the path. Stock Quick Open uses a single fuzzy string and shows no file metadata.
 
-If a binding shown in the README ever disagrees with what you see in which-key, trust which-key. The shipped configuration in `whichkey.bindings` is authoritative.
 
 ## 🎮 Modal Editing
 
@@ -56,6 +55,8 @@ All keybindings follow **Vim/Evil conventions**:
 - Alternative which-key trigger = `Alt+Space` and `Ctrl+Space` (only where SPC is not working)
 - Which-key menus activate automatically with a short delay
 - All standard movement keys work in modal contexts
+
+![which-key menu](assets/which-key.png)
 
 Explorer, Open Editors, Timeline, terminal, and other focused views also get context-aware bindings where VS Code allows them.
 
