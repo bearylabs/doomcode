@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, tildeCollapse, tildeExpand } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Models
@@ -83,7 +83,8 @@ export class DoomFindFilePanel {
 	 * with a trailing slash (e.g. `/home/user/dev/`).
 	 */
 	prepareShow(startDir: string): void {
-		const normalised = startDir.endsWith('/') ? startDir : startDir + '/';
+		const raw = normalizePath(startDir);
+		const normalised = raw.endsWith('/') ? raw : raw + '/';
 		this.query = normalised;
 		this.currentDir = normalised.slice(0, -1); // strip trailing slash
 		this.filter = '';
@@ -293,8 +294,8 @@ export class DoomFindFilePanel {
 			return;
 		case 'query': {
 			const expanded = tildeExpand(message.query ?? '');
-			if (!expanded && this.query === os.homedir() + '/') {
-				this.query = path.dirname(os.homedir()) + '/';
+			if (!expanded && this.query === normalizePath(os.homedir()) + '/') {
+				this.query = normalizePath(path.dirname(normalizePath(os.homedir()))) + '/';
 				this.forceQueryUpdate = true;
 			} else {
 				this.query = expanded;

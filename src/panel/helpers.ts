@@ -1,19 +1,26 @@
 import * as os from 'os';
 
-/** Replaces the home directory prefix with `~` for display. */
-export function tildeCollapse(path: string): string {
-	const home = os.homedir();
-	if (path === home) { return '~'; }
-	if (path.startsWith(home + '/')) { return '~' + path.slice(home.length); }
-	return path;
+/** Normalizes path separators to forward slashes. */
+export function normalizePath(p: string): string {
+	return p.replace(/\\/g, '/');
 }
 
-/** Expands a leading `~` back to the home directory. */
-export function tildeExpand(path: string): string {
-	const home = os.homedir();
-	if (path === '~') { return home; }
-	if (path.startsWith('~/')) { return home + path.slice(1); }
-	return path;
+/** Replaces the home directory prefix with `~` for display. Normalizes separators. */
+export function tildeCollapse(p: string): string {
+	const home = normalizePath(os.homedir());
+	const normalized = normalizePath(p);
+	if (normalized === home) { return '~'; }
+	if (normalized.startsWith(home + '/')) { return '~' + normalized.slice(home.length); }
+	return normalized;
+}
+
+/** Expands a leading `~` back to the home directory. Normalizes separators. */
+export function tildeExpand(p: string): string {
+	const home = normalizePath(os.homedir());
+	const normalized = normalizePath(p);
+	if (normalized === '~') { return home; }
+	if (normalized.startsWith('~/')) { return home + normalized.slice(1); }
+	return normalized;
 }
 
 /**

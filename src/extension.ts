@@ -1081,11 +1081,11 @@ export function activate(context: vscode.ExtensionContext) {
 			const activeUri = vscode.window.activeTextEditor?.document.uri;
 			let initialQuery: string;
 			if (activeUri && activeUri.scheme === 'file') {
-				initialQuery = activeUri.fsPath.replace(/\/[^/]+$/, '/');
+				initialQuery = activeUri.fsPath.replace(/\\/g, '/').replace(/\/[^/]+$/, '/');
 			} else if (vscode.workspace.workspaceFolders?.length) {
-				initialQuery = vscode.workspace.workspaceFolders[0].uri.fsPath + '/';
+				initialQuery = vscode.workspace.workspaceFolders[0].uri.fsPath.replace(/\\/g, '/') + '/';
 			} else {
-				initialQuery = os.homedir() + '/';
+				initialQuery = os.homedir().replace(/\\/g, '/') + '/';
 			}
 			void sharedPanel.showFindFile(initialQuery);
 		}
