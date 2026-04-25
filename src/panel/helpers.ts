@@ -142,14 +142,16 @@ export function formatRelativeTime(ms: number, now: number): string {
 	const diffMs = now - ms;
 	const diffMin = Math.floor(diffMs / 60_000);
 	if (diffMin < 1) { return 'just now'; }
-	if (diffMin < 60) { return `${diffMin}m ago`; }
+	if (diffMin < 60) { return `${diffMin} mins ago`; }
 	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) { return `${diffH}h ago`; }
+	if (diffH < 48) { return `${diffH} hour${diffH === 1 ? '' : 's'} ago`; }
 	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) { return `${diffD}d ago`; }
+	if (diffD < 7) { return `${diffD} days ago`; }
 	const d = new Date(ms);
 	const mon = d.toLocaleString('en', { month: 'short' });
-	return `${mon} ${d.getDate()}`;
+	const hh = String(d.getHours()).padStart(2, '0');
+	const mm = String(d.getMinutes()).padStart(2, '0');
+	return `${mon} ${d.getDate()} ${hh}:${mm}`;
 }
 
 /**
@@ -271,7 +273,7 @@ export function createFilePickerHtml(options: {
 
 		.item {
 			display: grid;
-			grid-template-columns: minmax(0, 55ch) 10ch 5ch 8ch;
+			grid-template-columns: minmax(0, 55ch) 10ch 5ch 15ch;
 			align-items: center;
 			gap: 2ch;
 			flex: 0 0 auto;
