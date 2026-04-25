@@ -192,12 +192,12 @@ export function createFilePickerHtml(options: {
 			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
 			--selected-text: var(--vscode-editor-foreground);
 			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
+			--warning: var(--vscode-editorWarning-foreground);
 			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
 			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
 			--font-family: var(--vscode-editor-font-family, monospace);
 			--font-size: var(--vscode-editor-font-size, 13px);
 			--line-height: var(--vscode-editor-line-height, 20px);
-			--doom-orange: #ffb86c;
 		}
 
 		* {
@@ -297,7 +297,7 @@ export function createFilePickerHtml(options: {
 		}
 
 		.item-size {
-			color: var(--doom-orange);
+			color: var(--warning);
 			font-variant-numeric: tabular-nums;
 			white-space: nowrap;
 			text-align: right;

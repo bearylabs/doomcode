@@ -440,13 +440,13 @@ export class DoomStartPage {
 	<style>
 		:root {
 			color-scheme: dark;
-			--doom-bg: var(--vscode-editor-background, #282a36);
-			--doom-fg: #a7abd8;
-			--doom-muted: #7c82b6;
-			--doom-cyan: #8be9fd;
-			--doom-orange: #ffb86c;
-			--doom-blue: #7aa2f7;
-			--doom-cursor: #2bd3ff;
+			--bg: var(--vscode-editor-background);
+			--text: var(--vscode-editor-foreground);
+			--muted: var(--vscode-descriptionForeground, var(--vscode-editorLineNumber-foreground));
+			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
+			--warning: var(--vscode-editorWarning-foreground);
+			--font-family: var(--vscode-editor-font-family, monospace);
+			--font-size: var(--vscode-editor-font-size, 13px);
 		}
 
 		* {
@@ -460,9 +460,10 @@ export class DoomStartPage {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
-			background: var(--doom-bg);
-			color: var(--doom-fg);
+			font-family: var(--font-family);
+			font-size: var(--font-size);
+			background: var(--bg);
+			color: var(--text);
 		}
 
 		main {
@@ -481,10 +482,10 @@ export class DoomStartPage {
 
 		.eyebrow {
 			margin: 0;
-			font-size: 13px;
+			font-size: var(--font-size);
 			letter-spacing: 0.16em;
 			text-transform: uppercase;
-			color: var(--doom-muted);
+			color: var(--muted);
 		}
 
 		.ascii-header-shell {
@@ -499,14 +500,14 @@ export class DoomStartPage {
 			margin: 0;
 			padding: 0;
 			min-width: max-content;
-			font-size: 13px;
-			line-height: 13px;
+			font-size: var(--font-size);
+			line-height: var(--font-size);
 			letter-spacing: 0;
 			font-kerning: none;
 			font-variant-ligatures: none;
 			font-feature-settings: "liga" 0, "calt" 0;
 			white-space: pre;
-			color: var(--doom-muted);
+			color: var(--muted);
 			text-align: left;
 		}
 
@@ -548,7 +549,7 @@ export class DoomStartPage {
 			align-items: center;
 			gap: 10px;
 			min-width: 0;
-			color: var(--vscode-focusBorder, var(--doom-cyan));
+			color: var(--accent);
 		}
 
 		.menu-icon {
@@ -571,7 +572,7 @@ export class DoomStartPage {
 		}
 
 		.menu-key {
-			color: var(--doom-orange);
+			color: var(--warning);
 			white-space: pre;
 		}
 
@@ -579,18 +580,18 @@ export class DoomStartPage {
 		.menu-link:focus-visible .menu-label-shell,
 		.inline-link:hover,
 		.inline-link:focus-visible {
-			color: #b6f4ff;
+			color: color-mix(in srgb, var(--accent) 60%, white 40%);
 		}
 
 		.menu-link:hover .menu-key,
 		.menu-link:focus-visible .menu-key {
-			color: #ffd39d;
+			color: color-mix(in srgb, var(--warning) 60%, white 40%);
 		}
 
 		.menu-link:focus-visible,
 		.inline-link:focus-visible,
 		.toggle input:focus-visible {
-			outline: 1px solid var(--doom-blue);
+			outline: 1px solid var(--accent);
 			outline-offset: 3px;
 		}
 
@@ -599,7 +600,7 @@ export class DoomStartPage {
 		.boot,
 		.toggle {
 			text-align: center;
-			color: var(--doom-muted);
+			color: var(--muted);
 			line-height: 1.6;
 		}
 
@@ -613,14 +614,14 @@ export class DoomStartPage {
 		}
 
 		.status-warning {
-			color: var(--doom-muted);
+			color: var(--muted);
 		}
 
 		.inline-link {
 			padding: 0;
 			border: 0;
 			background: transparent;
-			color: var(--doom-orange);
+			color: var(--accent);
 			font: inherit;
 			cursor: pointer;
 		}
@@ -631,10 +632,10 @@ export class DoomStartPage {
 
 		.version-indicator {
 			margin: 0;
-			font-size: 11px;
+			font-size: calc(var(--font-size) - 2px);
 			letter-spacing: 0.08em;
 			text-transform: uppercase;
-			color: var(--doom-muted);
+			color: var(--muted);
 		}
 
 		.repo-link-shell {
@@ -651,14 +652,14 @@ export class DoomStartPage {
 			padding: 0;
 			border: 0;
 			background: transparent;
-			color: var(--doom-orange);
+			color: var(--warning);
 			line-height: 1;
 			cursor: pointer;
 		}
 
 		.repo-link:hover,
 		.repo-link:focus-visible {
-			color: #ffd39d;
+			color: color-mix(in srgb, var(--warning) 60%, white 40%);
 		}
 
 		.toggle {
@@ -672,7 +673,7 @@ export class DoomStartPage {
 			width: 15px;
 			height: 15px;
 			margin: 0;
-			accent-color: var(--doom-blue);
+			accent-color: var(--accent);
 		}
 
 		@media (max-width: 720px) {
@@ -685,8 +686,8 @@ export class DoomStartPage {
 			}
 
 			.ascii-header {
-				font-size: 11px;
-				line-height: 11px;
+				font-size: calc(var(--font-size) - 2px);
+				line-height: calc(var(--font-size) - 2px);
 			}
 		}
 	</style>
