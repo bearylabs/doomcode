@@ -1431,6 +1431,7 @@
       "explorer.confirmDelete": false,
       "explorer.confirmDragAndDrop": false,
       "files.simpleDialog.enable": true,
+      "terminal.integrated.stickyScroll.enabled": false,
       "terminal.integrated.commandsToSkipShell": [
         "doom.whichKeyShow"
       ],
