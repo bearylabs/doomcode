@@ -4,13 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-25
+
 ### Added
 
 - `SPC .` / `SPC f f` — new directory browser panel, mirrors Doom Emacs `find-file`; starts in the current file's directory (falls back to project root, then `$HOME`); lists files and subdirectories; typing filters by name within the current directory; Tab completes the active item into the path; backspacing past a `/` removes the whole directory component for rapid upward traversal
 - `SPC SPC` / `SPC p f` — new "find file in project" panel, Doom Emacs-style file picker
 - Orderless AND matching in file and project pickers — space-separate terms to filter by multiple words in any order
 - File picker shows last modified time alongside each file
+- Buffer switcher shows file size and accent extension badge
 - Opening a project now chains directly into the file picker; editor layout resets on project open
+- Paths under home directory collapse to `~` across all panels
+- Relative time labels in file pickers expanded with clock time appended
 
 ### Changed
 
