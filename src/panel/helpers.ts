@@ -1,3 +1,21 @@
+import * as os from 'os';
+
+/** Replaces the home directory prefix with `~` for display. */
+export function tildeCollapse(path: string): string {
+	const home = os.homedir();
+	if (path === home) { return '~'; }
+	if (path.startsWith(home + '/')) { return '~' + path.slice(home.length); }
+	return path;
+}
+
+/** Expands a leading `~` back to the home directory. */
+export function tildeExpand(path: string): string {
+	const home = os.homedir();
+	if (path === '~') { return home; }
+	if (path.startsWith('~/')) { return home + path.slice(1); }
+	return path;
+}
+
 /**
  * Formats a byte count as a human-readable size (ls -lh style).
  * < 1 KiB → raw bytes, >= 1 KiB → `Xk`, >= 1 MiB → `XM`, >= 1 GiB → `XG`.

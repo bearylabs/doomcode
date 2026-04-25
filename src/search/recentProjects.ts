@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch, tildeCollapse } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Recent project models
@@ -105,7 +105,7 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 			continue;
 		}
 
-		const path = uri.fsPath.replace(/\\/g, '/');
+		const path = tildeCollapse(uri.fsPath.replace(/\\/g, '/'));
 		const basename = path.split('/').filter(Boolean).pop() ?? path;
 		const label = entry.label ?? basename;
 		uriList.push({ uri, label, path });

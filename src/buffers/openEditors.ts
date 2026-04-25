@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createNonce, formatFileSize, fuzzyMatch } from '../panel/helpers';
+import { createNonce, formatFileSize, fuzzyMatch, tildeCollapse } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,8 @@ function viewColumnToGroupLabel(viewColumn: vscode.ViewColumn): string {
 /** Returns a workspace-relative path for file URIs; falls back to uri.path or full URI string for other schemes. */
 function getRelativeLabel(uri: vscode.Uri): string {
 	if (uri.scheme === 'file') {
-		return vscode.workspace.asRelativePath(uri, false);
+		const rel = vscode.workspace.asRelativePath(uri, false);
+		return rel.startsWith('/') ? tildeCollapse(rel) : rel;
 	}
 
 	return uri.path.length > 0 ? uri.path : uri.toString(true);

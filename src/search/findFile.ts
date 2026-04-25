@@ -1,6 +1,8 @@
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, tildeCollapse, tildeExpand } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Models
@@ -289,10 +291,17 @@ export class DoomFindFilePanel {
 			this.ready = true;
 			this.render();
 			return;
-		case 'query':
-			this.query = message.query ?? '';
+		case 'query': {
+			const expanded = tildeExpand(message.query ?? '');
+			if (!expanded && this.query === os.homedir() + '/') {
+				this.query = path.dirname(os.homedir()) + '/';
+				this.forceQueryUpdate = true;
+			} else {
+				this.query = expanded;
+			}
 			await this.applyQueryChange();
 			return;
+		}
 		case 'move': {
 			if (this.filteredItems.length === 0 || message.index === undefined) {
 				return;
@@ -316,7 +325,7 @@ export class DoomFindFilePanel {
 			if (!tabItem) {
 				return;
 			}
-			this.query = this.currentDir + '/' + tabItem.name;
+			this.query = tabItem.isDir ? tabItem.fsPath + '/' : tabItem.fsPath;
 			this.forceQueryUpdate = true;
 			await this.applyQueryChange();
 			return;
@@ -362,7 +371,7 @@ export class DoomFindFilePanel {
 			items,
 			placeholder: '',
 			promptLabel: 'Find file:',
-			query: this.query,
+			query: tildeCollapse(this.query),
 			statusLabel: this.getStatusLabel(),
 			statusWidthCh: this.getStatusWidthCh(),
 			title: 'Find File',
