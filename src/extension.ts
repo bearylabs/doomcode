@@ -897,7 +897,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
 	const projectFilePanel = new DoomProjectFilePanel(selectionHistory);
 	const recentProjectsPanel = new DoomRecentProjectsPanel();
-	const crossProjectFilePanel = new DoomCrossProjectFilePanel();
+	const crossProjectFilePanel = new DoomCrossProjectFilePanel(selectionHistory);
 	const findFilePanel = new DoomFindFilePanel(selectionHistory);
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,

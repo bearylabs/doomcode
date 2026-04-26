@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+import { SelectionHistory } from './selectionHistory';
 
 // ---------------------------------------------------------------------------
 // Cross-project file models
@@ -106,6 +107,8 @@ async function walkProjectFiles(
 export class DoomCrossProjectFilePanel {
 	static readonly visibleContextKey = 'doom.crossProjectFileVisible';
 
+	constructor(private readonly history: SelectionHistory) {}
+
 	private activeIndex = 0;
 	private allItems: CrossProjectFileItem[] = [];
 	private filteredItems: CrossProjectFileMatch[] = [];
@@ -171,7 +174,12 @@ export class DoomCrossProjectFilePanel {
 					searchText: relativePath.toLowerCase(),
 				};
 			})
-			.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+			.sort((a, b) => {
+				const aScore = this.history.getScore(a.absoluteUri.fsPath);
+				const bScore = this.history.getScore(b.absoluteUri.fsPath);
+				if (bScore !== aScore) { return bScore - aScore; }
+				return (b.lastModifiedMs ?? 0) - (a.lastModifiedMs ?? 0);
+			});
 
 		this.loading = false;
 		this.filterItems();
@@ -222,6 +230,7 @@ export class DoomCrossProjectFilePanel {
 		}
 
 		const callback = this.onFileSelected;
+		this.history.record(item.item.absoluteUri.fsPath);
 		await this.close();
 		await callback(item.item.absoluteUri);
 	}
@@ -284,7 +293,13 @@ export class DoomCrossProjectFilePanel {
 				return { item, matches: match.indices, score: match.score };
 			})
 			.filter((entry): entry is CrossProjectFileMatch => entry !== undefined)
-			.sort((a, b) => b.score - a.score)
+			.sort((a, b) => {
+				if (b.score !== a.score) { return b.score - a.score; }
+				const aHistory = this.history.getScore(a.item.absoluteUri.fsPath);
+				const bHistory = this.history.getScore(b.item.absoluteUri.fsPath);
+				if (bHistory !== aHistory) { return bHistory - aHistory; }
+				return (b.item.lastModifiedMs ?? 0) - (a.item.lastModifiedMs ?? 0);
+			})
 			.slice(0, 200);
 	}
 

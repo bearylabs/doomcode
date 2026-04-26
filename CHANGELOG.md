@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `SPC p p` cross-project file picker now ranks results by frecency — shares the same selection history as `SPC SPC` and `SPC .`
+
 ## [0.3.2] - 2026-04-26
 
 ### Added
