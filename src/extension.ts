@@ -19,6 +19,7 @@ import { DoomFindFilePanel } from './search/findFile';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
+import { SelectionHistory } from './search/selectionHistory';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -884,12 +885,20 @@ export function activate(context: vscode.ExtensionContext) {
 		}, delayMs);
 	};
 	registerWindowMru(context);
+	const selectionHistory = new SelectionHistory(context.globalState);
+	context.subscriptions.push(
+		vscode.workspace.onDidOpenTextDocument((doc) => {
+			if (doc.uri.scheme === 'file' && !doc.isUntitled) {
+				selectionHistory.recordIfNewer(doc.uri.fsPath, Date.now());
+			}
+		})
+	);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
-	const projectFilePanel = new DoomProjectFilePanel();
+	const projectFilePanel = new DoomProjectFilePanel(selectionHistory);
 	const recentProjectsPanel = new DoomRecentProjectsPanel();
 	const crossProjectFilePanel = new DoomCrossProjectFilePanel();
-	const findFilePanel = new DoomFindFilePanel();
+	const findFilePanel = new DoomFindFilePanel(selectionHistory);
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
 		fuzzySearchPanel,

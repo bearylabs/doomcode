@@ -7,10 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `SPC q` which-key group (`+quit/session`) now includes: `F` Clear current frame, `q` Quit VSCode, `r` Reload VSCode
+- `SPC SPC` and `SPC .` file pickers now rank results by frecency (frequency × recency) — files you open often and recently surface first, matching Doom Emacs prescient.el behaviour
+- Selection history persists across restarts and is shared across workspaces (global, like prescient.el)
+- Files opened by any method (click, git, external tools) passively seed the history via `onDidOpenTextDocument`; explicit picker selections additionally boost the frecency count
 
 ### Changed
 
 - Which-key menus sorted alphabetically (case-insensitive, lowercase before uppercase): `b`, `d`, `e`, `f`, `f→i`, `g`, `o→u`
+- `SPC SPC` non-open-tab files previously sorted alphabetically; now ordered by frecency score with modification time as fallback
 
 ## [0.3.1] - 2026-04-26
 

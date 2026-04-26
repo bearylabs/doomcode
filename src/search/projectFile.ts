@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
+import { SelectionHistory } from './selectionHistory';
 
 const execFileAsync = promisify(execFile);
 
@@ -95,7 +96,7 @@ async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequenc
  *
  * Ordering follows Doom / projectile rules:
  *   1. Currently open file tabs (in tab-group order) — equivalent to open buffers.
- *   2. All remaining project files alphabetically.
+ *   2. All remaining project files by modification time descending (recently modified first).
  *
  * Fuzzy search runs on the full relative path so directory prefixes are matchable.
  * Results are sorted by fuzzy score when a query is present, preserving the MRU
@@ -103,6 +104,8 @@ async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequenc
  */
 export class DoomProjectFilePanel {
 	static readonly visibleContextKey = 'doom.projectFileVisible';
+
+	constructor(private readonly history: SelectionHistory) {}
 
 	private activeIndex = 0;
 	private allItems: ProjectFileItem[] = [];
@@ -176,6 +179,7 @@ export class DoomProjectFilePanel {
 		}
 
 		const uri = item.item.uri;
+		this.history.record(uri.fsPath);
 		// Capture before close() shifts focus.
 		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		await this.close();
@@ -315,7 +319,7 @@ export class DoomProjectFilePanel {
 	/**
 	 * Builds `allItems` with Doom Emacs MRU ordering:
 	 *   1. Currently open file tabs across all groups (in group/tab order).
-	 *   2. Remaining project files alphabetically.
+	 *   2. Remaining project files by modification time descending (most recent first).
 	 *
 	 * Deduplicates by `fsPath` so the same file doesn't appear twice.
 	 */
@@ -350,15 +354,22 @@ export class DoomProjectFilePanel {
 			}
 		}
 
-		const remainingItems = projectItems.filter((item) => !seenPaths.has(item.uri.fsPath));
+		const remainingItems = projectItems
+			.filter((item) => !seenPaths.has(item.uri.fsPath))
+			.sort((a, b) => {
+				const aHistory = this.history.getScore(a.uri.fsPath);
+				const bHistory = this.history.getScore(b.uri.fsPath);
+				if (bHistory !== aHistory) { return bHistory - aHistory; }
+				return (b.lastModifiedMs ?? 0) - (a.lastModifiedMs ?? 0);
+			});
 		this.allItems = [...openItems, ...remainingItems];
 		this.filterItems();
 	}
 
 	/**
 	 * Applies fuzzy filter to `allItems`, capped at 200.
-	 * Empty query: shows all items preserving MRU order.
-	 * Non-empty query: sorts by fuzzy score (higher = better); MRU items retain priority at equal scores due to stable sort.
+	 * Empty query: shows all items preserving MRU order (open tabs first, then remaining by mtime desc).
+	 * Non-empty query: sorts by fuzzy score (higher = better); mtime breaks ties.
 	 */
 	private filterItems(): void {
 		this.activeIndex = 0;
@@ -383,7 +394,13 @@ export class DoomProjectFilePanel {
 				return { item, matches: match.indices, score: match.score };
 			})
 			.filter((entry): entry is ProjectFileMatch => entry !== undefined)
-			.sort((a, b) => b.score - a.score)
+			.sort((a, b) => {
+				if (b.score !== a.score) { return b.score - a.score; }
+				const aHistory = this.history.getScore(a.item.uri.fsPath);
+				const bHistory = this.history.getScore(b.item.uri.fsPath);
+				if (bHistory !== aHistory) { return bHistory - aHistory; }
+				return (b.item.lastModifiedMs ?? 0) - (a.item.lastModifiedMs ?? 0);
+			})
 			.slice(0, 200);
 	}
 

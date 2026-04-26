@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
+import { SelectionHistory } from './selectionHistory';
 
 // ---------------------------------------------------------------------------
 // Models
@@ -65,6 +66,8 @@ interface FindFileMessage {
  */
 export class DoomFindFilePanel {
 	static readonly visibleContextKey = 'doom.findFileVisible';
+
+	constructor(private readonly history: SelectionHistory) {}
 
 	private activeIndex = 0;
 	private allItems: FindFileItem[] = [];
@@ -152,6 +155,7 @@ export class DoomFindFilePanel {
 		}
 
 		const uri = vscode.Uri.file(item.fsPath);
+		this.history.record(item.fsPath);
 		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		await this.close();
 		const document = await vscode.workspace.openTextDocument(uri);
@@ -269,7 +273,12 @@ export class DoomFindFilePanel {
 		}
 
 		dirs.sort((a, b) => a.name.localeCompare(b.name));
-		files.sort((a, b) => a.name.localeCompare(b.name));
+		files.sort((a, b) => {
+			const aHistory = this.history.getScore(a.fsPath);
+			const bHistory = this.history.getScore(b.fsPath);
+			if (bHistory !== aHistory) { return bHistory - aHistory; }
+			return (b.lastModifiedMs ?? 0) - (a.lastModifiedMs ?? 0);
+		});
 
 		this.allItems = [...dirs, ...files];
 	}
