@@ -4,9 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-26
+
 ### Added
 
 - `whichkey.bindingOverrides` now respected in the doom which-key UI — use `position: -1` to remove a binding, a positive index to insert at a specific position, or omit `position` to append
+
+### Fixed
+
+- `SPC o p` no longer opens the explorer without focus when the sidebar was previously closed with `q`
+- First key of a chord no longer dropped when the which-key panel reattaches to an existing webview
 
 ### Changed
 
