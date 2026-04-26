@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-26
+
 ### Added
 
 - `SPC q` which-key group (`+quit/session`) now includes: `F` Clear current frame, `q` Quit VSCode, `r` Reload VSCode
