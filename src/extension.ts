@@ -1007,6 +1007,22 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const sidebarHideCmd = vscode.commands.registerCommand(
+		"doom.sidebarHide",
+		async () => {
+			whichKeyMenu.trackContextCommand('workbench.action.toggleSidebarVisibility');
+			await vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
+		}
+	);
+
+	const panelHideCmd = vscode.commands.registerCommand(
+		"doom.panelHide",
+		async () => {
+			whichKeyMenu.trackContextCommand('workbench.action.togglePanel');
+			await vscode.commands.executeCommand('workbench.action.togglePanel');
+		}
+	);
+
 	const windowDeleteCmd = vscode.commands.registerCommand(
 		"doom.windowDelete",
 		async () => {
@@ -1238,6 +1254,8 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyCmd,
 		whichKeyBindingsCmd,
 		whichKeyHideCmd,
+		sidebarHideCmd,
+		panelHideCmd,
 		windowDeleteCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,

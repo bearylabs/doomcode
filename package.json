@@ -1949,17 +1949,17 @@
       },
       {
         "key": "q",
-        "command": "workbench.action.toggleSidebarVisibility",
+        "command": "doom.sidebarHide",
         "when": "filesExplorerFocus && !inputFocus"
       },
       {
         "key": "q",
-        "command": "workbench.action.toggleSidebarVisibility",
+        "command": "doom.sidebarHide",
         "when": "openEditorsFocus && !inputFocus"
       },
       {
         "key": "q",
-        "command": "workbench.action.togglePanel",
+        "command": "doom.panelHide",
         "when": "timelineFocused && !inputFocus"
       },
       {

@@ -607,8 +607,20 @@ export class DoomWhichKeyMenu {
 		this.stack = [];
 	}
 
-	/** SharedPanelController contract — called when this controller becomes active. */
+	/**
+	 * SharedPanelController contract — called when this controller becomes active.
+	 * When re-attaching to the same retained webview, skip HTML reinitialization so
+	 * the webview's JS context stays intact and keys typed immediately after SPC aren't lost.
+	 */
 	attachToView(webviewView: vscode.WebviewView): void {
+		if (this.view === webviewView) {
+			this.viewDisposables.forEach((disposable) => disposable.dispose());
+			this.viewDisposables = [];
+			this.registerViewListeners(webviewView);
+			this.render();
+			return;
+		}
+
 		this.resolveWebviewView(webviewView);
 	}
 
@@ -630,6 +642,8 @@ export class DoomWhichKeyMenu {
 	/** Used when the panel collapses externally; avoids a double-close if the view is already hidden. */
 	async hide(): Promise<void> {
 		if (!this.view?.visible) {
+			this.isShowing = false;
+			this.hostPendingKeys = [];
 			await this.updateVisibilityContext(false);
 			return;
 		}
@@ -651,7 +665,11 @@ export class DoomWhichKeyMenu {
 			enableScripts: true,
 		};
 		webviewView.webview.html = this.getHtml(webviewView.webview);
+		this.registerViewListeners(webviewView);
+	}
 
+	/** Registers view-scoped event listeners, used both on first init and retained-view re-attach. */
+	private registerViewListeners(webviewView: vscode.WebviewView): void {
 		this.viewDisposables.push(
 			webviewView.onDidDispose(() => {
 				if (this.view === webviewView) {
@@ -801,7 +819,7 @@ export class DoomWhichKeyMenu {
 	}
 
 	/** Intercepts `doom.bigModeEnabled` as a local flag before delegating to the shared context tracker. */
-	private trackContextCommand(command: string, arg?: unknown): void {
+	trackContextCommand(command: string, arg?: unknown): void {
 		if (command !== 'setContext' || !Array.isArray(arg) || arg.length < 2) {
 			this.trackedContext = applyTrackedUiContextCommand(this.trackedContext, command, arg);
 			return;
