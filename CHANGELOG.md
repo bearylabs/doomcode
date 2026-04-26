@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Which-key menus sorted alphabetically (case-insensitive, lowercase before uppercase): `b`, `d`, `e`, `f`, `f→i`, `g`, `o→u`
+
 ## [0.3.1] - 2026-04-26
 
 ### Added

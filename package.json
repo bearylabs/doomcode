@@ -337,10 +337,25 @@
               "command": "workbench.action.nextEditor"
             },
             {
+              "key": "N",
+              "name": "New empty buffer",
+              "type": "command",
+              "command": "workbench.action.files.newUntitledFile"
+            },
+            {
               "key": "p",
               "name": "Previous buffer",
               "type": "command",
               "command": "workbench.action.previousEditor"
+            },
+            {
+              "key": "P",
+              "name": "Paste clipboard to buffer",
+              "type": "commands",
+              "commands": [
+                "editor.action.selectAll",
+                "editor.action.clipboardPasteAction"
+              ]
             },
             {
               "key": "r",
@@ -358,25 +373,10 @@
               ]
             },
             {
-              "key": "N",
-              "name": "New empty buffer",
-              "type": "command",
-              "command": "workbench.action.files.newUntitledFile"
-            },
-            {
               "key": "u",
               "name": "Reopen closed buffer",
               "type": "command",
               "command": "workbench.action.reopenClosedEditor"
-            },
-            {
-              "key": "P",
-              "name": "Paste clipboard to buffer",
-              "type": "commands",
-              "commands": [
-                "editor.action.selectAll",
-                "editor.action.clipboardPasteAction"
-              ]
             },
             {
               "key": "Y",
@@ -477,6 +477,24 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "b",
+              "name": "Toggle breakpoint",
+              "type": "command",
+              "command": "editor.debug.action.toggleBreakpoint"
+            },
+            {
+              "key": "B",
+              "name": "Toggle inline breakpoint",
+              "type": "command",
+              "command": "editor.debug.action.toggleInlineBreakpoint"
+            },
+            {
+              "key": "c",
+              "name": "Continue debug",
+              "type": "command",
+              "command": "workbench.action.debug.continue"
+            },
+            {
               "key": "d",
               "name": "Start debug",
               "type": "command",
@@ -489,16 +507,22 @@
               "command": "workbench.action.debug.run"
             },
             {
-              "key": "S",
-              "name": "Stop debug",
+              "key": "i",
+              "name": "Step into",
               "type": "command",
-              "command": "workbench.action.debug.stop"
+              "command": "workbench.action.debug.stepInto"
             },
             {
-              "key": "c",
-              "name": "Continue debug",
+              "key": "j",
+              "name": "Jump to cursor",
               "type": "command",
-              "command": "workbench.action.debug.continue"
+              "command": "debug.jumpToCursor"
+            },
+            {
+              "key": "o",
+              "name": "Step out",
+              "type": "command",
+              "command": "workbench.action.debug.stepOut"
             },
             {
               "key": "p",
@@ -513,40 +537,16 @@
               "command": "workbench.action.debug.restart"
             },
             {
-              "key": "i",
-              "name": "Step into",
-              "type": "command",
-              "command": "workbench.action.debug.stepInto"
-            },
-            {
               "key": "s",
               "name": "Step over",
               "type": "command",
               "command": "workbench.action.debug.stepOver"
             },
             {
-              "key": "o",
-              "name": "Step out",
+              "key": "S",
+              "name": "Stop debug",
               "type": "command",
-              "command": "workbench.action.debug.stepOut"
-            },
-            {
-              "key": "b",
-              "name": "Toggle breakpoint",
-              "type": "command",
-              "command": "editor.debug.action.toggleBreakpoint"
-            },
-            {
-              "key": "B",
-              "name": "Toggle inline breakpoint",
-              "type": "command",
-              "command": "editor.debug.action.toggleInlineBreakpoint"
-            },
-            {
-              "key": "j",
-              "name": "Jump to cursor",
-              "type": "command",
-              "command": "debug.jumpToCursor"
+              "command": "workbench.action.debug.stop"
             },
             {
               "key": "v",
@@ -587,16 +587,16 @@
               "command": "workbench.actions.view.problems"
             },
             {
-              "key": "N",
-              "name": "Previous error",
-              "type": "command",
-              "command": "editor.action.marker.prev"
-            },
-            {
               "key": "n",
               "name": "Next error",
               "type": "command",
               "command": "editor.action.marker.next"
+            },
+            {
+              "key": "N",
+              "name": "Previous error",
+              "type": "command",
+              "command": "editor.action.marker.prev"
             },
             {
               "key": "p",
@@ -612,10 +612,65 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "=",
+              "name": "Format file",
+              "type": "command",
+              "command": "editor.action.formatDocument"
+            },
+            {
               "key": "f",
               "name": "Find file",
               "type": "command",
               "command": "doom.findFile"
+            },
+            {
+              "key": "i",
+              "name": "+indentation",
+              "type": "bindings",
+              "bindings": [
+                {
+                  "key": "d",
+                  "name": "Detect indentation",
+                  "type": "command",
+                  "command": "editor.action.detectIndentation"
+                },
+                {
+                  "key": "i",
+                  "name": "Change indentation",
+                  "type": "command",
+                  "command": "changeEditorIndentation"
+                },
+                {
+                  "key": "r",
+                  "name": "Reindent",
+                  "type": "command",
+                  "command": "editor.action.reindentlines"
+                },
+                {
+                  "key": "R",
+                  "name": "Reindent selected",
+                  "type": "command",
+                  "command": "editor.action.reindentselectedlines"
+                },
+                {
+                  "key": "s",
+                  "name": "Convert indentation to spaces",
+                  "type": "command",
+                  "command": "editor.action.indentationToSpaces"
+                },
+                {
+                  "key": "t",
+                  "name": "Convert indentation to tabs",
+                  "type": "command",
+                  "command": "editor.action.indentationToTabs"
+                }
+              ]
+            },
+            {
+              "key": "l",
+              "name": "Change file language",
+              "type": "command",
+              "command": "workbench.action.editor.changeLanguageMode"
             },
             {
               "key": "n",
@@ -624,22 +679,10 @@
               "command": "workbench.action.files.newUntitledFile"
             },
             {
-              "key": "w",
-              "name": "Open active in new window",
+              "key": "o",
+              "name": "Open with",
               "type": "command",
-              "command": "workbench.action.files.showOpenedFileInNewWindow"
-            },
-            {
-              "key": "s",
-              "name": "Save file",
-              "type": "command",
-              "command": "workbench.action.files.save"
-            },
-            {
-              "key": "S",
-              "name": "Save all files",
-              "type": "command",
-              "command": "workbench.action.files.saveAll"
+              "command": "explorer.openWith"
             },
             {
               "key": "r",
@@ -657,6 +700,18 @@
               ]
             },
             {
+              "key": "s",
+              "name": "Save file",
+              "type": "command",
+              "command": "workbench.action.files.save"
+            },
+            {
+              "key": "S",
+              "name": "Save all files",
+              "type": "command",
+              "command": "workbench.action.files.saveAll"
+            },
+            {
               "key": "t",
               "name": "Show tree/explorer view",
               "type": "command",
@@ -669,6 +724,12 @@
               "command": "workbench.files.action.showActiveFileInExplorer"
             },
             {
+              "key": "w",
+              "name": "Open active in new window",
+              "type": "command",
+              "command": "workbench.action.files.showOpenedFileInNewWindow"
+            },
+            {
               "key": "y",
               "name": "Yank file path",
               "type": "command",
@@ -679,67 +740,6 @@
               "name": "Yank file path from project",
               "type": "command",
               "command": "copyRelativeFilePath"
-            },
-            {
-              "key": "o",
-              "name": "Open with",
-              "type": "command",
-              "command": "explorer.openWith"
-            },
-            {
-              "key": "l",
-              "name": "Change file language",
-              "type": "command",
-              "command": "workbench.action.editor.changeLanguageMode"
-            },
-            {
-              "key": "=",
-              "name": "Format file",
-              "type": "command",
-              "command": "editor.action.formatDocument"
-            },
-            {
-              "key": "i",
-              "name": "+indentation",
-              "type": "bindings",
-              "bindings": [
-                {
-                  "key": "i",
-                  "name": "Change indentation",
-                  "type": "command",
-                  "command": "changeEditorIndentation"
-                },
-                {
-                  "key": "d",
-                  "name": "Detect indentation",
-                  "type": "command",
-                  "command": "editor.action.detectIndentation"
-                },
-                {
-                  "key": "r",
-                  "name": "Reindent",
-                  "type": "command",
-                  "command": "editor.action.reindentlines"
-                },
-                {
-                  "key": "R",
-                  "name": "Reindent selected",
-                  "type": "command",
-                  "command": "editor.action.reindentselectedlines"
-                },
-                {
-                  "key": "t",
-                  "name": "Convert indentation to tabs",
-                  "type": "command",
-                  "command": "editor.action.indentationToTabs"
-                },
-                {
-                  "key": "s",
-                  "name": "Convert indentation to spaces",
-                  "type": "command",
-                  "command": "editor.action.indentationToSpaces"
-                }
-              ]
             }
           ]
         },
@@ -773,12 +773,6 @@
               "command": "magit.dispatch"
             },
             {
-              "key": "g",
-              "name": "Magit status",
-              "type": "command",
-              "command": "magit.status"
-            },
-            {
               "key": "b",
               "name": "Magit switch branch",
               "type": "command",
@@ -795,6 +789,12 @@
               "name": "Git fetch",
               "type": "command",
               "command": "git.fetch"
+            },
+            {
+              "key": "g",
+              "name": "Magit status",
+              "type": "command",
+              "command": "magit.status"
             },
             {
               "key": "L",
@@ -979,16 +979,16 @@
               "type": "bindings",
               "bindings": [
                 {
+                  "key": "d",
+                  "name": "Show debug console",
+                  "type": "command",
+                  "command": "workbench.debug.action.toggleRepl"
+                },
+                {
                   "key": "e",
                   "name": "Show explorer",
                   "type": "command",
                   "command": "workbench.view.explorer"
-                },
-                {
-                  "key": "s",
-                  "name": "Show search",
-                  "type": "command",
-                  "command": "workbench.view.search"
                 },
                 {
                   "key": "g",
@@ -997,22 +997,10 @@
                   "command": "workbench.view.scm"
                 },
                 {
-                  "key": "t",
-                  "name": "Show test",
+                  "key": "o",
+                  "name": "Show output",
                   "type": "command",
-                  "command": "workbench.view.extension.test"
-                },
-                {
-                  "key": "r",
-                  "name": "Show remote explorer",
-                  "type": "command",
-                  "command": "workbench.view.remote"
-                },
-                {
-                  "key": "x",
-                  "name": "Show extensions",
-                  "type": "command",
-                  "command": "workbench.view.extensions"
+                  "command": "workbench.action.output.toggleOutput"
                 },
                 {
                   "key": "p",
@@ -1021,16 +1009,28 @@
                   "command": "workbench.actions.view.problems"
                 },
                 {
-                  "key": "o",
-                  "name": "Show output",
+                  "key": "r",
+                  "name": "Show remote explorer",
                   "type": "command",
-                  "command": "workbench.action.output.toggleOutput"
+                  "command": "workbench.view.remote"
                 },
                 {
-                  "key": "d",
-                  "name": "Show debug console",
+                  "key": "s",
+                  "name": "Show search",
                   "type": "command",
-                  "command": "workbench.debug.action.toggleRepl"
+                  "command": "workbench.view.search"
+                },
+                {
+                  "key": "t",
+                  "name": "Show test",
+                  "type": "command",
+                  "command": "workbench.view.extension.test"
+                },
+                {
+                  "key": "x",
+                  "name": "Show extensions",
+                  "type": "command",
+                  "command": "workbench.view.extensions"
                 }
               ]
             }
