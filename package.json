@@ -1073,10 +1073,34 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": "F",
+              "name": "Clear current frame",
+              "type": "command",
+              "command": "runCommands",
+              "args": {
+                "commands": [
+                  "workbench.action.closeAllEditors",
+                  "workbench.action.closeAllGroups"
+                ]
+              }
+            },
+            {
               "key": "l",
               "name": "Reload last session",
               "type": "command",
               "command": "doom.reloadLastSession"
+            },
+            {
+              "key": "q",
+              "name": "Quit VSCode",
+              "type": "command",
+              "command": "workbench.action.quit"
+            },
+            {
+              "key": "r",
+              "name": "Reload VSCode",
+              "type": "command",
+              "command": "workbench.action.reloadWindow"
             }
           ]
         },
