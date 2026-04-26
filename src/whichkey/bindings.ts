@@ -36,6 +36,92 @@ function isWhichKeyBinding(value: unknown): value is WhichKeyBinding {
 		&& typeof value.type === 'string';
 }
 
+interface BindingOverride {
+	keys: string;
+	position?: number;
+	name?: string;
+	type?: WhichKeyBindingType;
+	command?: string;
+	commands?: string[];
+	args?: unknown;
+	bindings?: WhichKeyBinding[];
+}
+
+function isBindingOverride(value: unknown): value is BindingOverride {
+	if (!isRecord(value)) {
+		return false;
+	}
+
+	return typeof value.keys === 'string'
+		&& (value.position === undefined || typeof value.position === 'number');
+}
+
+/**
+ * Applies `whichkey.bindingOverrides` to a binding tree in place.
+ * position -1 removes the binding; any other value inserts/moves it.
+ */
+function applyBindingOverrides(bindings: WhichKeyBinding[], overrides: BindingOverride[]): WhichKeyBinding[] {
+	let result = bindings;
+
+	for (const override of overrides) {
+		const segments = override.keys.split('.');
+		if (segments.length === 0) {
+			continue;
+		}
+
+		result = applyOverrideAtPath(result, segments, override);
+	}
+
+	return result;
+}
+
+function applyOverrideAtPath(
+	bindings: WhichKeyBinding[],
+	segments: string[],
+	override: BindingOverride,
+): WhichKeyBinding[] {
+	if (segments.length === 0) {
+		return bindings;
+	}
+
+	const [head, ...tail] = segments;
+
+	if (tail.length === 0) {
+		// Leaf: apply the override directly to this level
+		if (override.position === -1) {
+			return bindings.filter((b) => b.key !== head);
+		}
+
+		// For non-removal overrides, splice in the new binding at the given position
+		const without = bindings.filter((b) => b.key !== head);
+		const newBinding: WhichKeyBinding = {
+			key: head,
+			name: override.name ?? head,
+			type: override.type ?? 'command',
+			...(override.command !== undefined && { command: override.command }),
+			...(override.commands !== undefined && { commands: override.commands }),
+			...(override.args !== undefined && { args: override.args }),
+			...(override.bindings !== undefined && { bindings: override.bindings }),
+		};
+		const insertAt = override.position === undefined
+			? without.length
+			: Math.max(0, Math.min(override.position, without.length));
+		return [...without.slice(0, insertAt), newBinding, ...without.slice(insertAt)];
+	}
+
+	// Intermediate: recurse into the child group matching `head`
+	return bindings.map((b) => {
+		if (b.key !== head || b.type !== 'bindings' || !b.bindings) {
+			return b;
+		}
+
+		return {
+			...b,
+			bindings: applyOverrideAtPath(b.bindings, tail, override),
+		};
+	});
+}
+
 /** Reads `whichkey.bindings` from workspace config and filters out malformed entries. */
 export function getConfiguredWhichKeyBindings(): WhichKeyBinding[] {
 	const configured = vscode.workspace.getConfiguration().get<unknown>('whichkey.bindings', []);
@@ -44,7 +130,19 @@ export function getConfiguredWhichKeyBindings(): WhichKeyBinding[] {
 		return [];
 	}
 
-	return configured.filter(isWhichKeyBinding);
+	const bindings = configured.filter(isWhichKeyBinding);
+
+	const rawOverrides = vscode.workspace.getConfiguration().get<unknown>('whichkey.bindingOverrides', []);
+	if (!Array.isArray(rawOverrides)) {
+		return bindings;
+	}
+
+	const overrides = rawOverrides.filter(isBindingOverride);
+	if (overrides.length === 0) {
+		return bindings;
+	}
+
+	return applyBindingOverrides(bindings, overrides);
 }
 
 // ---------------------------------------------------------------------------

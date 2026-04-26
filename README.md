@@ -178,7 +178,36 @@ The main customization happens through **which-key bindings** in the VS Code set
 - Modify existing bindings
 - Create nested command groups
 
-Treat the README as orientation and `whichkey.bindings` plus the in-editor which-key menu as the authoritative map.
+
+### Overriding bindings without editing the full list
+
+Use `whichkey.bindingOverrides` to surgically add or remove bindings without touching the full `whichkey.bindings` array. Keys are dot-separated paths into the menu tree.
+
+**Remove a binding** (`position: -1`):
+
+```json
+"whichkey.bindingOverrides": [
+  {
+    "keys": "q.l",
+    "position": -1 
+  }
+]
+```
+
+**Add a binding** (omit `position` to append, or set a number to insert at that index). If a binding with the same key already exists at that path, it is replaced:
+
+```json
+"whichkey.bindingOverrides": [
+  {
+    "keys": "q.a",
+    "name": "Go to line",
+    "type": "command",
+    "command": "workbench.action.gotoLine"
+  }
+]
+```
+
+> **Note:** The doom which-key UI only supports adding and removing bindings via `bindingOverrides`. The `when` condition feature from VSpaceCode does not work here — conditional overrides are silently ignored.
 
 Refer to the [VSpaceCode documentation](https://github.com/VSpaceCode/vscode-which-key) for advanced configuration options.
 

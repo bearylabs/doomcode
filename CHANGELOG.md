@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `whichkey.bindingOverrides` now respected in the doom which-key UI — use `position: -1` to remove a binding, a positive index to insert at a specific position, or omit `position` to append
+
 ### Changed
 
 - Terminal sticky scroll disabled by default
