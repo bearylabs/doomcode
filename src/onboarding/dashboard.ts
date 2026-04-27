@@ -426,6 +426,14 @@ export class DoomStartPage {
 			? `<p class="status-line status-warning">Conflicting extension still installed: ${this.escapeHtml(state.conflicts.map((conflict) => conflict.name).join(', '))}.</p>`
 			: '';
 		const eyebrow = this.getEyebrow(state);
+		const changelogUrl = state.mode === 'update' && state.repositoryUrl
+			? state.repositoryUrl.replace(/\.git$/, '') + '/blob/main/CHANGELOG.md'
+			: undefined;
+		const eyebrowHtml = eyebrow
+			? this.escapeHtml(eyebrow) + (changelogUrl
+				? ` <button class="inline-link eyebrow-link" data-command="openUrl" data-url="${this.escapeHtml(changelogUrl)}">View changelog</button>`
+				: '')
+			: '';
 		const repositoryMarkup = state.repositoryUrl
 			? `<p class="repo-link-shell"><button class="repo-link" data-command="openUrl" data-url="${this.escapeHtml(state.repositoryUrl)}" aria-label="Open GitHub repository">${GITHUB_ICON}</button></p>`
 			: '';
@@ -577,10 +585,13 @@ export class DoomStartPage {
 		}
 
 		.menu-link:hover .menu-label-shell,
-		.menu-link:focus-visible .menu-label-shell,
+		.menu-link:focus-visible .menu-label-shell {
+			color: color-mix(in srgb, var(--accent) 60%, white 40%);
+		}
+
 		.inline-link:hover,
 		.inline-link:focus-visible {
-			color: color-mix(in srgb, var(--accent) 60%, white 40%);
+			color: color-mix(in srgb, var(--warning) 60%, white 40%);
 		}
 
 		.menu-link:hover .menu-key,
@@ -621,7 +632,7 @@ export class DoomStartPage {
 			padding: 0;
 			border: 0;
 			background: transparent;
-			color: var(--accent);
+			color: var(--warning);
 			font: inherit;
 			cursor: pointer;
 		}
@@ -662,6 +673,11 @@ export class DoomStartPage {
 			color: color-mix(in srgb, var(--warning) 60%, white 40%);
 		}
 
+		.eyebrow-link {
+			text-transform: none;
+			letter-spacing: normal;
+		}
+
 		.toggle {
 			display: inline-flex;
 			align-items: center;
@@ -695,7 +711,7 @@ export class DoomStartPage {
 <body>
 	<main>
 		<section class="shell">
-			${eyebrow ? `<p class="eyebrow">${this.escapeHtml(eyebrow)}</p>` : ''}
+			${eyebrowHtml ? `<p class="eyebrow">${eyebrowHtml}</p>` : ''}
 			<div class="ascii-header-shell">
 				<pre class="ascii-header" aria-label="Doom Code ASCII art header">${this.escapeHtml(ASCII_HEADER)}</pre>
 			</div>
