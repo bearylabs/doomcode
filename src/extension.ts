@@ -1109,15 +1109,17 @@ export function activate(context: vscode.ExtensionContext) {
 		'doom.findFile',
 		() => {
 			const activeUri = vscode.window.activeTextEditor?.document.uri;
-			let initialQuery: string;
-			if (activeUri && activeUri.scheme === 'file') {
-				initialQuery = activeUri.fsPath.replace(/\\/g, '/').replace(/\/[^/]+$/, '/');
+			let startUri: vscode.Uri;
+			if (activeUri && activeUri.scheme !== 'untitled' && activeUri.scheme !== 'git') {
+				const parentPath = activeUri.path.replace(/\/[^/]+$/, '/');
+				startUri = activeUri.with({ path: parentPath.endsWith('/') ? parentPath : parentPath + '/' });
 			} else if (vscode.workspace.workspaceFolders?.length) {
-				initialQuery = vscode.workspace.workspaceFolders[0].uri.fsPath.replace(/\\/g, '/') + '/';
+				const folderUri = vscode.workspace.workspaceFolders[0].uri;
+				startUri = folderUri.with({ path: folderUri.path.endsWith('/') ? folderUri.path : folderUri.path + '/' });
 			} else {
-				initialQuery = os.homedir().replace(/\\/g, '/') + '/';
+				startUri = vscode.Uri.file(os.homedir().replace(/\\/g, '/') + '/');
 			}
-			void sharedPanel.showFindFile(initialQuery);
+			void sharedPanel.showFindFile(startUri);
 		}
 	);
 

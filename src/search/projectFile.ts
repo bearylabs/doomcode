@@ -83,7 +83,7 @@ async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequenc
 			return [];
 		}
 		const uris = await vscode.workspace.findFiles('**/*');
-		return uris.filter((u) => u.scheme === 'file');
+		return uris;
 	}
 }
 
@@ -268,7 +268,10 @@ export class DoomProjectFilePanel {
 		if (loadId !== this.loadSequence) {
 			return;
 		}
-		const stats = await Promise.allSettled(
+		const vscodeStats = await Promise.allSettled(
+			fileUris.map((uri) => vscode.workspace.fs.stat(uri))
+		);
+		const nodeStats = await Promise.allSettled(
 			fileUris.map((uri) => fs.promises.stat(uri.fsPath))
 		);
 
@@ -281,10 +284,11 @@ export class DoomProjectFilePanel {
 				const relativePath = vscode.workspace.asRelativePath(uri, false);
 				const slashIndex = relativePath.lastIndexOf('/');
 				const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
-				const stat = stats[i];
-				const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
-				const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
-				const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
+				const vscodeStat = vscodeStats[i];
+				const nodeStat = nodeStats[i];
+				const lastModifiedMs = vscodeStat.status === 'fulfilled' ? vscodeStat.value.mtime : undefined;
+				const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '';
+				const size = vscodeStat.status === 'fulfilled' ? formatFileSize(vscodeStat.value.size) : '';
 				return {
 					basename,
 					lastModifiedMs,

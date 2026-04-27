@@ -35,6 +35,7 @@
     "Keymaps"
   ],
   "extensionKind": [
+    "workspace",
     "ui"
   ],
   "extensionDependencies": [

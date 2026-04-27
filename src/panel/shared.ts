@@ -158,9 +158,9 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.crossProjectFilePanel.loadItems();
 	}
 
-	/** Opens the directory browser (Doom SPC . / SPC f f) starting in `startDir`. */
-	async showFindFile(startDir: string): Promise<void> {
-		this.findFilePanel.prepareShow(startDir);
+	/** Opens the directory browser (Doom SPC . / SPC f f) starting in `startUri`. */
+	async showFindFile(startUri: vscode.Uri): Promise<void> {
+		this.findFilePanel.prepareShow(startUri);
 		await this.showMode('findFile', this.findFilePanel);
 		await this.findFilePanel.loadItems();
 	}

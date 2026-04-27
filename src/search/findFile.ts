@@ -71,6 +71,8 @@ export class DoomFindFilePanel {
 
 	private activeIndex = 0;
 	private allItems: FindFileItem[] = [];
+	private baseAuthority = '';
+	private baseScheme = 'file';
 	private currentDir = '';
 	private filter = '';
 	private filteredItems: FindFileItem[] = [];
@@ -85,8 +87,10 @@ export class DoomFindFilePanel {
 	 * Sets the starting directory. `startDir` should be an absolute path
 	 * with a trailing slash (e.g. `/home/user/dev/`).
 	 */
-	prepareShow(startDir: string): void {
-		const raw = normalizePath(startDir);
+	prepareShow(startUri: vscode.Uri): void {
+		this.baseScheme = startUri.scheme;
+		this.baseAuthority = startUri.authority;
+		const raw = startUri.path;
 		const normalised = raw.endsWith('/') ? raw : raw + '/';
 		this.query = normalised;
 		this.currentDir = normalised.slice(0, -1); // strip trailing slash
@@ -154,7 +158,7 @@ export class DoomFindFilePanel {
 			return;
 		}
 
-		const uri = vscode.Uri.file(item.fsPath);
+		const uri = this.makeUri(item.fsPath);
 		this.history.record(item.fsPath);
 		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		await this.close();
@@ -228,8 +232,12 @@ export class DoomFindFilePanel {
 		this.render();
 	}
 
+	private makeUri(absPath: string): vscode.Uri {
+		return vscode.Uri.from({ scheme: this.baseScheme, authority: this.baseAuthority, path: absPath });
+	}
+
 	private async readCurrentDir(): Promise<void> {
-		const dirUri = vscode.Uri.file(this.currentDir);
+		const dirUri = this.makeUri(this.currentDir);
 		let entries: [string, vscode.FileType][];
 		try {
 			entries = await vscode.workspace.fs.readDirectory(dirUri);
@@ -244,17 +252,21 @@ export class DoomFindFilePanel {
 		const joinPath = (name: string) =>
 			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
 
-		const stats = await Promise.allSettled(
+		const vscodeStats = await Promise.allSettled(
+			entries.map(([name]) => vscode.workspace.fs.stat(this.makeUri(joinPath(name))))
+		);
+		const nodeStats = await Promise.allSettled(
 			entries.map(([name]) => fs.promises.stat(joinPath(name)))
 		);
 
 		for (let i = 0; i < entries.length; i++) {
 			const [name, type] = entries[i];
 			const isDir = (type & vscode.FileType.Directory) !== 0;
-			const stat = stats[i];
-			const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
-			const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
-			const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
+			const vscodeStat = vscodeStats[i];
+			const nodeStat = nodeStats[i];
+			const lastModifiedMs = vscodeStat.status === 'fulfilled' ? vscodeStat.value.mtime : undefined;
+			const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '';
+			const size = vscodeStat.status === 'fulfilled' ? formatFileSize(vscodeStat.value.size) : '';
 			const displayName = isDir ? name + '/' : name;
 			const entry: FindFileItem = {
 				isDir,
