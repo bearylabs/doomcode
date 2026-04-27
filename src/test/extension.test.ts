@@ -7,7 +7,7 @@ import {
 	type StoredWorkspaceTarget,
 } from '../extension';
 import {
-	detectStartPageMode,
+	detectDashboardMode,
 	evaluateInstalledDefaults,
 	extractCurrentReleaseNotes,
 	renderMarkdownFragment,
@@ -212,9 +212,9 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('detects welcome update and steady-state startup modes', () => {
-		assert.strictEqual(detectStartPageMode(undefined, '0.2.0'), 'welcome');
-		assert.strictEqual(detectStartPageMode('0.1.2', '0.2.0'), 'update');
-		assert.strictEqual(detectStartPageMode('0.2.0', '0.2.0'), 'startup');
+		assert.strictEqual(detectDashboardMode(undefined, '0.2.0'), 'welcome');
+		assert.strictEqual(detectDashboardMode('0.1.2', '0.2.0'), 'update');
+		assert.strictEqual(detectDashboardMode('0.2.0', '0.2.0'), 'startup');
 	});
 
 	test('routes window delete by active terminal mode', () => {

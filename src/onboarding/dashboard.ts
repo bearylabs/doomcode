@@ -2,17 +2,17 @@ import { isDeepStrictEqual } from 'node:util';
 import * as vscode from 'vscode';
 import { createNonce } from '../panel/helpers';
 
-export const START_PAGE_OPEN_ON_ACTIVATION_SETTING = 'doom.startPage.openOnActivation';
+export const DASHBOARD_OPEN_ON_ACTIVATION_SETTING = 'doom.dashboard.openOnActivation';
 
-export type StartPageMode = 'startup' | 'update' | 'welcome';
+export type DashboardMode = 'startup' | 'update' | 'welcome';
 
-export interface StartPageConflict {
+export interface DashboardConflict {
 	name: string;
 	reason: string;
 }
 
-export interface DoomStartPageState {
-	mode: StartPageMode;
+export interface DoomDashboardState {
+	mode: DashboardMode;
 	currentVersion: string;
 	defaultCount: number;
 	installedDefaultCount: number;
@@ -21,18 +21,18 @@ export interface DoomStartPageState {
 	hasStaleSettings: boolean;
 	hasStaleKeybindings: boolean;
 	openOnActivation: boolean;
-	startupCommands: StartPageCommand[];
-	conflicts: StartPageConflict[];
+	startupCommands: DashboardCommand[];
+	conflicts: DashboardConflict[];
 	repositoryUrl?: string;
 }
 
-export interface StartPageCommand {
+export interface DashboardCommand {
 	label: string;
 	keybinding: string;
 	command: string;
 }
 
-const START_PAGE_COMMAND_ICONS: Record<string, string> = {
+const DASHBOARD_COMMAND_ICONS: Record<string, string> = {
 	'Recently opened files': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z"/></svg>',
 	'Reload last session': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M320 128C426 128 512 214 512 320C512 426 426 512 320 512C254.8 512 197.1 479.5 162.4 429.7C152.3 415.2 132.3 411.7 117.8 421.8C103.3 431.9 99.8 451.9 109.9 466.4C156.1 532.6 233 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C234.3 64 158.5 106.1 112 170.7L112 144C112 126.3 97.7 112 80 112C62.3 112 48 126.3 48 144L48 256C48 273.7 62.3 288 80 288L104.6 288C105.1 288 105.6 288 106.1 288L192.1 288C209.8 288 224.1 273.7 224.1 256C224.1 238.3 209.8 224 192.1 224L153.8 224C186.9 166.6 249 128 320 128zM344 216C344 202.7 333.3 192 320 192C306.7 192 296 202.7 296 216L296 320C296 326.4 298.5 332.5 303 337L375 409C384.4 418.4 399.6 418.4 408.9 409C418.2 399.6 418.3 384.4 408.9 375.1L343.9 310.1L343.9 216z"/></svg>',
 	'Open project': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z"/></svg>',
@@ -196,7 +196,7 @@ export function renderMarkdownFragment(markdown: string): string {
 	return parts.join('\n');
 }
 
-type StartPageMessage = {
+type DashboardMessage = {
 	command?: 'cleanup' | 'install' | 'openUrl' | 'setOpenOnActivation' | 'executeCommand';
 	checked?: boolean;
 	url?: string;
@@ -241,7 +241,7 @@ function resolveBindingEntry(bindings: unknown, keyPath: readonly string[]): Whi
 export function resolveStartupCommandsFromBindings(
 	bindings: unknown,
 	startupCommandKeyPaths: readonly string[][],
-): StartPageCommand[] {
+): DashboardCommand[] {
 	return startupCommandKeyPaths.flatMap((keyPath) => {
 		const entry = resolveBindingEntry(bindings, keyPath);
 		if (!entry || typeof entry.command !== 'string' || typeof entry.name !== 'string') {
@@ -277,7 +277,7 @@ export function evaluateInstalledDefaults(
 }
 
 /** Returns 'welcome' on first install, 'update' when version changed, 'startup' on normal launch. */
-export function detectStartPageMode(previousVersion: string | undefined, currentVersion: string): StartPageMode {
+export function detectDashboardMode(previousVersion: string | undefined, currentVersion: string): DashboardMode {
 	if (!previousVersion) {
 		return 'welcome';
 	}
@@ -285,20 +285,20 @@ export function detectStartPageMode(previousVersion: string | undefined, current
 	return previousVersion === currentVersion ? 'startup' : 'update';
 }
 
-export class DoomStartPage {
+export class DoomDashboard {
 	private panel: vscode.WebviewPanel | undefined;
-	private lastState: DoomStartPageState | undefined;
+	private lastState: DoomDashboardState | undefined;
 
 	constructor(private readonly extensionUri: vscode.Uri) { }
 
 	/** Creates or reuses the panel, renders state, and reveals it in column one. */
-	show(state: DoomStartPageState): void {
+	show(state: DoomDashboardState): void {
 		const panel = this.getOrCreatePanel();
 		this.updatePanel(panel, state, true);
 	}
 
 	/** Re-renders into an existing panel without revealing it. No-op if the panel was closed. */
-	refresh(state: DoomStartPageState): void {
+	refresh(state: DoomDashboardState): void {
 		if (!this.panel) {
 			return;
 		}
@@ -307,7 +307,7 @@ export class DoomStartPage {
 	}
 
 	/** Returns the mode of the last rendered state, or undefined if the panel has never been shown. */
-	getCurrentMode(): StartPageMode | undefined {
+	getCurrentMode(): DashboardMode | undefined {
 		return this.lastState?.mode;
 	}
 
@@ -317,8 +317,17 @@ export class DoomStartPage {
 			return this.panel;
 		}
 
+		// Close stale doom.dashboard panels left open from a previous extension host session.
+		for (const group of vscode.window.tabGroups.all) {
+			for (const tab of group.tabs) {
+				if (tab.input instanceof vscode.TabInputWebview && tab.input.viewType === 'mainThreadWebview-doom.dashboard') {
+					void vscode.window.tabGroups.close(tab);
+				}
+			}
+		}
+
 		const panel = vscode.window.createWebviewPanel(
-			'doom.startPage',
+			'doom.dashboard',
 			'Doom Code',
 			vscode.ViewColumn.One,
 			{
@@ -329,15 +338,15 @@ export class DoomStartPage {
 
 		panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'icon.png');
 		panel.onDidChangeViewState(({ webviewPanel }) => {
-			void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', webviewPanel.active);
+			void vscode.commands.executeCommand('setContext', 'doom.dashboardVisible', webviewPanel.active);
 		});
 		panel.onDidDispose(() => {
 			if (this.panel === panel) {
 				this.panel = undefined;
-				void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', false);
+				void vscode.commands.executeCommand('setContext', 'doom.dashboardVisible', false);
 			}
 		});
-		panel.webview.onDidReceiveMessage((message: StartPageMessage) => {
+		panel.webview.onDidReceiveMessage((message: DashboardMessage) => {
 			void this.handleMessage(message);
 		});
 
@@ -346,24 +355,24 @@ export class DoomStartPage {
 	}
 
 	/** Returns the panel tab title. State param reserved for future mode-specific titles. */
-	private getTitle(state: DoomStartPageState): string {
+	private getTitle(state: DoomDashboardState): string {
 		void state;
 		return '*doom*';
 	}
 
 	/** Stamps new HTML onto the panel and optionally brings it to the foreground. */
-	private updatePanel(panel: vscode.WebviewPanel, state: DoomStartPageState, reveal: boolean): void {
+	private updatePanel(panel: vscode.WebviewPanel, state: DoomDashboardState, reveal: boolean): void {
 		this.lastState = state;
 		panel.title = this.getTitle(state);
 		panel.webview.html = this.render(state, panel.webview);
 		if (reveal) {
 			panel.reveal(vscode.ViewColumn.One, false);
-			void vscode.commands.executeCommand('setContext', 'doom.startPageVisible', true);
+			void vscode.commands.executeCommand('setContext', 'doom.dashboardVisible', true);
 		}
 	}
 
 	/** Dispatches webview button clicks to VS Code commands or settings updates. */
-	private async handleMessage(message: StartPageMessage): Promise<void> {
+	private async handleMessage(message: DashboardMessage): Promise<void> {
 		switch (message.command) {
 			case 'executeCommand':
 				if (!message.vscodeCommand) {
@@ -389,7 +398,7 @@ export class DoomStartPage {
 				await vscode.workspace
 					.getConfiguration()
 					.update(
-						START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+						DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 						!Boolean(message.checked),
 						vscode.ConfigurationTarget.Global,
 					);
@@ -400,7 +409,7 @@ export class DoomStartPage {
 	}
 
 	/** Builds the full start-page HTML from state. Nonce-locked CSP, no external resources. */
-	private render(state: DoomStartPageState, webview: vscode.Webview): string {
+	private render(state: DoomDashboardState, webview: vscode.Webview): string {
 		const nonce = createNonce();
 		const staleBindingsFound = state.hasStaleSettings || state.hasStaleKeybindings;
 		const installMarkup = state.defaultCount === 0
@@ -762,7 +771,7 @@ export class DoomStartPage {
 	}
 
 	/** Returns the small uppercase label above the ASCII header — blank for normal startup. */
-	private getEyebrow(state: DoomStartPageState): string {
+	private getEyebrow(state: DoomDashboardState): string {
 		switch (state.mode) {
 			case 'welcome':
 				return 'Fresh install';
@@ -779,7 +788,7 @@ export class DoomStartPage {
 	}
 
 	/** Returns a named SVG icon for known commands, falling back to a generic dot for unknown ones. */
-	private getStartupCommandIcon(entry: StartPageCommand): string {
-		return START_PAGE_COMMAND_ICONS[entry.label] ?? '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.75" fill="currentColor"/></svg>';
+	private getStartupCommandIcon(entry: DashboardCommand): string {
+		return DASHBOARD_COMMAND_ICONS[entry.label] ?? '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.75" fill="currentColor"/></svg>';
 	}
 }

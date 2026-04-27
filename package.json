@@ -115,7 +115,7 @@
     "window.restoreWindows": "none",
     "window.menuBarVisibility": "compact"
   },
-  "doomStartPage": {
+  "doomDashboard": {
     "startupCommandKeyPaths": [
       "f r",
       "q l",
@@ -1491,7 +1491,7 @@
           "default": "doom",
           "markdownDescription": "Selects which menu opens for `doom.whichKeyShow`: Doom Code's custom panel UI (`doom`) or the default menu provided by the VSpaceCode WhichKey extension (`vspacecode`)."
         },
-        "doom.startPage.openOnActivation": {
+        "doom.dashboard.openOnActivation": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Open Doom Code's start page whenever the extension activates. The page contains manual install and cleanup actions, repository links, and the current changelog."
@@ -1735,7 +1735,7 @@
       {
         "key": "space",
         "command": "doom.whichKeyShow",
-        "when": "doom.startPageVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible"
+        "when": "doom.dashboardVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.crossProjectFileVisible && !doom.findFileVisible"
       },
       {
         "key": "space",

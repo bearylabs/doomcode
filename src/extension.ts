@@ -6,11 +6,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
 import {
-	detectStartPageMode,
-	DoomStartPage,
+	detectDashboardMode,
+	DoomDashboard,
 	evaluateInstalledDefaults,
 	resolveStartupCommandsFromBindings,
-	START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+	DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 } from './onboarding/dashboard';
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
@@ -289,15 +289,15 @@ function getPackageWhichKeyBindings(context: vscode.ExtensionContext): unknown {
 	return packageJson.contributes?.configurationDefaults?.['whichkey.bindings'];
 }
 
-/** Parses `doomStartPage.startupCommandKeyPaths` from package.json into `string[][]` key path arrays. */
+/** Parses `doomDashboard.startupCommandKeyPaths` from package.json into `string[][]` key path arrays. */
 function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][] {
 	const packageJson = context.extension.packageJSON as {
-		doomStartPage?: {
+		doomDashboard?: {
 			startupCommandKeyPaths?: unknown;
 		};
 	};
 
-	const configuredPaths = packageJson.doomStartPage?.startupCommandKeyPaths;
+	const configuredPaths = packageJson.doomDashboard?.startupCommandKeyPaths;
 	if (!Array.isArray(configuredPaths)) {
 		return [];
 	}
@@ -735,12 +735,12 @@ function getExtensionMetadata(context: vscode.ExtensionContext): {
 	};
 }
 
-/** Assembles the full `DoomStartPageState` by combining config inspection, stale detection, and binding resolution. */
-function createStartupPageState(
+/** Assembles the full `DoomDashboardState` by combining config inspection, stale detection, and binding resolution. */
+function createDashboardState(
 	context: vscode.ExtensionContext,
-	mode: ReturnType<typeof detectStartPageMode>,
+	mode: ReturnType<typeof detectDashboardMode>,
 	installDefaults: Record<string, unknown>,
-): Parameters<DoomStartPage['show']>[0] {
+): Parameters<DoomDashboard['show']>[0] {
 	const configuration = vscode.workspace.getConfiguration();
 	const staleState = detectStaleState(context);
 	const metadata = getExtensionMetadata(context);
@@ -759,7 +759,7 @@ function createStartupPageState(
 		hasMagitKeybindings: staleState.hasMagitKeybindings,
 		hasStaleSettings: staleState.hasStaleSettings,
 		hasStaleKeybindings: staleState.hasStaleKeybindings,
-		openOnActivation: configuration.get<boolean>(START_PAGE_OPEN_ON_ACTIVATION_SETTING, true),
+		openOnActivation: configuration.get<boolean>(DASHBOARD_OPEN_ON_ACTIVATION_SETTING, true),
 		startupCommands,
 		conflicts: staleState.conflicts.map((conflict) => ({
 			name: conflict.name,
@@ -770,27 +770,27 @@ function createStartupPageState(
 }
 
 /** Builds state and reveals the start page panel. */
-async function showStartupPage(
+async function showDashboard(
 	context: vscode.ExtensionContext,
-	startPage: DoomStartPage,
-	mode: ReturnType<typeof detectStartPageMode>,
+	dashboard: DoomDashboard,
+	mode: ReturnType<typeof detectDashboardMode>,
 	installDefaults: Record<string, unknown>,
 ): Promise<void> {
-	startPage.show(createStartupPageState(context, mode, installDefaults));
+	dashboard.show(createDashboardState(context, mode, installDefaults));
 }
 
-/** Re-renders the start page with fresh state if it's currently open. No-op if the page was never shown. */
-function refreshStartupPageIfOpen(
+/** Re-renders the dashboard with fresh state if it's currently open. No-op if the page was never shown. */
+function refreshDashboardIfOpen(
 	context: vscode.ExtensionContext,
-	startPage: DoomStartPage,
+	dashboard: DoomDashboard,
 	installDefaults: Record<string, unknown>,
 ): void {
-	const mode = startPage.getCurrentMode();
+	const mode = dashboard.getCurrentMode();
 	if (!mode) {
 		return;
 	}
 
-	startPage.refresh(createStartupPageState(context, mode, installDefaults));
+	dashboard.refresh(createDashboardState(context, mode, installDefaults));
 }
 
 // ---------------------------------------------------------------------------
@@ -860,28 +860,28 @@ async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
  */
 export function activate(context: vscode.ExtensionContext) {
 	const installDefaults = getInstallDefaults(context);
-	const startPageRefreshKeys = [
+	const dashboardRefreshKeys = [
 		WHICH_KEY_MENU_SETTING,
-		START_PAGE_OPEN_ON_ACTIVATION_SETTING,
+		DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 		...Object.keys(installDefaults),
 	];
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
 	const whichKeyMenu = new DoomWhichKeyMenu();
-	const startPage = new DoomStartPage(context.extensionUri);
-	let startupPageRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	const dashboard = new DoomDashboard(context.extensionUri);
+	let dashboardRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 	// Debounced refresh so rapid config changes (e.g. bulk settings apply) don't re-render on every key.
-	const scheduleStartupPageRefresh = (delayMs = 50) => {
-		if (!startPage.getCurrentMode()) {
+	const scheduleDashboardRefresh = (delayMs = 50) => {
+		if (!dashboard.getCurrentMode()) {
 			return;
 		}
 
-		if (startupPageRefreshTimer) {
-			clearTimeout(startupPageRefreshTimer);
+		if (dashboardRefreshTimer) {
+			clearTimeout(dashboardRefreshTimer);
 		}
 
-		startupPageRefreshTimer = setTimeout(() => {
-			startupPageRefreshTimer = undefined;
-			refreshStartupPageIfOpen(context, startPage, installDefaults);
+		dashboardRefreshTimer = setTimeout(() => {
+			dashboardRefreshTimer = undefined;
+			refreshDashboardIfOpen(context, dashboard, installDefaults);
 		}, delayMs);
 	};
 	registerWindowMru(context);
@@ -940,7 +940,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			scheduleStartupPageRefresh(0);
+			scheduleDashboardRefresh(0);
 		}
 	);
 
@@ -961,14 +961,14 @@ export function activate(context: vscode.ExtensionContext) {
 				await warnAboutConflicts(conflicts);
 			}
 			await runCleanup(context);
-			scheduleStartupPageRefresh(0);
+			scheduleDashboardRefresh(0);
 		}
 	);
 
-	const showStartPageCmd = vscode.commands.registerCommand(
+	const showDashboardCmd = vscode.commands.registerCommand(
 		"doom.dashboard",
 		async () => {
-			await showStartupPage(context, startPage, 'startup', installDefaults);
+			await showDashboard(context, dashboard, 'startup', installDefaults);
 		}
 	);
 
@@ -1063,8 +1063,8 @@ export function activate(context: vscode.ExtensionContext) {
 			void whichKeyMenu.hide();
 		}
 
-		if (startPageRefreshKeys.some((key) => event.affectsConfiguration(key))) {
-			scheduleStartupPageRefresh();
+		if (dashboardRefreshKeys.some((key) => event.affectsConfiguration(key))) {
+			scheduleDashboardRefresh();
 		}
 	});
 
@@ -1251,15 +1251,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const metadata = getExtensionMetadata(context);
 		const previousVersion = context.globalState.get<string>(LAST_SEEN_VERSION_KEY);
-		const shouldOpenStartPage = vscode.workspace
+		const shouldOpenDashboard = vscode.workspace
 			.getConfiguration()
-			.get<boolean>(START_PAGE_OPEN_ON_ACTIVATION_SETTING, true);
+			.get<boolean>(DASHBOARD_OPEN_ON_ACTIVATION_SETTING, true);
 
-		if (shouldOpenStartPage) {
-			await showStartupPage(
+		if (shouldOpenDashboard) {
+			await showDashboard(
 				context,
-				startPage,
-				detectStartPageMode(previousVersion, metadata.version),
+				dashboard,
+				detectDashboardMode(previousVersion, metadata.version),
 				installDefaults,
 			);
 		}
@@ -1270,7 +1270,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		installCmd,
 		cleanupCmd,
-		showStartPageCmd,
+		showDashboardCmd,
 		reloadLastSessionCmd,
 		whichKeyCmd,
 		whichKeyBindingsCmd,
@@ -1297,8 +1297,8 @@ export function activate(context: vscode.ExtensionContext) {
 		crossProjectFileMoveUpCmd,
 		sharedPanelViewProvider,
 		new vscode.Disposable(() => {
-			if (startupPageRefreshTimer) {
-				clearTimeout(startupPageRefreshTimer);
+			if (dashboardRefreshTimer) {
+				clearTimeout(dashboardRefreshTimer);
 			}
 		}),
 	);

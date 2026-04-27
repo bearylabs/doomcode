@@ -273,11 +273,11 @@ function shouldHideFromBufferSwitcher(tab: vscode.Tab): boolean {
 	}
 
 	if (input instanceof vscode.TabInputWebview) {
-		return input.viewType === 'doom.startPage' || input.viewType.includes('doom.startPage');
+		return input.viewType === 'doom.dashboard' || input.viewType.includes('doom.dashboard');
 	}
 
 	if (input instanceof vscode.TabInputCustom) {
-		return input.viewType === 'doom.startPage' || input.viewType.includes('doom.startPage');
+		return input.viewType === 'doom.dashboard' || input.viewType.includes('doom.dashboard');
 	}
 
 	return false;
