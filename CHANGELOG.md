@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-04-27
+
 ### Added
 
 - `SPC p p` recent project picker now shows a `[host]` indicator in the permissions column for remote projects (WSL distro name or SSH hostname), replacing the unreadable Linux-style permissions that can't be retrieved for remote paths
