@@ -4,8 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.3.6] - 2026-04-27
-
 ### Fixed
 
 - `SPC SPC` on SSH workspaces now actually respects `.gitignore` — `vscodevim.vim` (`extensionKind: ["ui"]` only) was listed as an `extensionDependency`, which prevented Doom from installing on the remote extension host; Doom fell back to running locally where `git ls-files` cannot reach the remote filesystem and silently fell through to `findFiles` (no `.gitignore` support). Moving vim to `extensionPack` lets Doom install on the SSH remote where git runs correctly.
