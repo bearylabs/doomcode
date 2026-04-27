@@ -3,7 +3,7 @@
   "displayName": "Doom",
   "description": "Doom Code makes Visual Studio Code feel like Doom Emacs by applying a curated, opinionated set of settings that emphasize a fast, keyboard-first workflow and a clean, distraction-free editor.",
   "icon": "assets/icon.png",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "license": "MIT",
   "publisher": "bearylabs",
   "repository": {
@@ -39,10 +39,10 @@
     "ui"
   ],
   "extensionDependencies": [
-    "vscodevim.vim",
     "VSpaceCode.whichkey"
   ],
   "extensionPack": [
+    "vscodevim.vim",
     "wayou.vscode-todo-highlight",
     "kahole.magit"
   ],

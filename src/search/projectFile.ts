@@ -64,10 +64,9 @@ interface ProjectFileMessage {
  * Falls back to VS Code's findFiles if git is unavailable or the folder isn't a repo.
  * Uses null-terminated output (-z) to safely handle filenames with spaces.
  *
- * SSH workspaces: extensionKind is ["workspace","ui"] so when installed the extension
- * runs on the SSH remote host. Git is invoked there with the remote path directly, which
- * correctly honours .gitignore. If git fails (e.g. during local development against a
- * remote) we fall through to findFiles.
+ * SSH workspaces: extensionKind ["workspace","ui"] causes the extension to run on the
+ * remote host. Git executes there with the correct path, so .gitignore is honoured.
+ * Falls through to findFiles if git fails.
  *
  * WSL workspaces: the extension runs on the Windows host (UI side) so Windows git can't
  * resolve the Linux path. We invoke `wsl.exe -d <distro> -- git ls-files` so git runs

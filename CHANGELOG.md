@@ -4,12 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-04-27
+
+### Fixed
+
+- `SPC SPC` on SSH workspaces now actually respects `.gitignore` — `vscodevim.vim` (`extensionKind: ["ui"]` only) was listed as an `extensionDependency`, which prevented Doom from installing on the remote extension host; Doom fell back to running locally where `git ls-files` cannot reach the remote filesystem and silently fell through to `findFiles` (no `.gitignore` support). Moving vim to `extensionPack` lets Doom install on the SSH remote where git runs correctly.
+
+### Changed
+
+- `vscodevim.vim` moved from `extensionDependencies` to `extensionPack` — it is a recommended companion, not a hard requirement for Doom to function
+
+> **SSH users:** After updating, open your SSH remote in VS Code and run **Developer: Restart Extension Host** (`Ctrl+Shift+P`). If `SPC SPC` still shows gitignored files, Doom is still running locally — uninstall and reinstall it while connected to the SSH remote so VS Code places the extension on the remote host.
+
 ## [0.3.5] - 2026-04-27
 
 ### Fixed
 
 - `SPC SPC` on WSL workspaces now respects `.gitignore` — previously all files including ignored ones were listed; now uses `wsl.exe -d <distro> -- git ls-files` so git runs inside the distro and honours the remote `.gitignore`
-- `SPC SPC` on SSH workspaces now respects `.gitignore` — the extension runs on the remote host (via `extensionKind: workspace`), so `git ls-files` executes on the server and correctly excludes ignored files
+- `SPC SPC` on SSH workspaces: removed early-exit guard that skipped `git ls-files` entirely for SSH URIs and fell back to `findFiles`; `git ls-files` now runs on the remote host via `extensionKind: workspace` (note: full fix required v0.3.6)
 
 ## [0.3.4] - 2026-04-27
 
