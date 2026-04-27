@@ -146,8 +146,8 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 	return uriList.map(({ uri, label, path, host }, i) => {
 		const stat = stats[i];
 		const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
-		const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
-		const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
+		const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '----------';
+		const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '0';
 		return {
 			host,
 			label,

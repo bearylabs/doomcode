@@ -9,6 +9,12 @@ All notable changes to this project will be documented in this file.
 - `SPC p p` recent project picker now shows a `[host]` indicator in the permissions column for remote projects (WSL distro name or SSH hostname), replacing the unreadable Linux-style permissions that can't be retrieved for remote paths
 - `SPC p p` skips the cross-project file picker for remote projects (WSL/SSH) — VS Code isn't connected to the host yet at that point, so files can't be listed; selecting a remote project now opens the folder directly
 
+### Fixed
+
+- `SPC SPC` and `SPC .` now work correctly when connected to a WSL (or other remote) workspace — previously no files or folders were shown in the results
+- `SPC SPC` and `SPC .` show `----------` for file permissions when connected to a remote workspace (permissions cannot be retrieved via the VS Code remote file system API)
+- Extension `extensionKind` changed to `["workspace", "ui"]` so the installed extension migrates to the remote host when opening a WSL/SSH workspace
+
 ## [0.3.3] - 2026-04-26
 
 ### Added

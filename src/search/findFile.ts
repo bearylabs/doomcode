@@ -256,7 +256,7 @@ export class DoomFindFilePanel {
 			entries.map(([name]) => vscode.workspace.fs.stat(this.makeUri(joinPath(name))))
 		);
 		const nodeStats = await Promise.allSettled(
-			entries.map(([name]) => fs.promises.stat(joinPath(name)))
+			entries.map(([name]) => fs.promises.stat(this.makeUri(joinPath(name)).fsPath))
 		);
 
 		for (let i = 0; i < entries.length; i++) {
@@ -265,7 +265,7 @@ export class DoomFindFilePanel {
 			const vscodeStat = vscodeStats[i];
 			const nodeStat = nodeStats[i];
 			const lastModifiedMs = vscodeStat.status === 'fulfilled' ? vscodeStat.value.mtime : undefined;
-			const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '';
+			const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '----------';
 			const size = vscodeStat.status === 'fulfilled' ? formatFileSize(vscodeStat.value.size) : '';
 			const displayName = isDir ? name + '/' : name;
 			const entry: FindFileItem = {

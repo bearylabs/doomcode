@@ -287,7 +287,7 @@ export class DoomProjectFilePanel {
 				const vscodeStat = vscodeStats[i];
 				const nodeStat = nodeStats[i];
 				const lastModifiedMs = vscodeStat.status === 'fulfilled' ? vscodeStat.value.mtime : undefined;
-				const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '';
+				const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '----------';
 				const size = vscodeStat.status === 'fulfilled' ? formatFileSize(vscodeStat.value.size) : '';
 				return {
 					basename,
