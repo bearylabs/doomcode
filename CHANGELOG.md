@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `SPC p p` and `SPC p f` no longer show a file picker after selecting a project — the project opens directly. Extensions must load before any action can run, making the two-step pick-project-then-pick-file flow too slow to be useful
 - `vscodevim.vim` moved from `extensionDependencies` to `extensionPack` — it is a recommended companion, not a hard requirement for Doom to function
 
 > **SSH users:** After updating, open your SSH remote in VS Code and run **Developer: Restart Extension Host** (`Ctrl+Shift+P`). If `SPC SPC` still shows gitignored files, Doom is still running locally — uninstall and reinstall it while connected to the SSH remote so VS Code places the extension on the remote host.

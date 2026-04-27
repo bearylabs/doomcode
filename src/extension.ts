@@ -14,7 +14,6 @@ import {
 } from './onboarding/dashboard';
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
-import { DoomCrossProjectFilePanel } from './search/crossProjectFile';
 import { DoomFindFilePanel } from './search/findFile';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
 import { DoomProjectFilePanel } from './search/projectFile';
@@ -34,6 +33,8 @@ const LAST_WORKSPACE_TARGET_KEY = 'doom.lastWorkspaceTarget';
 const PREVIOUS_WORKSPACE_TARGET_KEY = 'doom.previousWorkspaceTarget';
 /** Stores the absolute URI string of a file to open after the next folder reload. */
 const PENDING_OPEN_FILE_KEY = 'doom.pendingOpenFile';
+/** Set before an intentional project switch so the activation IIFE skips the dashboard. */
+const SKIP_DASHBOARD_KEY = 'doom.skipDashboardOnActivation';
 
 export interface StoredWorkspaceTarget {
 	label: string;
@@ -897,7 +898,6 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
 	const projectFilePanel = new DoomProjectFilePanel(selectionHistory);
 	const recentProjectsPanel = new DoomRecentProjectsPanel();
-	const crossProjectFilePanel = new DoomCrossProjectFilePanel(selectionHistory);
 	const findFilePanel = new DoomFindFilePanel(selectionHistory);
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
@@ -906,7 +906,6 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyBindingsPanel,
 		projectFilePanel,
 		recentProjectsPanel,
-		crossProjectFilePanel,
 		findFilePanel,
 	);
 
@@ -1086,17 +1085,10 @@ export function activate(context: vscode.ExtensionContext) {
 		'doom.findFileInProject',
 		() => {
 			if (!vscode.workspace.workspaceFolders?.length) {
-				// No workspace open: pick project first, then file, then open folder.
-				void sharedPanel.showRecentProjectsForFilePick(async (projectUri, projectLabel) => {
-					// Remote projects (WSL/SSH) aren't connected yet — skip the file picker.
-					if (projectUri.scheme !== 'file') {
-						await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-						return;
-					}
-					await sharedPanel.showCrossProjectFiles(projectUri, projectLabel, async (fileUri) => {
-						await context.globalState.update(PENDING_OPEN_FILE_KEY, fileUri.toString());
-						await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-					});
+				// No workspace open: pick project first, then open it directly.
+				void sharedPanel.showRecentProjectsForFilePick(async (projectUri) => {
+					await context.globalState.update(SKIP_DASHBOARD_KEY, true);
+					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
 				});
 				return;
 			}
@@ -1140,16 +1132,9 @@ export function activate(context: vscode.ExtensionContext) {
 	const showRecentProjectsCmd = vscode.commands.registerCommand(
 		'doom.showRecentProjects',
 		() => {
-			void sharedPanel.showRecentProjectsForFilePick(async (projectUri, projectLabel) => {
-				// Remote projects (WSL/SSH) aren't connected yet — skip the file picker.
-				if (projectUri.scheme !== 'file') {
-					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-					return;
-				}
-				await sharedPanel.showCrossProjectFiles(projectUri, projectLabel, async (fileUri) => {
-					await context.globalState.update(PENDING_OPEN_FILE_KEY, fileUri.toString());
-					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-				});
+			void sharedPanel.showRecentProjectsForFilePick(async (projectUri) => {
+				await context.globalState.update(SKIP_DASHBOARD_KEY, true);
+				await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
 			});
 		}
 	);
@@ -1179,20 +1164,6 @@ export function activate(context: vscode.ExtensionContext) {
 		'doom.projectFileMoveUp',
 		() => {
 			void projectFilePanel.moveSelection(-1);
-		}
-	);
-
-	const crossProjectFileMoveDownCmd = vscode.commands.registerCommand(
-		'doom.crossProjectFileMoveDown',
-		() => {
-			void crossProjectFilePanel.moveSelection(1);
-		}
-	);
-
-	const crossProjectFileMoveUpCmd = vscode.commands.registerCommand(
-		'doom.crossProjectFileMoveUp',
-		() => {
-			void crossProjectFilePanel.moveSelection(-1);
 		}
 	);
 
@@ -1249,6 +1220,12 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
+		if (context.globalState.get<boolean>(SKIP_DASHBOARD_KEY)) {
+			await context.globalState.update(SKIP_DASHBOARD_KEY, undefined);
+			await context.globalState.update(LAST_SEEN_VERSION_KEY, getExtensionMetadata(context).version);
+			return;
+		}
+
 		const metadata = getExtensionMetadata(context);
 		const previousVersion = context.globalState.get<string>(LAST_SEEN_VERSION_KEY);
 		const shouldOpenDashboard = vscode.workspace
@@ -1293,8 +1270,6 @@ export function activate(context: vscode.ExtensionContext) {
 		recentProjectsMoveUpCmd,
 		projectFileMoveDownCmd,
 		projectFileMoveUpCmd,
-		crossProjectFileMoveDownCmd,
-		crossProjectFileMoveUpCmd,
 		sharedPanelViewProvider,
 		new vscode.Disposable(() => {
 			if (dashboardRefreshTimer) {

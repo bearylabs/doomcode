@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
-import { DoomCrossProjectFilePanel } from '../search/crossProjectFile';
 import { DoomFindFilePanel } from '../search/findFile';
 import { DoomFuzzySearchPanel } from '../search/fuzzy';
 import { DoomProjectFilePanel } from '../search/projectFile';
@@ -12,7 +11,7 @@ import { DoomWhichKeyMenu } from '../whichkey/menu';
 // Shared panel modes
 // ---------------------------------------------------------------------------
 
-type SharedPanelMode = 'bindings' | 'buffers' | 'crossProject' | 'findFile' | 'project' | 'recent' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'findFile' | 'project' | 'recent' | 'search' | 'whichkey';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -39,7 +38,6 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		private readonly whichKeyBindingsPanel: DoomWhichKeyBindingsPanel,
 		private readonly projectFilePanel: DoomProjectFilePanel,
 		private readonly recentProjectsPanel: DoomRecentProjectsPanel,
-		private readonly crossProjectFilePanel: DoomCrossProjectFilePanel,
 		private readonly findFilePanel: DoomFindFilePanel,
 	) {}
 
@@ -144,20 +142,6 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.recentProjectsPanel.loadItems();
 	}
 
-	/**
-	 * Opens a file picker that browses `projectUri` without requiring it to be an
-	 * open workspace. `onFileSelected` is called with the chosen file's absolute URI.
-	 */
-	async showCrossProjectFiles(
-		projectUri: vscode.Uri,
-		projectLabel: string,
-		onFileSelected: (fileUri: vscode.Uri) => Promise<void>,
-	): Promise<void> {
-		this.crossProjectFilePanel.prepareShow(projectUri, projectLabel, onFileSelected);
-		await this.showMode('crossProject', this.crossProjectFilePanel);
-		await this.crossProjectFilePanel.loadItems();
-	}
-
 	/** Opens the directory browser (Doom SPC . / SPC f f) starting in `startUri`. */
 	async showFindFile(startUri: vscode.Uri): Promise<void> {
 		this.findFilePanel.prepareShow(startUri);
@@ -226,11 +210,6 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			'setContext',
 			DoomProjectFilePanel.visibleContextKey,
 			isVisible && this.activeMode === 'project'
-		);
-		await vscode.commands.executeCommand(
-			'setContext',
-			DoomCrossProjectFilePanel.visibleContextKey,
-			isVisible && this.activeMode === 'crossProject'
 		);
 		await vscode.commands.executeCommand(
 			'setContext',
