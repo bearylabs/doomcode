@@ -12,7 +12,9 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - `SPC SPC` and `SPC .` now work correctly when connected to a WSL (or other remote) workspace — previously no files or folders were shown in the results
-- `SPC SPC` and `SPC .` show `----------` for file permissions when connected to a remote workspace (permissions cannot be retrieved via the VS Code remote file system API)
+- `SPC SPC` and `SPC .` show `----------` / `0` for permissions and size on SSH remotes — `fs.stat` over SSH is too slow; local and WSL connections show real values
+- `SPC SPC` on SSH remotes uses VS Code's `findFiles` (ripgrep) instead of `git ls-files` — respects `.gitignore` natively and avoids the latency of git over the network
+- `SPC p p` remote project entries show `----------` / `0` for permissions and size instead of blank columns
 - Extension `extensionKind` changed to `["workspace", "ui"]` so the installed extension migrates to the remote host when opening a WSL/SSH workspace
 
 ## [0.3.3] - 2026-04-26

@@ -252,21 +252,20 @@ export class DoomFindFilePanel {
 		const joinPath = (name: string) =>
 			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
 
-		const vscodeStats = await Promise.allSettled(
-			entries.map(([name]) => vscode.workspace.fs.stat(this.makeUri(joinPath(name))))
-		);
-		const nodeStats = await Promise.allSettled(
-			entries.map(([name]) => fs.promises.stat(this.makeUri(joinPath(name)).fsPath))
-		);
+		const isSsh = this.baseScheme === 'vscode-remote' && this.baseAuthority.startsWith('ssh-remote+');
+		const stats = isSsh
+			? undefined
+			: await Promise.allSettled(
+				entries.map(([name]) => fs.promises.stat(this.makeUri(joinPath(name)).fsPath))
+			);
 
 		for (let i = 0; i < entries.length; i++) {
 			const [name, type] = entries[i];
 			const isDir = (type & vscode.FileType.Directory) !== 0;
-			const vscodeStat = vscodeStats[i];
-			const nodeStat = nodeStats[i];
-			const lastModifiedMs = vscodeStat.status === 'fulfilled' ? vscodeStat.value.mtime : undefined;
-			const permissions = nodeStat.status === 'fulfilled' ? formatPermissions(nodeStat.value.mode) : '----------';
-			const size = vscodeStat.status === 'fulfilled' ? formatFileSize(vscodeStat.value.size) : '';
+			const stat = stats?.[i];
+			const lastModifiedMs = stat?.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
+			const permissions = stat?.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '----------';
+			const size = stat?.status === 'fulfilled' ? formatFileSize(stat.value.size) : '0';
 			const displayName = isDir ? name + '/' : name;
 			const entry: FindFileItem = {
 				isDir,
