@@ -1088,6 +1088,11 @@ export function activate(context: vscode.ExtensionContext) {
 			if (!vscode.workspace.workspaceFolders?.length) {
 				// No workspace open: pick project first, then file, then open folder.
 				void sharedPanel.showRecentProjectsForFilePick(async (projectUri, projectLabel) => {
+					// Remote projects (WSL/SSH) aren't connected yet — skip the file picker.
+					if (projectUri.scheme !== 'file') {
+						await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+						return;
+					}
 					await sharedPanel.showCrossProjectFiles(projectUri, projectLabel, async (fileUri) => {
 						await context.globalState.update(PENDING_OPEN_FILE_KEY, fileUri.toString());
 						await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
@@ -1134,6 +1139,11 @@ export function activate(context: vscode.ExtensionContext) {
 		'doom.showRecentProjects',
 		() => {
 			void sharedPanel.showRecentProjectsForFilePick(async (projectUri, projectLabel) => {
+				// Remote projects (WSL/SSH) aren't connected yet — skip the file picker.
+				if (projectUri.scheme !== 'file') {
+					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+					return;
+				}
 				await sharedPanel.showCrossProjectFiles(projectUri, projectLabel, async (fileUri) => {
 					await context.globalState.update(PENDING_OPEN_FILE_KEY, fileUri.toString());
 					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
