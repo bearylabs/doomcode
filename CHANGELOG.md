@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-04-27
+
 ### Fixed
 
 - `SPC SPC` on WSL workspaces now respects `.gitignore` — previously all files including ignored ones were listed; now uses `wsl.exe -d <distro> -- git ls-files` so git runs inside the distro and honours the remote `.gitignore`
