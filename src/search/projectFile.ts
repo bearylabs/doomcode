@@ -64,51 +64,49 @@ interface ProjectFileMessage {
  * Falls back to VS Code's findFiles if git is unavailable or the folder isn't a repo.
  * Uses null-terminated output (-z) to safely handle filenames with spaces.
  *
- * WSL workspaces: the extension runs on the Windows host so Windows git can't resolve
- * the Linux path. Instead we invoke `wsl.exe -d <distro> -- git ls-files` so git runs
- * inside WSL and correctly honours the remote .gitignore.
+ * SSH workspaces: extensionKind is ["workspace","ui"] so when installed the extension
+ * runs on the SSH remote host. Git is invoked there with the remote path directly, which
+ * correctly honours .gitignore. If git fails (e.g. during local development against a
+ * remote) we fall through to findFiles.
  *
- * SSH workspaces: git would need to run on the remote host which isn't feasible from
- * a local extension. We fall back to VS Code's findFiles which respects files.exclude
- * and search.exclude settings on the remote.
+ * WSL workspaces: the extension runs on the Windows host (UI side) so Windows git can't
+ * resolve the Linux path. We invoke `wsl.exe -d <distro> -- git ls-files` so git runs
+ * inside WSL and correctly honours .gitignore.
  */
 async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequence: number): Promise<vscode.Uri[]> {
 	const isWsl = rootUri.scheme === 'vscode-remote' && rootUri.authority.startsWith('wsl+');
-	const isSsh = rootUri.scheme === 'vscode-remote' && rootUri.authority.startsWith('ssh-remote+');
 
-	if (!isSsh) {
-		try {
-			let stdout: string;
-			if (isWsl) {
-				// rootUri.path is the Linux path (e.g. /home/user/project).
-				// wsl.exe -d <distro> -- runs the command inside the WSL distro.
-				const distro = rootUri.authority.slice('wsl+'.length);
-				({ stdout } = await execFileAsync(
-					'wsl.exe',
-					['-d', distro, '--', 'git', '-C', rootUri.path, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-					{ maxBuffer: 50 * 1024 * 1024 },
-				));
-			} else {
-				({ stdout } = await execFileAsync(
-					'git',
-					['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-					{ cwd: rootUri.fsPath, maxBuffer: 50 * 1024 * 1024 },
-				));
-			}
-			if (loadId !== loadSequence) {
-				return [];
-			}
-			const uris = stdout
-				.split('\0')
-				.filter(Boolean)
-				.map((rel) => vscode.Uri.joinPath(rootUri, rel));
-			if (uris.length > 0) {
-				return uris;
-			}
-			// git succeeded but returned nothing (empty repo) — fall through to findFiles
-		} catch {
-			// git unavailable or not a repo — fall through
+	try {
+		let stdout: string;
+		if (isWsl) {
+			// rootUri.path is the Linux path (e.g. /home/user/project).
+			// wsl.exe -d <distro> -- runs the command inside the WSL distro.
+			const distro = rootUri.authority.slice('wsl+'.length);
+			({ stdout } = await execFileAsync(
+				'wsl.exe',
+				['-d', distro, '--', 'git', '-C', rootUri.path, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+				{ maxBuffer: 50 * 1024 * 1024 },
+			));
+		} else {
+			({ stdout } = await execFileAsync(
+				'git',
+				['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+				{ cwd: rootUri.fsPath, maxBuffer: 50 * 1024 * 1024 },
+			));
 		}
+		if (loadId !== loadSequence) {
+			return [];
+		}
+		const uris = stdout
+			.split('\0')
+			.filter(Boolean)
+			.map((rel) => vscode.Uri.joinPath(rootUri, rel));
+		if (uris.length > 0) {
+			return uris;
+		}
+		// git succeeded but returned nothing (empty repo) — fall through to findFiles
+	} catch {
+		// git unavailable or not a repo — fall through
 	}
 
 	if (loadId !== loadSequence) {
