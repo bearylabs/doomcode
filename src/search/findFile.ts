@@ -253,19 +253,35 @@ export class DoomFindFilePanel {
 			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
 
 		const isSsh = this.baseScheme === 'vscode-remote' && this.baseAuthority.startsWith('ssh-remote+');
-		const stats = isSsh
-			? undefined
-			: await Promise.allSettled(
+		const isWsl = this.baseScheme === 'vscode-remote' && this.baseAuthority.startsWith('wsl+');
+
+		// SSH: skip stat (too slow over network).
+		// WSL: use vscode.workspace.fs.stat — uri.fsPath gives a Linux path that
+		//   fs.promises.stat can't resolve when the extension runs on the Windows host.
+		// Local: use fs.promises.stat for full stats including Unix permissions.
+		const nativeStats = (!isSsh && !isWsl)
+			? await Promise.allSettled(
 				entries.map(([name]) => fs.promises.stat(this.makeUri(joinPath(name)).fsPath))
-			);
+			)
+			: undefined;
+		const vsStats = isWsl
+			? await Promise.allSettled(
+				entries.map(([name]) => vscode.workspace.fs.stat(this.makeUri(joinPath(name))))
+			)
+			: undefined;
 
 		for (let i = 0; i < entries.length; i++) {
 			const [name, type] = entries[i];
 			const isDir = (type & vscode.FileType.Directory) !== 0;
-			const stat = stats?.[i];
-			const lastModifiedMs = stat?.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
-			const permissions = stat?.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '----------';
-			const size = stat?.status === 'fulfilled' ? formatFileSize(stat.value.size) : '0';
+			const nativeStat = nativeStats?.[i];
+			const vsStat = vsStats?.[i];
+			const lastModifiedMs = nativeStat?.status === 'fulfilled'
+				? nativeStat.value.mtimeMs
+				: (vsStat?.status === 'fulfilled' ? vsStat.value.mtime : undefined);
+			const permissions = nativeStat?.status === 'fulfilled' ? formatPermissions(nativeStat.value.mode) : '----------';
+			const size = nativeStat?.status === 'fulfilled'
+				? formatFileSize(nativeStat.value.size)
+				: (vsStat?.status === 'fulfilled' ? formatFileSize(vsStat.value.size) : '0');
 			const displayName = isDir ? name + '/' : name;
 			const entry: FindFileItem = {
 				isDir,
