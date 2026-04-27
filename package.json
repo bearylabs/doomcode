@@ -1043,14 +1043,26 @@
           "type": "bindings",
           "bindings": [
             {
+              "key": ".",
+              "name": "Browse project",
+              "type": "command",
+              "command": "doom.findFileInProject"
+            },
+            {
+              "key": "b",
+              "name": "Switch to project buffer",
+              "type": "command",
+              "command": "doom.showOpenEditors"
+            },
+            {
               "key": "f",
               "name": "Find file in project",
               "type": "command",
               "command": "doom.findFileInProject"
             },
             {
-              "key": "o",
-              "name": "Open folder",
+              "key": "a",
+              "name": "Add new project",
               "type": "command",
               "command": "workbench.action.files.openFolder"
             },
@@ -1059,12 +1071,6 @@
               "name": "Open project",
               "type": "command",
               "command": "doom.showRecentProjects"
-            },
-            {
-              "key": "t",
-              "name": "Show tree/explorer view",
-              "type": "command",
-              "command": "workbench.view.explorer"
             }
           ]
         },

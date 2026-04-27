@@ -10,9 +10,14 @@ All notable changes to this project will be documented in this file.
 
 - `SPC SPC` on SSH workspaces now actually respects `.gitignore` — `vscodevim.vim` (`extensionKind: ["ui"]` only) was listed as an `extensionDependency`, which prevented Doom from installing on the remote extension host; Doom fell back to running locally where `git ls-files` cannot reach the remote filesystem and silently fell through to `findFiles` (no `.gitignore` support). Moving vim to `extensionPack` lets Doom install on the SSH remote where git runs correctly.
 
+### Added
+
+- `SPC p b` — switch to project buffer (same as `SPC b b`)
+
 ### Changed
 
-- `SPC p p` and `SPC p f` no longer show a file picker after selecting a project — the project opens directly. Extensions must load before any action can run, making the two-step pick-project-then-pick-file flow too slow to be useful
+- `SPC p p`, `SPC p f`, and `SPC p .` no longer show a file picker after selecting a project — the project opens directly. Extensions must load before any action can run, making the two-step pick-project-then-pick-file flow too slow to be useful
+- `SPC p o` renamed to `SPC p a` (Add new project)
 - `vscodevim.vim` moved from `extensionDependencies` to `extensionPack` — it is a recommended companion, not a hard requirement for Doom to function
 
 > **SSH users:** After updating, open your SSH remote in VS Code and run **Developer: Restart Extension Host** (`Ctrl+Shift+P`). If `SPC SPC` still shows gitignored files, Doom is still running locally — uninstall and reinstall it while connected to the SSH remote so VS Code places the extension on the remote host.
