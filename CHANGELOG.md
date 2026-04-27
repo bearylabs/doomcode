@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `SPC p p` recent project picker now shows a `[host]` indicator after the path for remote projects (WSL distro name or SSH hostname)
+
 ## [0.3.3] - 2026-04-26
 
 ### Added

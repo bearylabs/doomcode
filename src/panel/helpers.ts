@@ -298,7 +298,7 @@ export function createFilePickerHtml(options: {
 
 		.item {
 			display: grid;
-			grid-template-columns: minmax(0, 55ch) 10ch 5ch 15ch;
+			grid-template-columns: minmax(0, 55ch) 12ch 5ch 15ch;
 			align-items: center;
 			gap: 2ch;
 			flex: 0 0 auto;
@@ -316,6 +316,11 @@ export function createFilePickerHtml(options: {
 		.item-path {
 			overflow: hidden;
 			text-overflow: ellipsis;
+		}
+
+		.item-host {
+			color: var(--accent);
+			white-space: nowrap;
 		}
 
 		.item-perm {
@@ -436,8 +441,13 @@ export function createFilePickerHtml(options: {
 				appendHighlightedText(pathEl, item.path, item.matches);
 
 				const permEl = document.createElement('span');
-				permEl.className = 'item-perm';
-				permEl.textContent = item.permissions ?? '';
+				if (item.host) {
+					permEl.className = 'item-host';
+					permEl.textContent = '[' + item.host + ']';
+				} else {
+					permEl.className = 'item-perm';
+					permEl.textContent = item.permissions ?? '';
+				}
 
 				const sizeEl = document.createElement('span');
 				sizeEl.className = 'item-size';

@@ -16,6 +16,8 @@ export interface RecentProjectItem {
 	searchText: string;
 	size: string;
 	uri: vscode.Uri;
+	/** Remote host label (e.g. `Ubuntu`, `my-server`) if the project lives on a remote, otherwise undefined. */
+	host: string | undefined;
 }
 
 interface RecentProjectMatch {
@@ -28,6 +30,7 @@ interface RecentProjectMatch {
 }
 
 interface RecentProjectRenderItem {
+	host: string | undefined;
 	index: number;
 	lastModified: string;
 	matches: number[];
@@ -77,6 +80,30 @@ function extractEntryUri(entry: RawRecentEntry): vscode.Uri | undefined {
 }
 
 /**
+ * Extracts a short remote host label from a URI, or returns `undefined` for local (`file://`) URIs.
+ * - `vscode-vfs://wsl+Ubuntu/…`        → `Ubuntu`
+ * - `vscode-remote://wsl+Ubuntu/…`     → `Ubuntu`
+ * - `vscode-remote://ssh-remote+host/…` → `host`
+ * - any other non-`file` scheme         → the raw authority string
+ */
+function extractHostLabel(uri: vscode.Uri): string | undefined {
+	if (uri.scheme === 'file') {
+		return undefined;
+	}
+
+	const authority = uri.authority;
+	if (authority.startsWith('wsl+')) {
+		return authority.slice(4);
+	}
+
+	if (authority.startsWith('ssh-remote+')) {
+		return authority.slice(11);
+	}
+
+	return authority || uri.scheme;
+}
+
+/**
  * Returns recent workspace/folder entries from VS Code's built-in MRU list.
  * Uses the internal `_workbench.getRecentlyOpened` command which has been stable
  * across VS Code versions and is widely used by other extensions.
@@ -97,7 +124,7 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 	const entries = (raw as { workspaces: RawRecentEntry[] }).workspaces;
 
 	// Build items first, then stat all paths in parallel.
-	const uriList: Array<{ uri: vscode.Uri; label: string; path: string }> = [];
+	const uriList: Array<{ uri: vscode.Uri; label: string; path: string; host: string | undefined }> = [];
 
 	for (const entry of entries) {
 		const uri = extractEntryUri(entry);
@@ -105,27 +132,29 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 			continue;
 		}
 
-		const path = tildeCollapse(uri.fsPath.replace(/\\/g, '/'));
+		const host = extractHostLabel(uri);
+		const path = host ? uri.path : tildeCollapse(uri.fsPath.replace(/\\/g, '/'));
 		const basename = path.split('/').filter(Boolean).pop() ?? path;
 		const label = entry.label ?? basename;
-		uriList.push({ uri, label, path });
+		uriList.push({ uri, label, path, host });
 	}
 
 	const stats = await Promise.allSettled(
 		uriList.map(({ uri }) => fs.promises.stat(uri.fsPath))
 	);
 
-	return uriList.map(({ uri, label, path }, i) => {
+	return uriList.map(({ uri, label, path, host }, i) => {
 		const stat = stats[i];
 		const lastModifiedMs = stat.status === 'fulfilled' ? stat.value.mtimeMs : undefined;
 		const permissions = stat.status === 'fulfilled' ? formatPermissions(stat.value.mode) : '';
 		const size = stat.status === 'fulfilled' ? formatFileSize(stat.value.size) : '';
 		return {
+			host,
 			label,
 			lastModifiedMs,
 			path,
 			permissions,
-			searchText: `${label} ${path}`.toLowerCase(),
+			searchText: `${label} ${path}${host ? ' ' + host : ''}`.toLowerCase(),
 			size,
 			uri,
 		};
@@ -362,6 +391,7 @@ export class DoomRecentProjectsPanel {
 		this.activeIndex = activeIndex;
 
 		const items: RecentProjectRenderItem[] = this.filteredItems.map((entry, index) => ({
+			host: entry.item.host,
 			index,
 			lastModified: entry.item.lastModifiedMs !== undefined
 				? formatRelativeTime(entry.item.lastModifiedMs, Date.now())
