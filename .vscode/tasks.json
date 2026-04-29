@@ -76,6 +76,53 @@
 			}
 		},
 		{
+			"label": "compile doom-workspace (nix)",
+			"type": "shell",
+			"command": "nix develop -c npm run compile",
+			"options": {
+				"cwd": "${workspaceFolder:doomcode-workspace}"
+			},
+			"problemMatcher": "$tsc",
+			"presentation": {
+				"reveal": "silent"
+			}
+		},
+		{
+			"label": "compile doom-workspace (local)",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"compile"
+			],
+			"options": {
+				"cwd": "${workspaceFolder:doomcode-workspace}",
+				"shell": {
+					"executable": "C:\\Windows\\System32\\cmd.exe",
+					"args": [
+						"/d",
+						"/c"
+					]
+				}
+			},
+			"problemMatcher": "$tsc",
+			"presentation": {
+				"reveal": "silent"
+			}
+		},
+		{
+			"label": "compile both (nix)",
+			"dependsOrder": "parallel",
+			"dependsOn": ["compile (nix)", "compile doom-workspace (nix)"],
+			"group": "build"
+		},
+		{
+			"label": "compile both (local)",
+			"dependsOrder": "parallel",
+			"dependsOn": ["compile (local)", "compile doom-workspace (local)"],
+			"group": "build"
+		},
+		{
 			"label": "install deps (local)",
 			"type": "shell",
 			"command": "npm.cmd",

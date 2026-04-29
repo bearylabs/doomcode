@@ -28,6 +28,34 @@
 				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "compile (local)"
+		},
+		{
+			"name": "Run Both (Linux/Nix)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder:doomcode}",
+				"--extensionDevelopmentPath=${workspaceFolder:doomcode-workspace}"
+			],
+			"outFiles": [
+				"${workspaceFolder:doomcode}/out/**/*.js",
+				"${workspaceFolder:doomcode-workspace}/out/**/*.js"
+			],
+			"preLaunchTask": "compile both (nix)"
+		},
+		{
+			"name": "Run Both (Windows/local)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder:doomcode}",
+				"--extensionDevelopmentPath=${workspaceFolder:doomcode-workspace}"
+			],
+			"outFiles": [
+				"${workspaceFolder:doomcode}/out/**/*.js",
+				"${workspaceFolder:doomcode-workspace}/out/**/*.js"
+			],
+			"preLaunchTask": "compile both (local)"
 		}
 	]
 }
