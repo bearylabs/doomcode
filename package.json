@@ -38,10 +38,10 @@
     "ui"
   ],
   "extensionDependencies": [
-    "VSpaceCode.whichkey",
-    "bearylabs.doom-workspace"
+    "VSpaceCode.whichkey"
   ],
   "extensionPack": [
+    "bearylabs.doom-workspace",
     "vscodevim.vim",
     "wayou.vscode-todo-highlight",
     "kahole.magit"
