@@ -395,7 +395,7 @@ function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
 	} | undefined;
 
 	return (packageJson?.contributes?.keybindings ?? []).flatMap((entry) => {
-		if (!isRecord(entry) || entry.command !== 'whichkey.triggerKey' || typeof entry.when !== 'string') {
+		if (!isRecord(entry) || entry.command !== 'doom.triggerKey' || typeof entry.when !== 'string') {
 			return [];
 		}
 

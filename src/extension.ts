@@ -6,11 +6,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from './buffers/openEditors';
 import {
+	DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 	detectDashboardMode,
 	DoomDashboard,
 	evaluateInstalledDefaults,
 	resolveStartupCommandsFromBindings,
-	DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 } from './onboarding/dashboard';
 import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
@@ -1008,6 +1008,23 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	// Keys pressed while `whichkeyVisible` is true but before the webview has focus are
+	// routed here by the `whichkey.triggerKey` keybindings in package.json. Without this
+	// handler those keys were silently swallowed (no registered command = no-op), causing
+	// rapid chords to be lost — especially on Windows where the focus-transition window is
+	// larger. Queuing them here lets the host replay them once the first render fires.
+	const whichKeyTriggerKeyCmd = vscode.commands.registerCommand(
+		'doom.triggerKey',
+		(args: string | { key: string; when?: string } | undefined) => {
+			const raw = typeof args === 'string' ? args : (args?.key ?? '');
+			if (!raw || !whichKeyMenu.isCurrentlyShowing) {
+				return;
+			}
+			const key = raw === ' ' ? 'SPC' : raw === '\t' ? 'TAB' : raw;
+			whichKeyMenu.queueKey(key);
+		}
+	);
+
 	const whichKeyHideCmd = vscode.commands.registerCommand(
 		"doom.whichKeyHide",
 		() => {
@@ -1251,6 +1268,7 @@ export function activate(context: vscode.ExtensionContext) {
 		reloadLastSessionCmd,
 		whichKeyCmd,
 		whichKeyBindingsCmd,
+		whichKeyTriggerKeyCmd,
 		whichKeyHideCmd,
 		sidebarHideCmd,
 		panelHideCmd,
