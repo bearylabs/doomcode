@@ -354,16 +354,15 @@ export class DoomDashboard {
 		return panel;
 	}
 
-	/** Returns the panel tab title. State param reserved for future mode-specific titles. */
-	private getTitle(state: DoomDashboardState): string {
-		void state;
+	/** Returns the panel tab title. */
+	private getTitle(): string {
 		return '*doom*';
 	}
 
 	/** Stamps new HTML onto the panel and optionally brings it to the foreground. */
 	private updatePanel(panel: vscode.WebviewPanel, state: DoomDashboardState, reveal: boolean): void {
 		this.lastState = state;
-		panel.title = this.getTitle(state);
+		panel.title = this.getTitle();
 		panel.webview.html = this.render(state, panel.webview);
 		if (reveal) {
 			panel.reveal(vscode.ViewColumn.One, false);
@@ -422,29 +421,29 @@ export class DoomDashboard {
 		const startupCommandsMarkup = state.startupCommands.length > 0
 			? state.startupCommands.map((entry) => `
 				<li class="menu-item">
-					<button class="menu-link" data-command="executeCommand" data-vscode-command="${this.escapeHtml(entry.command)}">
+					<button class="menu-link" data-command="executeCommand" data-vscode-command="${escapeHtml(entry.command)}">
 						<span class="menu-label-shell">
 							<span class="menu-icon" aria-hidden="true">${this.getStartupCommandIcon(entry)}</span>
-							<span class="menu-label">${this.escapeHtml(entry.label)}</span>
+							<span class="menu-label">${escapeHtml(entry.label)}</span>
 						</span>
-						<span class="menu-key">${this.escapeHtml(entry.keybinding)}</span>
+						<span class="menu-key">${escapeHtml(entry.keybinding)}</span>
 					</button>
 				</li>`).join('')
 			: '<li class="menu-item menu-empty">No default startup commands found in current which-key config.</li>';
 		const conflictMarkup = state.conflicts.length > 0
-			? `<p class="status-line status-warning">Conflicting extension still installed: ${this.escapeHtml(state.conflicts.map((conflict) => conflict.name).join(', '))}.</p>`
+			? `<p class="status-line status-warning">Conflicting extension still installed: ${escapeHtml(state.conflicts.map((conflict) => conflict.name).join(', '))}.</p>`
 			: '';
 		const eyebrow = this.getEyebrow(state);
 		const changelogUrl = state.mode === 'update' && state.repositoryUrl
 			? state.repositoryUrl.replace(/\.git$/, '') + '/blob/main/CHANGELOG.md'
 			: undefined;
 		const eyebrowHtml = eyebrow
-			? this.escapeHtml(eyebrow) + (changelogUrl
-				? ` <button class="inline-link eyebrow-link" data-command="openUrl" data-url="${this.escapeHtml(changelogUrl)}">View changelog</button>`
+			? escapeHtml(eyebrow) + (changelogUrl
+				? ` <button class="inline-link eyebrow-link" data-command="openUrl" data-url="${escapeHtml(changelogUrl)}">View changelog</button>`
 				: '')
 			: '';
 		const repositoryMarkup = state.repositoryUrl
-			? `<p class="repo-link-shell"><button class="repo-link" data-command="openUrl" data-url="${this.escapeHtml(state.repositoryUrl)}" aria-label="Open GitHub repository">${GITHUB_ICON}</button></p>`
+			? `<p class="repo-link-shell"><button class="repo-link" data-command="openUrl" data-url="${escapeHtml(state.repositoryUrl)}" aria-label="Open GitHub repository">${GITHUB_ICON}</button></p>`
 			: '';
 
 		return `<!DOCTYPE html>
@@ -453,7 +452,7 @@ export class DoomDashboard {
 	<meta charset="UTF-8">
 	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${this.escapeHtml(this.getTitle(state))}</title>
+	<title>${escapeHtml(this.getTitle())}</title>
 	<style>
 		:root {
 			color-scheme: dark;
@@ -722,7 +721,7 @@ export class DoomDashboard {
 		<section class="shell">
 			${eyebrowHtml ? `<p class="eyebrow">${eyebrowHtml}</p>` : ''}
 			<div class="ascii-header-shell">
-				<pre class="ascii-header" aria-label="Doom Code ASCII art header">${this.escapeHtml(ASCII_HEADER)}</pre>
+				<pre class="ascii-header" aria-label="Doom Code ASCII art header">${escapeHtml(ASCII_HEADER)}</pre>
 			</div>
 			<section class="menu" aria-label="Startup commands">
 				<ul class="menu-list">${startupCommandsMarkup}
@@ -733,7 +732,7 @@ export class DoomDashboard {
 					${conflictMarkup}
 				</div>
 			</section>
-			<p class="version-indicator">Doom v${this.escapeHtml(state.currentVersion)}</p>
+			<p class="version-indicator">Doom v${escapeHtml(state.currentVersion)}</p>
 			${repositoryMarkup}
 			<label class="toggle" for="open-on-activation-toggle">
 				<input
@@ -780,11 +779,6 @@ export class DoomDashboard {
 			default:
 				return '';
 		}
-	}
-
-	/** Instance wrapper around the module-level `escapeHtml` for use inside template expressions. */
-	private escapeHtml(value: string): string {
-		return escapeHtml(value);
 	}
 
 	/** Returns a named SVG icon for known commands, falling back to a generic dot for unknown ones. */
