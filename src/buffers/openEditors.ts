@@ -482,6 +482,8 @@ async function openTabInGroupWithOptions(
 // ---------------------------------------------------------------------------
 
 export class DoomOpenEditorsPanel {
+	static readonly visibleContextKey = 'doom.openEditorsVisible';
+
 	private accepted = false;
 	private activeIndex = 0;
 	private items: OpenEditorItem[] = [];

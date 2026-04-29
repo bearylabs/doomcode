@@ -45,6 +45,8 @@ interface WhichKeyBindingsMessage {
 // ---------------------------------------------------------------------------
 
 export class DoomWhichKeyBindingsPanel {
+	static readonly visibleContextKey = 'doom.whichKeyBindingsVisible';
+
 	private activeIndex = 0;
 	private bindings: WhichKeyExecutableBinding[] = [];
 	private matches: WhichKeyBindingMatch[] = [];

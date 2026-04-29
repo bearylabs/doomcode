@@ -225,6 +225,16 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			DoomRecentProjectsPanel.visibleContextKey,
 			isVisible && this.activeMode === 'recent'
 		);
+		await vscode.commands.executeCommand(
+			'setContext',
+			DoomOpenEditorsPanel.visibleContextKey,
+			isVisible && this.activeMode === 'buffers'
+		);
+		await vscode.commands.executeCommand(
+			'setContext',
+			DoomWhichKeyBindingsPanel.visibleContextKey,
+			isVisible && this.activeMode === 'bindings'
+		);
 	}
 
 	/** Resolves immediately if the view exists, otherwise queues a resolver that fires when `resolveWebviewView` is called. */
