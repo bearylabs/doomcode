@@ -846,6 +846,12 @@ export function activate(context: vscode.ExtensionContext) {
 		...Object.keys(installDefaults),
 	];
 	const fuzzySearchPanel = new DoomFuzzySearchPanel();
+
+	/** Opens a project folder in the current window and suppresses the dashboard on the next activation. */
+	const openProjectAndSkipDashboard = async (projectUri: vscode.Uri): Promise<void> => {
+		await context.globalState.update(SKIP_DASHBOARD_KEY, true);
+		await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+	};
 	const whichKeyMenu = new DoomWhichKeyMenu();
 	const dashboard = new DoomDashboard(context.extensionUri);
 	let dashboardRefreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1080,10 +1086,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const findFileInProjectCmd = vscode.commands.registerCommand(
 		'doom.findFileInProject',
 		() => {
-			void sharedPanel.showProjectFiles(async (projectUri) => {
-				await context.globalState.update(SKIP_DASHBOARD_KEY, true);
-				await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-			});
+			void sharedPanel.showProjectFiles(openProjectAndSkipDashboard);
 		}
 	);
 
@@ -1122,10 +1125,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const showRecentProjectsCmd = vscode.commands.registerCommand(
 		'doom.showRecentProjects',
 		() => {
-			void sharedPanel.showRecentProjectsForFilePick(async (projectUri) => {
-				await context.globalState.update(SKIP_DASHBOARD_KEY, true);
-				await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-			});
+			void sharedPanel.showRecentProjectsForFilePick(openProjectAndSkipDashboard);
 		}
 	);
 
