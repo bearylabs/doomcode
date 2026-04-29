@@ -1080,16 +1080,10 @@ export function activate(context: vscode.ExtensionContext) {
 	const findFileInProjectCmd = vscode.commands.registerCommand(
 		'doom.findFileInProject',
 		() => {
-			if (!vscode.workspace.workspaceFolders?.length) {
-				// No workspace open: pick project first, then open it directly.
-				void sharedPanel.showRecentProjectsForFilePick(async (projectUri) => {
-					await context.globalState.update(SKIP_DASHBOARD_KEY, true);
-					await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
-				});
-				return;
-			}
-
-			void sharedPanel.showProjectFiles();
+			void sharedPanel.showProjectFiles(async (projectUri) => {
+				await context.globalState.update(SKIP_DASHBOARD_KEY, true);
+				await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+			});
 		}
 	);
 

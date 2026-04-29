@@ -117,9 +117,13 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	}
 
 	/** Opens the project file picker (Doom SPC SPC). Falls back to recent projects when no workspace is open. */
-	async showProjectFiles(): Promise<void> {
+	async showProjectFiles(onProjectSelected?: (projectUri: vscode.Uri, projectLabel: string) => Promise<void>): Promise<void> {
 		if (!this.projectFilePanel.prepareShow()) {
-			await this.showRecentProjects();
+			if (onProjectSelected) {
+				await this.showRecentProjectsForFilePick(onProjectSelected);
+			} else {
+				await this.showRecentProjects();
+			}
 			return;
 		}
 
