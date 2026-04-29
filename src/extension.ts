@@ -1037,7 +1037,7 @@ export function activate(context: vscode.ExtensionContext) {
 		"doom.windowDelete",
 		async () => {
 			const activeGroup = vscode.window.tabGroups.activeTabGroup;
-			const activeTerminalEditor = vscode.window.tabGroups.activeTabGroup.activeTab?.input instanceof vscode.TabInputTerminal;
+			const activeTerminalEditor = activeGroup.activeTab?.input instanceof vscode.TabInputTerminal;
 			const action = resolveWindowDeleteAction(
 				whichKeyMenu.showContext.terminalFocus,
 				activeTerminalEditor,
@@ -1055,7 +1055,14 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			await vscode.commands.executeCommand('workbench.action.closeGroup');
+			// Use the group that was active when whichkey opened (preWhichKeyEditorGroupColumn is set
+			// during whichkey command execution and undefined for direct invocations). This avoids
+			// relying on workbench.action.closeGroup honouring focus, which VS Code does not guarantee
+			// after the whichkey panel closes.
+			const targetColumn = whichKeyMenu.preWhichKeyEditorGroupColumn ?? activeGroup.viewColumn;
+			const groupToClose = vscode.window.tabGroups.all.find(g => g.viewColumn === targetColumn)
+				?? activeGroup;
+			await vscode.window.tabGroups.close(groupToClose);
 		}
 	);
 

@@ -4,6 +4,7 @@ import {
 	getConfiguredWhichKeyBindings,
 	type WhichKeyBinding,
 } from './bindings';
+import { focusEditorGroup } from '../window/mru';
 
 // ---------------------------------------------------------------------------
 // Which-key menu models
@@ -569,6 +570,7 @@ export class DoomWhichKeyMenu {
 	};
 	private hostPendingKeys: string[] = [];
 	private isShowing = false;
+	private preWhichKeyEditorGroup: vscode.ViewColumn | undefined;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
@@ -581,6 +583,10 @@ export class DoomWhichKeyMenu {
 
 	get snapshot(): ContextSnapshot {
 		return buildContextSnapshot(this);
+	}
+
+	get preWhichKeyEditorGroupColumn(): vscode.ViewColumn | undefined {
+		return this.preWhichKeyEditorGroup;
 	}
 
 	get showContext(): ShowContext {
@@ -604,6 +610,7 @@ export class DoomWhichKeyMenu {
 	prepareShow(showContext?: Partial<ShowContext>): void {
 		this.isShowing = true;
 		this.hostPendingKeys = [];
+		this.preWhichKeyEditorGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
 		this.currentShowContext = {
 			terminalFocus: showContext?.terminalFocus === true,
 			terminalPanelOpen: showContext?.terminalPanelOpen === true,
@@ -721,9 +728,13 @@ export class DoomWhichKeyMenu {
 	async executeBinding(binding: WhichKeyBinding): Promise<void> {
 		await this.close();
 
-		await executeWhichKeyBindingCommands(binding, (command, arg) => {
-			this.trackContextCommand(command, arg);
-		});
+		try {
+			await executeWhichKeyBindingCommands(binding, (command, arg) => {
+				this.trackContextCommand(command, arg);
+			});
+		} finally {
+			this.preWhichKeyEditorGroup = undefined;
+		}
 	}
 
 	/**
@@ -871,6 +882,9 @@ export class DoomWhichKeyMenu {
 			}
 		} else {
 			await vscode.commands.executeCommand('workbench.action.closePanel');
+			if (this.preWhichKeyEditorGroup !== undefined) {
+				await focusEditorGroup(this.preWhichKeyEditorGroup);
+			}
 		}
 	}
 

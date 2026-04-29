@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- `SPC w d` / `SPC w c` no longer closes the wrong editor group — when two groups were open, the non-focused group was closed instead of the focused one; whichkey now snapshots the active group at `SPC`-press time and closes it directly via the VS Code tab group API, bypassing the focus-restoration uncertainty that follows panel close
+
+## [0.4.0] 2026-04-29
+
 ### Added
 
 - `doom-workspace` companion extension — bundled in the extension pack and installed automatically alongside Doom Code; runs natively on the workspace host (local, WSL, or SSH remote) and handles all filesystem and git operations, finally making `SPC SPC` and `SPC .` file pickers work correctly on SSH remotes without any SSH/WSL special-casing in the UI extension
