@@ -84,20 +84,20 @@ function getWorkspaceLabel(): string {
 	return firstFolder && firstFolder.length > 0 ? firstFolder : 'workspace';
 }
 
-/** Extracts an uppercase extension (up to 6 chars) from a file URI, or the URI scheme for non-file URIs. */
+/** Extracts an uppercase extension (up to 6 chars) from a URI path, or the URI scheme for non-file URIs with no extension. */
 function inferKindFromUri(uri: vscode.Uri, fallback = 'Text'): string {
+	const slashIndex = uri.path.lastIndexOf('/');
+	const basename = slashIndex >= 0 ? uri.path.slice(slashIndex + 1) : uri.path;
+	const dotIndex = basename.lastIndexOf('.');
+	if (dotIndex > 0 && dotIndex < basename.length - 1) {
+		return basename.slice(dotIndex + 1, dotIndex + 7).toUpperCase();
+	}
+
 	if (uri.scheme !== 'file') {
 		return uri.scheme.slice(0, 6) || fallback;
 	}
 
-	const slashIndex = uri.path.lastIndexOf('/');
-	const basename = slashIndex >= 0 ? uri.path.slice(slashIndex + 1) : uri.path;
-	const dotIndex = basename.lastIndexOf('.');
-	if (dotIndex <= 0 || dotIndex === basename.length - 1) {
-		return fallback;
-	}
-
-	return basename.slice(dotIndex + 1, dotIndex + 7).toUpperCase();
+	return fallback;
 }
 
 /** Dispatches on tab input type to extract a human-readable description, kind badge, and searchable text. */
