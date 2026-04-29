@@ -489,6 +489,7 @@ export class DoomOpenEditorsPanel {
 	private matches: OpenEditorMatch[] = [];
 	private query = '';
 	private ready = false;
+	private refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	private restoreTabKey: string | undefined;
 	private targetGroup: vscode.ViewColumn | undefined;
 	private view: vscode.WebviewView | undefined;
@@ -548,14 +549,14 @@ export class DoomOpenEditorsPanel {
 					return;
 				}
 
-				void this.refreshItems();
+				this.scheduleRefresh();
 			}),
 			vscode.window.tabGroups.onDidChangeTabs(() => {
 				if (!webviewView.visible) {
 					return;
 				}
 
-				void this.refreshItems();
+				this.scheduleRefresh();
 			}),
 			webviewView.webview.onDidReceiveMessage((message: OpenEditorMessage) => {
 				void this.handleMessage(message);
@@ -571,6 +572,17 @@ export class DoomOpenEditorsPanel {
 
 		this.view.title = 'Switch to buffer';
 		this.view.description = getWorkspaceLabel();
+	}
+
+	/** Coalesces rapid onDidChangeTabs bursts into a single refreshItems call after 50 ms of quiet. */
+	private scheduleRefresh(): void {
+		if (this.refreshTimer) {
+			clearTimeout(this.refreshTimer);
+		}
+		this.refreshTimer = setTimeout(() => {
+			this.refreshTimer = undefined;
+			void this.refreshItems();
+		}, 50);
 	}
 
 	/** Rebuilds the flat item list from all tab groups, deduplicating by key and skipping hidden tabs. */
