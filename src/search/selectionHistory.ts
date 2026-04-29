@@ -19,6 +19,7 @@ interface HistoryEntry {
  */
 export class SelectionHistory {
 	private entries: Map<string, HistoryEntry>;
+	private persistTimer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(private readonly state: vscode.Memento) {
 		const stored = state.get<Record<string, HistoryEntry>>(STORAGE_KEY, {});
@@ -33,7 +34,7 @@ export class SelectionHistory {
 			count: (existing?.count ?? 0) + 1,
 		});
 		this.prune();
-		void this.persist();
+		this.schedulePersist();
 	}
 
 	/**
@@ -51,7 +52,7 @@ export class SelectionHistory {
 			count: existing?.count ?? 0,
 		});
 		this.prune();
-		void this.persist();
+		this.schedulePersist();
 	}
 
 	/** Frecency score: recency + (count × weight). Higher = better. */
@@ -68,6 +69,17 @@ export class SelectionHistory {
 		const sorted = [...this.entries.entries()]
 			.sort((a, b) => b[1].lastSelected - a[1].lastSelected);
 		this.entries = new Map(sorted.slice(0, MAX_ENTRIES));
+	}
+
+	/** Coalesces rapid writes into a single globalState update after 500 ms of quiet. */
+	private schedulePersist(): void {
+		if (this.persistTimer) {
+			clearTimeout(this.persistTimer);
+		}
+		this.persistTimer = setTimeout(() => {
+			this.persistTimer = undefined;
+			void this.persist();
+		}, 500);
 	}
 
 	private async persist(): Promise<void> {
