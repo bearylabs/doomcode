@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `doom-workspace` companion extension — bundled in the extension pack and installed automatically alongside Doom Code; runs natively on the workspace host (local, WSL, or SSH remote) and handles all filesystem and git operations, finally making `SPC SPC` and `SPC .` file pickers work correctly on SSH remotes without any SSH/WSL special-casing in the UI extension
+
+### Changed
+
+- File picker (`SPC SPC`) and directory browser (`SPC .`) filesystem and git calls delegated to `doom-workspace` running on the workspace host — removes the SSH/WSL workarounds that accumulated in v0.3.4–v0.3.6 and improves response time on remote connections
+- Selection history `globalState` writes debounced on passive file opens — eliminates redundant I/O during rapid navigation
+- Buffer panel tab-change refreshes debounced — reduces redraws during rapid tab switching
+
+### Fixed
+
+- Buffer list shows correct file type badge on WSL/SSH remotes — was displaying the URI scheme (`vscode`) instead of the actual file extension
+- Buffer list shows correct file size for directories on WSL/SSH remotes — `stat` returning `0` now renders as `"0"` instead of blank
+- Chord keys no longer dropped on Windows after `SPC`; `doom.triggerKey` replaces `whichkey.triggerKey` to avoid conflict with VSpaceCode on activation
+- Buffer panel and key-bindings panel visibility context keys stay in sync after toggling
+- `SPC SPC` (no workspace open) no longer flashes the dashboard when a project is selected via the fallback project picker
+
 ## [0.3.6] - 2026-04-27
 
 ### Fixed

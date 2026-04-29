@@ -60,6 +60,10 @@ A Doom-style `find-file` panel that opens in the current file's directory (falli
 
 Orderless AND matching: space-separate terms to filter by multiple words in any order, matching files that contain all terms regardless of order. Each result shows the file's last modified time and size alongside the path. Stock Quick Open uses a single fuzzy string and shows no file metadata.
 
+Results are ranked by frecency (frequency × recency) — files you open often and recently surface first, matching Doom Emacs' prescient.el behaviour. The history is global and persists across restarts.
+
+Both pickers work correctly on **SSH and WSL remotes** — filesystem and git operations run natively on the workspace host via the bundled `doom-workspace` extension, so `.gitignore` is respected and file metadata is accurate regardless of the connection type.
+
 **`SPC ,` — Buffer switcher**
 
 Lists all open editors across tab groups with vim-style dirty/readonly flags, file size, file type badge, and workspace-relative path. Paths under your home directory are shown with `~`. Fuzzy-filters as you type; live-previews the selected buffer without switching focus.
@@ -87,10 +91,7 @@ All companion extensions are installed automatically alongside Doom Code.
 
 Declared as hard dependencies — installed automatically and required for Doom Code to function:
 
-1. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
-   - Provides modal editing (normal, insert, visual modes)
-   - Handles all Vim motions and operators
-2. **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** – Which-key menu system
+1. **[VSpaceCode](https://github.com/VSpaceCode/vscode-which-key)** – Which-key menu system
    - Displays keyboard command menus (like Doom's prefix menu)
    - The entire custom configuration is built on which-key's binding system
    - Standard VS Code command menus have been extended to match Doom Emacs' style as closely as possible
@@ -99,10 +100,16 @@ Declared as hard dependencies — installed automatically and required for Doom 
 
 Bundled alongside Doom Code and installed automatically, but not hard dependencies:
 
-3. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
+2. **doom-workspace** – Workspace-side filesystem and git sidecar
+   - Runs natively on the workspace host (local, WSL, or SSH remote)
+   - Handles all filesystem and git operations for the file pickers so they work correctly on any remote connection without SSH/WSL special-casing in the UI extension
+3. **[VSCodeVim](https://github.com/vscodevim/vim)** – Vim/Evil-mode emulation
+   - Provides modal editing (normal, insert, visual modes)
+   - Handles all Vim motions and operators
+4. **[Todo Highlight](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight)** – Highlight TODO-style annotations
    - Powers Doom Code's default `TODO:`, `FIXME:`, `NOTE:`, `REVIEW:`, and `HACK:` comment highlighting
    - Adds matching overview ruler markers with Doom Code's color palette
-4. **[Magit for VS Code](https://marketplace.visualstudio.com/items?itemName=kahole.magit)** – Git interface modeled on Emacs Magit
+5. **[Magit for VS Code](https://marketplace.visualstudio.com/items?itemName=kahole.magit)** – Git interface modeled on Emacs Magit
    - Provides a keyboard-driven git workflow inside VS Code
    - Doom Code ships keybinding overrides that make it behave more like the original Magit
 
@@ -112,7 +119,7 @@ Project search, in-file fuzzy search, workspace buffer switching, and the custom
 
 ### Step 1: Install the Extension
 
-Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSCodeVim and VSpaceCode are declared as dependencies and will be installed automatically.
+Search for **Doom Code** in the VS Code Extensions marketplace and click Install. VSpaceCode is declared as a hard dependency and installs automatically. VSCodeVim, doom-workspace, Todo Highlight, and Magit are bundled in the extension pack and install automatically alongside it.
 
 ### Step 2: Use the Start Page to Opt In
 
@@ -144,7 +151,7 @@ For the configuration to work optimally:
 
 This creates a clean primary editor area with file navigation and history in the bottom panel, matching Doom Emacs' layout philosophy.
 
-If the start page opening on activation becomes noise, set `doom.startPage.openOnActivation` to `false`.
+If the dashboard opening on activation becomes noise, set `doom.dashboard.openOnActivation` to `false`.
 
 ### Step 4: Clean Up Your UI (Recommended)
 
