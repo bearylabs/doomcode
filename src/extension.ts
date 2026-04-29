@@ -965,7 +965,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const whichKeyCmd = vscode.commands.registerCommand(
 		"doom.whichKeyShow",
-		(showContext?: { terminalFocus?: boolean }) => {
+		(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean }) => {
 			if (getWhichKeyMenuStyle() === 'vspacecode') {
 				whichKeyMenu.prepareShow(showContext);
 				void showConfiguredWhichKeyMenu(whichKeyMenu, sharedPanel);

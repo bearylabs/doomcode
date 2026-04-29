@@ -33,6 +33,8 @@ interface TrackedUiContext {
 
 interface ShowContext {
 	terminalFocus: boolean;
+	terminalPanelOpen: boolean;
+	explorerVisible: boolean;
 }
 
 interface RenderItem {
@@ -562,6 +564,8 @@ export class DoomWhichKeyMenu {
 	private currentItems: RenderItem[] = [];
 	private currentShowContext: ShowContext = {
 		terminalFocus: false,
+		terminalPanelOpen: false,
+		explorerVisible: false,
 	};
 	private hostPendingKeys: string[] = [];
 	private isShowing = false;
@@ -602,9 +606,26 @@ export class DoomWhichKeyMenu {
 		this.hostPendingKeys = [];
 		this.currentShowContext = {
 			terminalFocus: showContext?.terminalFocus === true,
+			terminalPanelOpen: showContext?.terminalPanelOpen === true,
+			explorerVisible: showContext?.explorerVisible === true,
 		};
+		this.syncTrackedContextFromShowContext(showContext);
 		this.currentBindings = getConfiguredWhichKeyBindings();
 		this.stack = [];
+	}
+
+	private syncTrackedContextFromShowContext(showContext?: Partial<ShowContext>): void {
+		if (showContext?.terminalPanelOpen === true) {
+			this.trackedContext = { ...this.trackedContext, activePanel: 'terminal' };
+		} else if (showContext?.terminalPanelOpen === false && this.trackedContext.activePanel === 'terminal') {
+			this.trackedContext = { ...this.trackedContext, activePanel: '' };
+		}
+
+		if (showContext?.explorerVisible === true) {
+			this.trackedContext = { ...this.trackedContext, explorerViewletVisible: true };
+		} else if (showContext?.explorerVisible === false) {
+			this.trackedContext = { ...this.trackedContext, explorerViewletVisible: false };
+		}
 	}
 
 	/**

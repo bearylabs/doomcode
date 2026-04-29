@@ -86,7 +86,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	}
 
 	/** Opens which-key with an explicit context (e.g. terminal focus) so conditional bindings resolve correctly. */
-	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean }): Promise<void> {
+	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean }): Promise<void> {
 		this.whichKeyMenu.prepareShow(showContext);
 		await this.showMode('whichkey', this.whichKeyMenu);
 	}

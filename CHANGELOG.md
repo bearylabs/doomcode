@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Buffer list shows correct file type badge on WSL/SSH remotes — was displaying the URI scheme (`vscode`) instead of the actual file extension
 - Buffer list shows correct file size for directories on WSL/SSH remotes — `stat` returning `0` now renders as `"0"` instead of blank
 - Chord keys no longer dropped on Windows after `SPC`; `doom.triggerKey` replaces `whichkey.triggerKey` to avoid conflict with VSpaceCode on activation
+- `SPC o t` and `SPC o p` correctly handle terminal/explorer state changed via mouse or non-DoomCode commands — panel state is now snapshotted from VSCode context at `SPC`-press time rather than relying on potentially stale tracked state
 - Buffer panel and key-bindings panel visibility context keys stay in sync after toggling
 - `SPC SPC` (no workspace open) no longer flashes the dashboard when a project is selected via the fallback project picker
 
