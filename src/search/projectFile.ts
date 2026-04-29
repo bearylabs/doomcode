@@ -1,11 +1,6 @@
-import { execFile } from 'child_process';
-import * as fs from 'fs';
-import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
-
-const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Project file models
@@ -59,60 +54,21 @@ interface ProjectFileMessage {
 // File listing
 // ---------------------------------------------------------------------------
 
-/**
- * Lists project files using `git ls-files` (respects .gitignore exactly).
- * Falls back to VS Code's findFiles if git is unavailable or the folder isn't a repo.
- * Uses null-terminated output (-z) to safely handle filenames with spaces.
- *
- * SSH workspaces: extensionKind ["workspace","ui"] causes the extension to run on the
- * remote host. Git executes there with the correct path, so .gitignore is honoured.
- * Falls through to findFiles if git fails.
- *
- * WSL workspaces: the extension runs on the Windows host (UI side) so Windows git can't
- * resolve the Linux path. We invoke `wsl.exe -d <distro> -- git ls-files` so git runs
- * inside WSL and correctly honours .gitignore.
- */
-async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequence: number): Promise<vscode.Uri[]> {
-	const isWsl = rootUri.scheme === 'vscode-remote' && rootUri.authority.startsWith('wsl+');
+interface ProjectFileEntry {
+	rel: string;
+	mtime: number | undefined;
+	size: number | undefined;
+	mode: number | undefined;
+}
 
-	try {
-		let stdout: string;
-		if (isWsl) {
-			// rootUri.path is the Linux path (e.g. /home/user/project).
-			// wsl.exe -d <distro> -- runs the command inside the WSL distro.
-			const distro = rootUri.authority.slice('wsl+'.length);
-			({ stdout } = await execFileAsync(
-				'wsl.exe',
-				['-d', distro, '--', 'git', '-C', rootUri.path, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-				{ maxBuffer: 50 * 1024 * 1024 },
-			));
-		} else {
-			({ stdout } = await execFileAsync(
-				'git',
-				['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-				{ cwd: rootUri.fsPath, maxBuffer: 50 * 1024 * 1024 },
-			));
-		}
-		if (loadId !== loadSequence) {
-			return [];
-		}
-		const uris = stdout
-			.split('\0')
-			.filter(Boolean)
-			.map((rel) => vscode.Uri.joinPath(rootUri, rel));
-		if (uris.length > 0) {
-			return uris;
-		}
-		// git succeeded but returned nothing (empty repo) — fall through to findFiles
-	} catch {
-		// git unavailable or not a repo — fall through
-	}
-
-	if (loadId !== loadSequence) {
-		return [];
-	}
-	// findFiles with a RelativePattern scopes the search to rootUri.
-	return vscode.workspace.findFiles(new vscode.RelativePattern(rootUri, '**/*'));
+/** Delegates to the `doom-workspace` companion extension to list all project files with stats. */
+async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequence: number): Promise<ProjectFileEntry[]> {
+	const entries: ProjectFileEntry[] = await vscode.commands.executeCommand(
+		'doom-workspace.listProjectFiles',
+		rootUri.toString()
+	);
+	if (loadId !== loadSequence) { return []; }
+	return entries;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,44 +247,21 @@ export class DoomProjectFilePanel {
 		this.render();
 
 		const rootUri = vscode.workspace.workspaceFolders![0].uri;
-		const fileUris = await listProjectFiles(rootUri, loadId, this.loadSequence);
+		const entries = await listProjectFiles(rootUri, loadId, this.loadSequence);
 
 		if (loadId !== this.loadSequence) {
 			return;
 		}
 
-		// SSH: skip stat (too slow over network).
-		// WSL: use vscode.workspace.fs.stat — works from Windows host; uri.fsPath gives
-		//   a Linux path (/home/…) that fs.promises.stat can't resolve on Windows.
-		// Local: use fs.promises.stat for full stats including Unix permissions.
-		const isSsh = rootUri.scheme === 'vscode-remote' && rootUri.authority.startsWith('ssh-remote+');
-		const isWsl = rootUri.scheme === 'vscode-remote' && rootUri.authority.startsWith('wsl+');
-
-		const nativeStats = (!isSsh && !isWsl)
-			? await Promise.allSettled(fileUris.map((uri) => fs.promises.stat(uri.fsPath)))
-			: undefined;
-		const vsStats = isWsl
-			? await Promise.allSettled(fileUris.map((uri) => vscode.workspace.fs.stat(uri)))
-			: undefined;
-
-		if (loadId !== this.loadSequence) {
-			return;
-		}
-
-		const items: ProjectFileItem[] = fileUris
-			.map((uri, i) => {
-				const relativePath = vscode.workspace.asRelativePath(uri, false);
+		const items: ProjectFileItem[] = entries
+			.map((entry) => {
+				const uri = vscode.Uri.joinPath(rootUri, entry.rel);
+				const relativePath = entry.rel;
 				const slashIndex = relativePath.lastIndexOf('/');
 				const basename = slashIndex >= 0 ? relativePath.slice(slashIndex + 1) : relativePath;
-				const nativeStat = nativeStats?.[i];
-				const vsStat = vsStats?.[i];
-				const lastModifiedMs = nativeStat?.status === 'fulfilled'
-					? nativeStat.value.mtimeMs
-					: (vsStat?.status === 'fulfilled' ? vsStat.value.mtime : undefined);
-				const permissions = nativeStat?.status === 'fulfilled' ? formatPermissions(nativeStat.value.mode) : '----------';
-				const size = nativeStat?.status === 'fulfilled'
-					? formatFileSize(nativeStat.value.size)
-					: (vsStat?.status === 'fulfilled' ? formatFileSize(vsStat.value.size) : '0');
+				const lastModifiedMs = entry.mtime;
+				const permissions = entry.mode !== undefined ? formatPermissions(entry.mode) : '----------';
+				const size = entry.size !== undefined ? formatFileSize(entry.size) : '0';
 				return {
 					basename,
 					lastModifiedMs,

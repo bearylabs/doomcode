@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -8,6 +7,14 @@ import { SelectionHistory } from './selectionHistory';
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
+
+interface DirectoryEntry {
+	name: string;
+	isDir: boolean;
+	size: string;
+	mtime: number | undefined;
+	permissions: string;
+}
 
 interface FindFileItem {
 	isDir: boolean;
@@ -237,10 +244,12 @@ export class DoomFindFilePanel {
 	}
 
 	private async readCurrentDir(): Promise<void> {
-		const dirUri = this.makeUri(this.currentDir);
-		let entries: [string, vscode.FileType][];
+		let entries: DirectoryEntry[];
 		try {
-			entries = await vscode.workspace.fs.readDirectory(dirUri);
+			entries = await vscode.commands.executeCommand(
+				'doom-workspace.readDirectory',
+				this.makeUri(this.currentDir).toString()
+			);
 		} catch {
 			this.allItems = [];
 			return;
@@ -252,38 +261,10 @@ export class DoomFindFilePanel {
 		const joinPath = (name: string) =>
 			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
 
-		const isSsh = this.baseScheme === 'vscode-remote' && this.baseAuthority.startsWith('ssh-remote+');
-		const isWsl = this.baseScheme === 'vscode-remote' && this.baseAuthority.startsWith('wsl+');
-
-		// SSH: skip stat (too slow over network).
-		// WSL: use vscode.workspace.fs.stat — uri.fsPath gives a Linux path that
-		//   fs.promises.stat can't resolve when the extension runs on the Windows host.
-		// Local: use fs.promises.stat for full stats including Unix permissions.
-		const nativeStats = (!isSsh && !isWsl)
-			? await Promise.allSettled(
-				entries.map(([name]) => fs.promises.stat(this.makeUri(joinPath(name)).fsPath))
-			)
-			: undefined;
-		const vsStats = isWsl
-			? await Promise.allSettled(
-				entries.map(([name]) => vscode.workspace.fs.stat(this.makeUri(joinPath(name))))
-			)
-			: undefined;
-
-		for (let i = 0; i < entries.length; i++) {
-			const [name, type] = entries[i];
-			const isDir = (type & vscode.FileType.Directory) !== 0;
-			const nativeStat = nativeStats?.[i];
-			const vsStat = vsStats?.[i];
-			const lastModifiedMs = nativeStat?.status === 'fulfilled'
-				? nativeStat.value.mtimeMs
-				: (vsStat?.status === 'fulfilled' ? vsStat.value.mtime : undefined);
-			const permissions = nativeStat?.status === 'fulfilled' ? formatPermissions(nativeStat.value.mode) : '----------';
-			const size = nativeStat?.status === 'fulfilled'
-				? formatFileSize(nativeStat.value.size)
-				: (vsStat?.status === 'fulfilled' ? formatFileSize(vsStat.value.size) : '0');
+		for (const entry of entries) {
+			const { name, isDir, size, mtime: lastModifiedMs, permissions } = entry;
 			const displayName = isDir ? name + '/' : name;
-			const entry: FindFileItem = {
+			const item: FindFileItem = {
 				isDir,
 				lastModifiedMs,
 				name: displayName,
@@ -293,9 +274,9 @@ export class DoomFindFilePanel {
 				size,
 			};
 			if (isDir) {
-				dirs.push(entry);
+				dirs.push(item);
 			} else {
-				files.push(entry);
+				files.push(item);
 			}
 		}
 

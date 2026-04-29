@@ -35,11 +35,11 @@
     "Keymaps"
   ],
   "extensionKind": [
-    "workspace",
     "ui"
   ],
   "extensionDependencies": [
-    "VSpaceCode.whichkey"
+    "VSpaceCode.whichkey",
+    "bearylabs.doom-workspace"
   ],
   "extensionPack": [
     "vscodevim.vim",
