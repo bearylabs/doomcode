@@ -442,31 +442,12 @@ async function cleanStaleSettings(): Promise<string[]> {
  */
 async function cleanStaleKeybindings(context: vscode.ExtensionContext): Promise<number> {
 	const keybindingsPath = getKeybindingsPath(context);
-	if (!keybindingsPath || !fs.existsSync(keybindingsPath)) {
+	if (!keybindingsPath) {
 		return 0;
 	}
 
-	let raw: string;
-	try {
-		raw = fs.readFileSync(keybindingsPath, 'utf-8');
-	} catch {
-		return 0;
-	}
-
-	// Strip single-line comments (// ...) so JSON.parse succeeds.
-	const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
-	// Strip trailing commas before ] or }
-	const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
-
-	let bindings: Array<{ command?: string; [key: string]: unknown }>;
-	try {
-		bindings = JSON.parse(sanitized);
-	} catch {
-		console.warn("Doom Code: could not parse keybindings.json, skipping cleanup.");
-		return 0;
-	}
-
-	if (!Array.isArray(bindings)) {
+	const bindings = readKeybindingsJson(keybindingsPath);
+	if (!bindings) {
 		return 0;
 	}
 
@@ -503,6 +484,26 @@ function getKeybindingsPath(context: vscode.ExtensionContext): string | undefine
 	// Go up 2 levels to reach the active profile's User directory.
 	const profileDir = path.dirname(path.dirname(context.globalStorageUri.fsPath));
 	return path.join(profileDir, 'keybindings.json');
+}
+
+/**
+ * Reads and parses a VS Code keybindings.json, tolerating single-line comments
+ * and trailing commas. Returns the parsed array, or undefined if the file is
+ * missing, unreadable, or malformed.
+ */
+function readKeybindingsJson(keybindingsPath: string): Array<Record<string, unknown>> | undefined {
+	if (!fs.existsSync(keybindingsPath)) {
+		return undefined;
+	}
+	try {
+		const raw = fs.readFileSync(keybindingsPath, 'utf-8');
+		const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
+		const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
+		const parsed = JSON.parse(sanitized);
+		return Array.isArray(parsed) ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -558,16 +559,16 @@ async function installDoomKeybindings(context: vscode.ExtensionContext): Promise
 	if (fs.existsSync(keybindingsPath)) {
 		try {
 			rawContent = fs.readFileSync(keybindingsPath, 'utf-8');
-			const stripped = rawContent.replace(/^\s*\/\/.*$/gm, '');
-			const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
-			const parsed = JSON.parse(sanitized);
-			if (Array.isArray(parsed)) {
-				existing = parsed as Array<Record<string, unknown>>;
-			}
 		} catch {
+			console.warn("Doom Code: could not read keybindings.json, skipping magit install.");
+			return 0;
+		}
+		const parsed = readKeybindingsJson(keybindingsPath);
+		if (parsed === undefined) {
 			console.warn("Doom Code: could not parse keybindings.json, skipping magit install.");
 			return 0;
 		}
+		existing = parsed;
 	}
 
 	const toAdd = allMagitRelated.filter((kb) =>
@@ -642,44 +643,22 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 		return Array.isArray(currentValue) && currentValue.some(containsStaleCommand);
 	});
 
-	let hasStaleKeybindings = false;
 	const keybindingsPath = getKeybindingsPath(context);
-	if (keybindingsPath && fs.existsSync(keybindingsPath)) {
-		try {
-			const raw = fs.readFileSync(keybindingsPath, 'utf-8');
-			const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
-			const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
-			const bindings = JSON.parse(sanitized);
-			if (Array.isArray(bindings)) {
-				hasStaleKeybindings = bindings.some((entry: { command?: string }) => {
-					const cmd = entry.command;
-					return typeof cmd === 'string'
-						&& !cmd.startsWith('-')
-						&& STALE_COMMAND_PREFIXES.some((p) => cmd.startsWith(p));
-				});
-			}
-		} catch {
-			// If we can't parse it, don't flag it
-		}
-	}
+	const parsedKeybindings = keybindingsPath ? readKeybindingsJson(keybindingsPath) : undefined;
 
-	let hasMagitKeybindings = false;
+	const hasStaleKeybindings = parsedKeybindings?.some((entry) => {
+		const cmd = (entry as { command?: string }).command;
+		return typeof cmd === 'string'
+			&& !cmd.startsWith('-')
+			&& STALE_COMMAND_PREFIXES.some((p) => cmd.startsWith(p));
+	}) ?? false;
+
 	const magitKbs = getDoomUserKeybindings(context);
-	if (magitKbs.length > 0 && keybindingsPath && fs.existsSync(keybindingsPath)) {
-		try {
-			const raw = fs.readFileSync(keybindingsPath, 'utf-8');
-			const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
-			const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
-			const bindings = JSON.parse(sanitized) as Array<Record<string, unknown>>;
-			if (Array.isArray(bindings)) {
-				hasMagitKeybindings = magitKbs.every((kb) =>
-					bindings.some((e) => e['key'] === kb['key'] && e['command'] === kb['command'] && e['when'] === kb['when']),
-				);
-			}
-		} catch {
-			// If we can't parse it, don't flag it
-		}
-	}
+	const hasMagitKeybindings = magitKbs.length > 0 && parsedKeybindings !== undefined
+		? magitKbs.every((kb) =>
+			parsedKeybindings.some((e) => e['key'] === kb['key'] && e['command'] === kb['command'] && e['when'] === kb['when'])
+		)
+		: false;
 
 	return { conflicts, hasStaleSettings, hasStaleKeybindings, hasMagitKeybindings };
 }
