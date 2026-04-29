@@ -157,11 +157,11 @@ export function orderlessMatch(text: string, query: string): FuzzyMatch | undefi
 /**
  * Formats a Unix timestamp (ms) as a human-readable relative time.
  *
- * - < 1 min  : "just now"
- * - < 1 hour : "Xm ago"
- * - < 24 h   : "Xh ago"
- * - < 7 days : "Xd ago"
- * - older    : "Mon N" (e.g. "Apr 3")
+ * - < 1 min   : "just now"
+ * - < 1 hour  : "X mins ago"
+ * - < 48 h    : "X hour(s) ago"
+ * - < 7 days  : "X days ago"
+ * - older     : "Mon D HH:MM" (e.g. "Apr 3 14:30")
  */
 export function formatRelativeTime(ms: number, now: number): string {
 	const diffMs = now - ms;
