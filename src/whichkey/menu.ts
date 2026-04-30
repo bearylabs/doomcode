@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import {
-	executeWhichKeyBindingCommands,
-	getConfiguredWhichKeyBindings,
-	type WhichKeyBinding,
-} from './bindings';
 import { focusEditorGroup } from '../window/mru';
+import {
+    executeWhichKeyBindingCommands,
+    getConfiguredWhichKeyBindings,
+    type WhichKeyBinding,
+} from './bindings';
 
 // ---------------------------------------------------------------------------
 // Which-key menu models
@@ -570,6 +570,7 @@ export class DoomWhichKeyMenu {
 	};
 	private hostPendingKeys: string[] = [];
 	private isShowing = false;
+	private nextKeyResolvers: Array<() => void> = [];
 	private preWhichKeyEditorGroup: vscode.ViewColumn | undefined;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
@@ -604,6 +605,86 @@ export class DoomWhichKeyMenu {
 	/** Keys pressed before the webview is ready are buffered and replayed after the first render. */
 	queueKey(key: string): void {
 		this.hostPendingKeys.push(key);
+		const resolvers = this.nextKeyResolvers.splice(0);
+		resolvers.forEach((r) => r());
+	}
+
+	/** Resolves on the next call to queueKey — used by the idle-delay loop to wake on key arrival. */
+	waitForNextKey(): Promise<void> {
+		return new Promise<void>((resolve) => {
+			this.nextKeyResolvers.push(resolve);
+		});
+	}
+
+	/** True when buffered keys remain after a resolveQueuedKeys walk (unrecognised key encountered). */
+	get hasPendingKeys(): boolean {
+		return this.hostPendingKeys.length > 0;
+	}
+
+	/** Sets the navigation stack directly — used by resolveQueuedKeys to pre-navigate before the panel opens. */
+	setNavigationStack(stack: WhichKeyBinding[]): void {
+		this.stack = stack;
+	}
+
+	/**
+	 * Walks the binding tree against buffered keys without opening the panel.
+	 * Starts from the current navigation depth (respects any stack already set by setNavigationStack).
+	 * Returns 'execute' when all queued keys resolve to a leaf command (silent execution, panel never shown).
+	 * Returns 'show' when keys run out mid-tree or hit an unknown key; the partially-walked stack
+	 * is included so the panel can open pre-navigated to the right group.
+	 * Unrecognised keys are left in hostPendingKeys for the rendered panel to handle.
+	 */
+	resolveQueuedKeys(): { type: 'show'; stack: WhichKeyBinding[] } | { type: 'execute'; binding: WhichKeyBinding } {
+		let levelBindings = this.currentLevelBindings;
+		const stack: WhichKeyBinding[] = [...this.stack];
+
+		while (this.hostPendingKeys.length > 0) {
+			const key = this.hostPendingKeys[0];
+			const binding = levelBindings.find((b) => b.key === key);
+
+			if (!binding) {
+				// Unrecognised key — leave it queued so the rendered panel can handle it
+				return { type: 'show', stack };
+			}
+
+			this.hostPendingKeys.shift();
+
+			if (binding.type === 'bindings') {
+				stack.push(binding);
+				levelBindings = binding.bindings ?? [];
+				continue;
+			}
+
+			if (binding.type === 'conditional') {
+				const resolved = resolveConditionalBinding(this, binding);
+				if (!resolved) {
+					return { type: 'show', stack };
+				}
+
+				if (resolved.type === 'bindings') {
+					const grouped: WhichKeyBinding = { ...binding, bindings: resolved.bindings };
+					stack.push(grouped);
+					levelBindings = resolved.bindings ?? [];
+					continue;
+				}
+
+				return {
+					type: 'execute',
+					binding: {
+						...resolved,
+						key: binding.key,
+						name: resolved.name === 'default' ? binding.name : resolved.name,
+					},
+				};
+			}
+
+			if (binding.type === 'command' || binding.type === 'commands') {
+				return { type: 'execute', binding };
+			}
+		}
+
+		// All buffered keys consumed but resolved to a group — open panel pre-navigated
+		return { type: 'show', stack };
 	}
 
 	/** Called before the panel opens so bindings are fresh and the navigation stack is at root. */

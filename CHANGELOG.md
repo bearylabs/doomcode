@@ -6,10 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `doom.whichKey.idleDelay` setting (default `1.0` seconds, matching Doom Emacs) — which-key panel is no longer shown immediately on `SPC`; keys pressed within the delay window are buffered and walked against the binding tree silently. If the full chord resolves to a leaf command it executes without ever opening the panel. If the chord resolves to a group the panel opens pre-navigated to that group. If the timer expires with no further input the panel opens at root as before. Set to `0` to restore the old instant-open behaviour. Terminal-focus invocations (`alt+space`) always skip the delay and open the panel immediately.
 - Set default: "explorer.autoReveal": false
 - Added file explorer keybindings `o o` (open), `o v` (open in vertical split), and `o s` (open in horizontal split).
 - Added file explorer keybindings `y f` (copy file), `y a` (copy absolute path), and `y r` (copy relative path).
 
+### Fixed
+
+- Fast chords on Windows (e.g. `SPC b`, `SPC SPC`) no longer drop the second key — `whichkeyVisible` context is now set before the async panel-open chain so `doom.triggerKey` activates immediately; unconditional `doom.triggerKey` keybindings added for all a–z, A–Z, 0–9, `.`, `/` covering the remaining window before the webview receives focus
 
 ## [0.4.1] 2026-04-29
 

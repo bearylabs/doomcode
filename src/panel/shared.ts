@@ -80,15 +80,79 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	}
 
 	/** Opens which-key without any context overrides (editor focus assumed). */
+	private getIdleDelay(): number {
+		return vscode.workspace
+			.getConfiguration()
+			.get<number>('doom.whichKey.idleDelay', 1.0);
+	}
+
+	private async runWithIdleDelay(menu: DoomWhichKeyMenu): Promise<void> {
+		const delay = this.getIdleDelay();
+
+		// Skip the idle delay when the terminal has focus — keys typed during the delay
+		// would reach the terminal process before whichkeyVisible propagates to the renderer.
+		// alt+space from the terminal is already a deliberate gesture; open the panel immediately.
+		if (delay <= 0 || menu.showContext.terminalFocus) {
+			await this.showMode('whichkey', menu);
+			return;
+		}
+
+		const deadline = Date.now() + delay * 1000;
+
+		// Reactive loop: re-evaluate on every key arrival.
+		// Execute immediately on a leaf; show panel immediately on an unrecognised key;
+		// only fall through to show panel when the timer expires with the queue exhausted.
+		while (true) {
+			const resolution = menu.resolveQueuedKeys();
+
+			if (resolution.type === 'execute') {
+				await menu.executeBinding(resolution.binding);
+				return;
+			}
+
+			// An unrecognised key was left in the queue — show panel immediately.
+			if (menu.hasPendingKeys) {
+				menu.setNavigationStack(resolution.stack);
+				await this.showMode('whichkey', menu);
+				return;
+			}
+
+			// Queue exhausted mid-group — commit the walked depth and wait for the next key or timeout.
+			menu.setNavigationStack(resolution.stack);
+
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) {
+				await this.showMode('whichkey', menu);
+				return;
+			}
+
+			const gotKey = await Promise.race([
+				menu.waitForNextKey().then(() => true as const),
+				new Promise<false>((resolve) => setTimeout(() => resolve(false), remaining)),
+			]);
+
+			if (!gotKey) {
+				await this.showMode('whichkey', menu);
+				return;
+			}
+		}
+	}
+
 	async showWhichKey(): Promise<void> {
 		this.whichKeyMenu.prepareShow();
-		await this.showMode('whichkey', this.whichKeyMenu);
+		// Hoist whichkeyVisible=true before the idle delay so doom.triggerKey keybindings
+		// activate immediately and buffer fast chords (e.g. SPC b on Windows).
+		await vscode.commands.executeCommand('setContext', DoomWhichKeyMenu.visibleContextKey, true);
+		await this.runWithIdleDelay(this.whichKeyMenu);
 	}
 
 	/** Opens which-key with an explicit context (e.g. terminal focus) so conditional bindings resolve correctly. */
 	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean }): Promise<void> {
 		this.whichKeyMenu.prepareShow(showContext);
-		await this.showMode('whichkey', this.whichKeyMenu);
+		// Hoist whichkeyVisible=true before the idle delay so doom.triggerKey keybindings
+		// activate immediately and buffer fast chords (e.g. SPC b on Windows).
+		await vscode.commands.executeCommand('setContext', DoomWhichKeyMenu.visibleContextKey, true);
+		await this.runWithIdleDelay(this.whichKeyMenu);
 	}
 
 	/** Opens fuzzy search for the active editor. No-op if no editor is open. */
