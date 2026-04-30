@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.1] 2026-04-29
+
 ### Fixed
 - `SPC w d` / `SPC w c` no longer closes the wrong editor group — when two groups were open, the non-focused group was closed instead of the focused one; whichkey now snapshots the active group at `SPC`-press time and closes it directly via the VS Code tab group API, bypassing the focus-restoration uncertainty that follows panel close
 
