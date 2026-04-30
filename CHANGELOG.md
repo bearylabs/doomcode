@@ -20,6 +20,12 @@ All notable changes to this project will be documented in this file.
   re-named sequentially 2 s after activation once VS Code has reattached their
   processes
 
+### Changed
+- Fuzzy search (`SPC s s`, `SPC /`) now uses substring matching instead of
+  subsequence matching — "test" only matches lines containing the literal
+  string "test", eliminating false positives from scattered character matches
+
+
 ## [0.4.2] 2026-04-30
 
 ### Added
