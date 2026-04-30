@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+- `Space` in the command palette triggered the which-key menu when the Doom dashboard was open (default state in folder mode before any file is opened); the four `doom.dashboardVisible` space keybindings were missing the `!inputFocus` guard present in all other space binding variants
+
 ## [0.4.3] 2026-04-30
 
 ### Fixed
