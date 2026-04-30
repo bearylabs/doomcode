@@ -2,9 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.4.4] 2026-04-30
+
+### Fixed
 
 - `Space` in the command palette triggered the which-key menu when the Doom dashboard was open (default state in folder mode before any file is opened); the four `doom.dashboardVisible` space keybindings were missing the `!inputFocus` guard present in all other space binding variants
+- `SPC` from the file explorer or sidebar no longer waits for the idle delay before opening the which-key panel; subsequent chord keys were being swallowed by the explorer's native list widget before `doom.triggerKey` could capture them
+- `alt+space` / `ctrl+space` from Claude Code webview no longer waits for the idle delay before opening the which-key panel; same key-capture issue applies since the webview iframe consumes keys during the delay window
+
+### Removed
+
+- `SPC o T` / `SPC o t` editor terminal (`feat(terminal): add editor terminal with panel open fix`) reverted — the delayed terminal scan on workspace reload caused unexpected panel terminals to open in various situations, making terminal behaviour unpredictable after reload; `SPC o T` / `SPC o t` restored to its previous panel-terminal behaviour
 
 ## [0.4.3] 2026-04-30
 
