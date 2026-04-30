@@ -167,6 +167,7 @@
           "fontWeight": "bold"
         }
       ],
+      "explorer.autoReveal": false,
       "vim.useSystemClipboard": true,
       "vim.hlsearch": true,
       "vim.incsearch": true,
