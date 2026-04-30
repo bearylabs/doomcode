@@ -43,10 +43,24 @@ jobs:
             - name: Test (headless)
               run: xvfb-run -a npm test
 
+            - name: Detect pre-release
+              run: |
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  MINOR=$(echo "$VERSION" | cut -d. -f2)
+                  if (( MINOR % 2 == 1 )); then
+                    echo "PRE_RELEASE=true" >> "$GITHUB_ENV"
+                  else
+                    echo "PRE_RELEASE=false" >> "$GITHUB_ENV"
+                  fi
+
             - name: Package VSIX
               run: |
                   VSIX_NAME="doom-${GITHUB_REF_NAME}.vsix"
-                  npx @vscode/vsce package --out "$VSIX_NAME"
+                  if [ "$PRE_RELEASE" = "true" ]; then
+                    npx @vscode/vsce package --pre-release --out "$VSIX_NAME"
+                  else
+                    npx @vscode/vsce package --out "$VSIX_NAME"
+                  fi
                   echo "VSIX_NAME=$VSIX_NAME" >> "$GITHUB_ENV"
 
             - name: Extract release notes from changelog
@@ -83,18 +97,35 @@ jobs:
 
             - name: Create GitHub Release
               run: |
-                  gh release create "$GITHUB_REF_NAME" "$VSIX_NAME" \
-                    --notes-file "$RELEASE_NOTES_FILE" \
-                    --title "$GITHUB_REF_NAME"
+                  if [ "$PRE_RELEASE" = "true" ]; then
+                    gh release create "$GITHUB_REF_NAME" "$VSIX_NAME" \
+                      --notes-file "$RELEASE_NOTES_FILE" \
+                      --title "$GITHUB_REF_NAME" \
+                      --prerelease
+                  else
+                    gh release create "$GITHUB_REF_NAME" "$VSIX_NAME" \
+                      --notes-file "$RELEASE_NOTES_FILE" \
+                      --title "$GITHUB_REF_NAME"
+                  fi
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Publish to VS Code Marketplace
-              run: npx @vscode/vsce publish --packagePath "$VSIX_NAME"
+              run: |
+                  if [ "$PRE_RELEASE" = "true" ]; then
+                    npx @vscode/vsce publish --pre-release --packagePath "$VSIX_NAME"
+                  else
+                    npx @vscode/vsce publish --packagePath "$VSIX_NAME"
+                  fi
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
             - name: Publish to Open VSX Registry
-              run: npx ovsx publish "$VSIX_NAME"
+              run: |
+                  if [ "$PRE_RELEASE" = "true" ]; then
+                    npx ovsx publish --pre-release "$VSIX_NAME"
+                  else
+                    npx ovsx publish "$VSIX_NAME"
+                  fi
               env:
                   OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
