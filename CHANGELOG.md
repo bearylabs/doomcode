@@ -18,12 +18,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `SPC b B` and `SPC <` — unfiltered buffer switcher showing all open editors including internal panels and duplicates across groups; `SPC b b` retains its existing filtered view
-- `SPC o T` creates a persistent editor-group terminal named `*vterm*` (or
-  `*vterm*<N>` for subsequent ones); the name is locked so the shell cannot
-  override it via PROMPT_COMMAND / PS1
-- Editor-group terminal names are restored after session reload: terminals are
-  re-named sequentially 2 s after activation once VS Code has reattached their
-  processes
 
 ### Changed
 
