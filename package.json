@@ -168,6 +168,7 @@
         }
       ],
       "explorer.autoReveal": false,
+      "terminal.integrated.enablePersistentSessions": false,
       "vim.useSystemClipboard": true,
       "vim.hlsearch": true,
       "vim.incsearch": true,
@@ -961,11 +962,8 @@
                 {
                   "key": "",
                   "name": "default",
-                  "type": "commands",
-                  "commands": [
-                    "workbench.action.terminal.focus",
-                    "workbench.action.terminal.moveToTerminalPanel"
-                  ]
+                  "type": "command",
+                  "command": "doom.openPanelTerminal"
                 },
                 {
                   "key": "when:activePanel == 'terminal'",
@@ -979,7 +977,7 @@
               "key": "T",
               "name": "Open terminal here",
               "type": "command",
-              "command": "workbench.action.createTerminalEditor"
+              "command": "doom.createTerminalEditor"
             },
             {
               "key": "u",
@@ -1471,7 +1469,8 @@
       "files.simpleDialog.enable": true,
       "terminal.integrated.stickyScroll.enabled": false,
       "terminal.integrated.commandsToSkipShell": [
-        "doom.whichKeyShow"
+        "doom.whichKeyShow",
+        "doom.whichKeyHide"
       ],
       "workbench.activityBar.location": "hidden",
       "workbench.editor.autoLockGroups": {
@@ -2370,10 +2369,30 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": false
+        },
+        "when": "terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": true
+        },
+        "when": "terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "terminalFocus && !explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && !terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "alt+space",
@@ -2383,7 +2402,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "terminalFocus && explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && !terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "alt+space",
@@ -2403,10 +2422,30 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": false
+        },
+        "when": "terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": true
+        },
+        "when": "terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "terminalFocus && !explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && !terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
@@ -2416,7 +2455,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "terminalFocus && explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && !terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",

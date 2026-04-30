@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `SPC o T` — creates a named editor-group terminal (`*vterm*` / `*vterm*<N>`); title is locked so the shell cannot override it
+- `SPC o t` — opens the most recent panel terminal (or creates one); skips editor-group terminals by name; hides the panel when the panel terminal is already active
+
+### Fixed
+
+- `alt+space` / `ctrl+space` from an editor-group terminal now passes `terminalPanelOpen: false` via the `terminalEditorFocus` context key, so `SPC o t` correctly calls `doom.openPanelTerminal` instead of toggling the panel
+- `Escape` now closes the which-key menu when focus is inside a terminal; `doom.whichKeyHide` added to `terminal.integrated.commandsToSkipShell`
+
+
 ## [0.4.4] 2026-04-30
 
 ### Fixed

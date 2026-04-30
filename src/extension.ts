@@ -1033,6 +1033,51 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const VTERM_NAME = '*vterm*';
+	const VTERM_PREFIX = '*vterm*';
+
+	const isVtermName = (name: string) => name === VTERM_NAME || name.startsWith(`${VTERM_PREFIX}<`);
+
+	const managedVtermSet = new Set<vscode.Terminal>();
+
+	/** Creates a named editor-group terminal so `doom.openPanelTerminal` can exclude it by name. */
+	const createTerminalEditorCmd = vscode.commands.registerCommand(
+		"doom.createTerminalEditor",
+		async () => {
+			const vtermCount = vscode.window.terminals.filter((t) => isVtermName(t.name)).length;
+			const name = vtermCount === 0 ? VTERM_NAME : `${VTERM_PREFIX}<${vtermCount + 1}>`;
+			const terminal = vscode.window.createTerminal({
+				name,
+				location: vscode.TerminalLocation.Editor,
+			});
+			managedVtermSet.add(terminal);
+			terminal.show();
+			// Lock the title so the shell (bash PROMPT_COMMAND / PS1) cannot override it
+			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
+		}
+	);
+
+	/**
+	 * Opens the panel terminal without disturbing terminals in editor groups.
+	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
+	 * Panel terminals are anything not carrying those names.
+	 * Falls back to creating a new panel terminal only when none exist.
+	 * Uses show(true) to pre-select the terminal, then workbench.view.terminal to reliably
+	 * open the panel — terminal.show() alone doesn't guarantee the panel opens.
+	 */
+	const openPanelTerminalCmd = vscode.commands.registerCommand(
+		"doom.openPanelTerminal",
+		() => {
+			const panelTerminals = vscode.window.terminals.filter((t) => !isVtermName(t.name));
+
+			if (panelTerminals.length > 0) {
+				panelTerminals[panelTerminals.length - 1].show(false);
+			} else {
+				vscode.window.createTerminal({ location: vscode.TerminalLocation.Panel }).show(false);
+			}
+		}
+	);
+
 	const windowDeleteCmd = vscode.commands.registerCommand(
 		"doom.windowDelete",
 		async () => {
@@ -1245,6 +1290,8 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyHideCmd,
 		sidebarHideCmd,
 		panelHideCmd,
+		createTerminalEditorCmd,
+		openPanelTerminalCmd,
 		windowDeleteCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
