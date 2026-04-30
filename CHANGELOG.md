@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `SPC b B` and `SPC <` — unfiltered buffer switcher showing all open editors including internal panels and duplicates across groups; `SPC b b` retains its existing filtered view
+
 ## [0.4.2] 2026-04-30
 
 ### Added

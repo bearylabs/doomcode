@@ -229,7 +229,7 @@
           "key": "<",
           "name": "Switch buffer",
           "type": "command",
-          "command": "workbench.action.showAllEditors"
+          "command": "doom.showAllOpenEditors"
         },
         {
           "key": "`",
@@ -271,6 +271,12 @@
               "name": "Switch workspace buffer",
               "type": "command",
               "command": "doom.showOpenEditors"
+            },
+            {
+              "key": "B",
+              "name": "Switch buffer (all)",
+              "type": "command",
+              "command": "doom.showAllOpenEditors"
             },
             {
               "key": "c",
@@ -1580,6 +1586,11 @@
       {
         "command": "doom.showOpenEditors",
         "title": "Switch Workspace Buffer",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.showAllOpenEditors",
+        "title": "Switch Buffer (All)",
         "category": "Doom"
       },
       {

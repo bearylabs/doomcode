@@ -1171,6 +1171,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const allOpenEditorsCmd = vscode.commands.registerCommand(
+		"doom.showAllOpenEditors",
+		() => {
+			void sharedPanel.showAllOpenEditors();
+		}
+	);
+
 	const fuzzySearchMoveDownCmd = vscode.commands.registerCommand(
 		"doom.fuzzySearchMoveDown",
 		() => {
@@ -1257,6 +1264,7 @@ export function activate(context: vscode.ExtensionContext) {
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,
 		openEditorsCmd,
+		allOpenEditorsCmd,
 		fuzzySearchMoveDownCmd,
 		fuzzySearchMoveUpCmd,
 		findFileCmd,

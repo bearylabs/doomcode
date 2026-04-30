@@ -486,6 +486,7 @@ export class DoomOpenEditorsPanel {
 
 	private accepted = false;
 	private activeIndex = 0;
+	private filter = true;
 	private items: OpenEditorItem[] = [];
 	private lastPreviewKey: string | undefined;
 	private matches: OpenEditorMatch[] = [];
@@ -498,9 +499,10 @@ export class DoomOpenEditorsPanel {
 	private viewDisposables: vscode.Disposable[] = [];
 
 	/** Snapshots the active tab for post-cancel restore, resets state, and loads current open editors. */
-	prepareShow(resetQuery = true): void {
+	prepareShow(resetQuery = true, filter = true): void {
 		const activeGroup = vscode.window.tabGroups.activeTabGroup;
 		this.accepted = false;
+		this.filter = filter;
 		this.lastPreviewKey = undefined;
 		this.restoreTabKey = activeGroup.activeTab ? getTabDedupKey(activeGroup.activeTab) : undefined;
 		this.targetGroup = activeGroup.viewColumn;
@@ -594,16 +596,17 @@ export class DoomOpenEditorsPanel {
 
 		for (const group of vscode.window.tabGroups.all) {
 			for (const tab of group.tabs) {
-				if (shouldHideFromBufferSwitcher(tab)) {
+				if (this.filter && shouldHideFromBufferSwitcher(tab)) {
 					continue;
 				}
 
 				const dedupKey = getTabDedupKey(tab);
-				if (seen.has(dedupKey)) {
-					continue;
+				if (this.filter) {
+					if (seen.has(dedupKey)) {
+						continue;
+					}
+					seen.add(dedupKey);
 				}
-
-				seen.add(dedupKey);
 				const details = getTabInputDetails(tab);
 				const uri = tab.input instanceof vscode.TabInputText ? tab.input.uri : undefined;
 				raw.push({ tab, group, details, uri });

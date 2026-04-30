@@ -180,6 +180,12 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.showMode('buffers', this.openEditorsPanel);
 	}
 
+	/** Opens the buffer/open-editors picker without any filter. */
+	async showAllOpenEditors(): Promise<void> {
+		this.openEditorsPanel.prepareShow(true, false);
+		await this.showMode('buffers', this.openEditorsPanel);
+	}
+
 	/** Opens the project file picker (Doom SPC SPC). Falls back to recent projects when no workspace is open. */
 	async showProjectFiles(onProjectSelected?: (projectUri: vscode.Uri, projectLabel: string) => Promise<void>): Promise<void> {
 		if (!this.projectFilePanel.prepareShow()) {
