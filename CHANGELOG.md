@@ -6,11 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
--  Set default: "explorer.autoReveal": false
+- Set default: "explorer.autoReveal": false
+- Added file explorer keybindings `o o` (open), `o v` (open in vertical split), and `o s` (open in horizontal split).
+- Added file explorer keybindings `y f` (copy file), `y a` (copy absolute path), and `y r` (copy relative path).
+
 
 ## [0.4.1] 2026-04-29
 
 ### Fixed
+
 - `SPC w d` / `SPC w c` no longer closes the wrong editor group — when two groups were open, the non-focused group was closed instead of the focused one; whichkey now snapshots the active group at `SPC`-press time and closes it directly via the VS Code tab group API, bypassing the focus-restoration uncertainty that follows panel close
 
 ## [0.4.0] 2026-04-29
