@@ -1016,11 +1016,15 @@ export class DoomFuzzySearchPanel {
 		});
 
 		window.addEventListener('keydown', (event) => {
-			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
-			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
-
-			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
+			if (event.metaKey || event.altKey) {
 				return;
+			}
+
+			if (event.ctrlKey && !event.metaKey && !event.altKey) {
+				const key = event.key.toLowerCase();
+				if (key !== 'j' && key !== 'k') {
+					return;
+				}
 			}
 
 			if (event.key === 'Escape') {
@@ -1029,7 +1033,10 @@ export class DoomFuzzySearchPanel {
 				return;
 			}
 
-			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
+			const isMoveDown = event.key === 'ArrowDown' || (event.ctrlKey && event.key.toLowerCase() === 'j');
+			const isMoveUp = event.key === 'ArrowUp' || (event.ctrlKey && event.key.toLowerCase() === 'k');
+
+			if (isMoveDown) {
 				const resultItems = items.filter((item) => item.type === 'result');
 				if (resultItems.length === 0) {
 					return;
@@ -1041,7 +1048,7 @@ export class DoomFuzzySearchPanel {
 				return;
 			}
 
-			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
+			if (isMoveUp) {
 				const resultItems = items.filter((item) => item.type === 'result');
 				if (resultItems.length === 0) {
 					return;

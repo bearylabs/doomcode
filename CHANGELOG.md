@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - `SPC o t` now correctly opens a panel terminal instead of stealing focus to an
   existing editor-group terminal when one is open
+- `ctrl+j` / `ctrl+k` in fuzzy search (`SPC s s`, `SPC /`) jumped two entries per keypress; duplicate handling between VS Code keybindings and the webview; navigation now handled entirely in the webview, removing the registered `doom.fuzzySearchMoveDown/Up` commands
+
 
 ### Added
 

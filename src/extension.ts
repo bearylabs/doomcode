@@ -1272,20 +1272,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const fuzzySearchMoveDownCmd = vscode.commands.registerCommand(
-		"doom.fuzzySearchMoveDown",
-		() => {
-			void fuzzySearchPanel.moveSelection(1);
-		}
-	);
-
-	const fuzzySearchMoveUpCmd = vscode.commands.registerCommand(
-		"doom.fuzzySearchMoveUp",
-		() => {
-			void fuzzySearchPanel.moveSelection(-1);
-		}
-	);
-
 	const sharedPanelViewProvider = vscode.window.registerWebviewViewProvider(
 		DoomSharedPanel.viewId,
 		sharedPanel,
@@ -1374,8 +1360,6 @@ export function activate(context: vscode.ExtensionContext) {
 		workspaceFuzzySearchCmd,
 		openEditorsCmd,
 		allOpenEditorsCmd,
-		fuzzySearchMoveDownCmd,
-		fuzzySearchMoveUpCmd,
 		findFileCmd,
 		findFileMoveDownCmd,
 		findFileMoveUpCmd,

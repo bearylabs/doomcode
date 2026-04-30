@@ -25,8 +25,6 @@ suite('Extension Test Suite', () => {
 	const expectedRuntimeCommands = [
 		'doom.cleanup',
 		'doom.fuzzySearchActiveTextEditor',
-		'doom.fuzzySearchMoveDown',
-		'doom.fuzzySearchMoveUp',
 		'doom.fuzzySearchWorkspace',
 		'doom.install',
 		'doom.reloadLastSession',
