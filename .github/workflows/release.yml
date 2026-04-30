@@ -93,3 +93,8 @@ jobs:
               run: npx @vscode/vsce publish --packagePath "$VSIX_NAME"
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+            - name: Publish to Open VSX Registry
+              run: npx ovsx publish "$VSIX_NAME"
+              env:
+                  OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
