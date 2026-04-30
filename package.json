@@ -2393,6 +2393,9 @@
       {
         "key": "alt+space",
         "command": "doom.whichKeyShow",
+        "args": {
+          "webviewFocused": true
+        },
         "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !whichkeyVisible"
       },
       {
@@ -2423,6 +2426,9 @@
       {
         "key": "ctrl+space",
         "command": "doom.whichKeyShow",
+        "args": {
+          "webviewFocused": true
+        },
         "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !whichkeyVisible"
       },
       {

@@ -36,6 +36,7 @@ interface ShowContext {
 	terminalFocus: boolean;
 	terminalPanelOpen: boolean;
 	explorerVisible: boolean;
+	webviewFocused: boolean;
 }
 
 interface RenderItem {
@@ -567,6 +568,7 @@ export class DoomWhichKeyMenu {
 		terminalFocus: false,
 		terminalPanelOpen: false,
 		explorerVisible: false,
+		webviewFocused: false,
 	};
 	private hostPendingKeys: string[] = [];
 	private isShowing = false;
@@ -696,6 +698,7 @@ export class DoomWhichKeyMenu {
 			terminalFocus: showContext?.terminalFocus === true,
 			terminalPanelOpen: showContext?.terminalPanelOpen === true,
 			explorerVisible: showContext?.explorerVisible === true,
+			webviewFocused: showContext?.webviewFocused === true,
 		};
 		this.syncTrackedContextFromShowContext(showContext);
 		this.currentBindings = getConfiguredWhichKeyBindings();
