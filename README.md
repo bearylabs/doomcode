@@ -70,6 +70,12 @@ Lists all open editors across tab groups with vim-style dirty/readonly flags, fi
 
 ![buffer switcher](assets/buffer-switcher.png)
 
+**`SPC s s` — In-file search / `SPC /` — Project search**
+
+`SPC s s` fuzzy-searches symbols and text within the current file. `SPC /` runs a live ripgrep search across the entire project. Both stream results as you type with file, line, and column context; selecting a result jumps directly to the match.
+
+![project search](assets/project-search.png)
+
 ## 🎮 Modal Editing
 
 All keybindings follow **Vim/Evil conventions**:
