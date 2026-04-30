@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.2] 2026-04-30
+
 ### Added
 
 - `doom.whichKey.idleDelay` setting (default `1.0` seconds, matching Doom Emacs) — which-key panel is no longer shown immediately on `SPC`; keys pressed within the delay window are buffered and walked against the binding tree silently. If the full chord resolves to a leaf command it executes without ever opening the panel. If the chord resolves to a group the panel opens pre-navigated to that group. If the timer expires with no further input the panel opens at root as before. Set to `0` to restore the old instant-open behaviour. Terminal-focus invocations (`alt+space`) always skip the delay and open the panel immediately.
