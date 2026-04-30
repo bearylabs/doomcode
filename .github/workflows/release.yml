@@ -26,14 +26,13 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Set version from tag
-              run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
-
-            - name: Stamp [Unreleased] in changelog
+            - name: Verify tag matches package version
               run: |
-                  VERSION="${GITHUB_REF_NAME#v}"
-                  DATE=$(date -u +%Y-%m-%d)
-                  sed -i "s/^## \[Unreleased\]$/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md
+                  VERSION=$(node -p "require('./package.json').version")
+                  if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+                    echo "Tag $GITHUB_REF_NAME does not match package.json version v$VERSION"
+                    exit 1
+                  fi
 
             - name: Compile
               run: npm run compile
@@ -94,13 +93,3 @@ jobs:
               run: npx @vscode/vsce publish --packagePath "$VSIX_NAME"
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
-
-            - name: Commit changelog stamp
-              run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add CHANGELOG.md
-                  git fetch origin main
-                  git rebase origin/main
-                  git commit -m "chore: stamp changelog for ${GITHUB_REF_NAME}"
-                  git push origin HEAD:main
