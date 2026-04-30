@@ -961,11 +961,8 @@
                 {
                   "key": "",
                   "name": "default",
-                  "type": "commands",
-                  "commands": [
-                    "workbench.action.terminal.focus",
-                    "workbench.action.terminal.moveToTerminalPanel"
-                  ]
+                  "type": "command",
+                  "command": "doom.openPanelTerminal"
                 },
                 {
                   "key": "when:activePanel == 'terminal'",
@@ -979,7 +976,7 @@
               "key": "T",
               "name": "Open terminal here",
               "type": "command",
-              "command": "workbench.action.createTerminalEditor"
+              "command": "doom.createTerminalEditor"
             },
             {
               "key": "u",
@@ -1538,6 +1535,11 @@
       ]
     },
     "commands": [
+      {
+        "command": "doom.debugVterms",
+        "title": "Debug: Inspect Vterm State",
+        "category": "Doom"
+      },
       {
         "command": "doom.install",
         "title": "Install",
@@ -2373,7 +2375,17 @@
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "terminalFocus && !explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": false
+        },
+        "when": "terminalFocus && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "alt+space",
@@ -2383,7 +2395,17 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "terminalFocus && explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && activePanel == 'terminal' && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "alt+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": true
+        },
+        "when": "terminalFocus && activePanel != 'terminal' && explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "alt+space",
@@ -2403,7 +2425,17 @@
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "terminalFocus && !explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": false
+        },
+        "when": "terminalFocus && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",
@@ -2413,7 +2445,17 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "terminalFocus && explorerViewletVisible && !whichkeyVisible"
+        "when": "terminalFocus && activePanel == 'terminal' && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "doom.whichKeyShow",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": true
+        },
+        "when": "terminalFocus && activePanel != 'terminal' && explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "ctrl+space",

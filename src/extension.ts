@@ -1033,6 +1033,100 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const VTERM_NAME = '*vterm*';
+	const VTERM_PREFIX = '*vterm*';
+
+	const isVtermName = (name: string) => name === VTERM_NAME || name.startsWith(`${VTERM_PREFIX}<`);
+
+	// Terminals created via doom.createTerminalEditor are already named — skip in the restore listener.
+	const managedVtermSet = new Set<vscode.Terminal>();
+	// Sequential index for naming restored editor terminals. Increments per renamed terminal.
+	let vtermRestoreIndex = 0;
+	// Serialises renames so restored terminals don't race each other during session restore.
+	let vtermRenameChain: Promise<void> = Promise.resolve();
+
+	// Renames a terminal if it is currently active in an editor group (not the panel).
+	// Caller must have already called terminal.show() and awaited enough time for VS Code to update
+	// activeTabGroup. Returns true if renamed, false if terminal is a panel terminal.
+	async function maybeRenameEditorTerminal(terminal: vscode.Terminal): Promise<boolean> {
+		terminal.show();
+		await new Promise<void>((resolve) => setTimeout(resolve, 200));
+		const activeTab = vscode.window.tabGroups.activeTabGroup?.activeTab;
+		if (!(activeTab?.input instanceof vscode.TabInputTerminal)) {
+			return false;
+		}
+		const name = vtermRestoreIndex === 0 ? VTERM_NAME : `${VTERM_PREFIX}<${vtermRestoreIndex + 1}>`;
+		vtermRestoreIndex++;
+		await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
+		return true;
+	}
+
+	// Handles terminals opened after activation (new, not restored). TabInputTerminal.terminal is
+	// NULL for restored terminals so we cannot use onDidChangeTabs for restore — use delayed scan
+	// below instead. This listener covers terminals created by other means after startup.
+	const vtermOpenListener = vscode.window.onDidOpenTerminal((terminal) => {
+		vtermRenameChain = vtermRenameChain.then(async () => {
+			if (managedVtermSet.has(terminal)) {
+				managedVtermSet.delete(terminal);
+				return;
+			}
+			await maybeRenameEditorTerminal(terminal);
+		});
+	});
+
+	const debugVtermsCmd = vscode.commands.registerCommand('doom.debugVterms', async () => {
+		const lines: string[] = [];
+		lines.push(`terminals (${vscode.window.terminals.length}): ${vscode.window.terminals.map(t => JSON.stringify(t.name)).join(', ')}`);
+		lines.push(`activeTerminal: ${vscode.window.activeTerminal ? JSON.stringify(vscode.window.activeTerminal.name) : 'none'}`);
+		let tabIdx = 0;
+		for (const group of vscode.window.tabGroups.all) {
+			for (const tab of group.tabs) {
+				if (!(tab.input instanceof vscode.TabInputTerminal)) continue;
+				const terminal = (tab.input as { terminal?: vscode.Terminal }).terminal;
+				lines.push(`tab[${tabIdx++}] label=${JSON.stringify(tab.label)} terminal=${terminal ? JSON.stringify(terminal.name) : 'NULL'}`);
+			}
+		}
+		vscode.window.showInformationMessage(lines.join('\n'), { modal: true });
+	});
+
+	/** Creates a named editor-group terminal so `doom.openPanelTerminal` can exclude it by name. */
+	const createTerminalEditorCmd = vscode.commands.registerCommand(
+		"doom.createTerminalEditor",
+		async () => {
+			const vtermCount = vscode.window.terminals.filter((t) => isVtermName(t.name)).length;
+			const name = vtermCount === 0 ? VTERM_NAME : `${VTERM_PREFIX}<${vtermCount + 1}>`;
+			const terminal = vscode.window.createTerminal({
+				name,
+				location: vscode.TerminalLocation.Editor,
+			});
+			managedVtermSet.add(terminal);
+			terminal.show();
+			// Lock the title so the shell (bash PROMPT_COMMAND / PS1) cannot override it
+			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
+		}
+	);
+
+	/**
+	 * Opens the panel terminal without disturbing terminals in editor groups.
+	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
+	 * Panel terminals are anything not carrying those names.
+	 * Falls back to creating a new panel terminal only when none exist.
+	 * Uses show(true) to pre-select the terminal, then workbench.view.terminal to reliably
+	 * open the panel — terminal.show() alone doesn't guarantee the panel opens after closePanel.
+	 */
+	const openPanelTerminalCmd = vscode.commands.registerCommand(
+		"doom.openPanelTerminal",
+		() => {
+			const panelTerminals = vscode.window.terminals.filter((t) => !isVtermName(t.name));
+
+			if (panelTerminals.length > 0) {
+				panelTerminals[panelTerminals.length - 1].show(false);
+			} else {
+				vscode.window.createTerminal({ location: vscode.TerminalLocation.Panel }).show(false);
+			}
+		}
+	);
+
 	const windowDeleteCmd = vscode.commands.registerCommand(
 		"doom.windowDelete",
 		async () => {
@@ -1205,6 +1299,17 @@ export function activate(context: vscode.ExtensionContext) {
 	void (async () => {
 		await persistWorkspaceHistory(context);
 
+		// TabInputTerminal.terminal is NULL for session-restored terminals, so we cannot identify
+		// editor terminals via tabGroups at activation time. Instead: wait for terminal processes
+		// to attach, then show each terminal and check whether it lands in an editor group tab.
+		void (async () => {
+			await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+			for (const terminal of [...vscode.window.terminals]) {
+				if (isVtermName(terminal.name)) continue;
+				vtermRenameChain = vtermRenameChain.then(async () => { await maybeRenameEditorTerminal(terminal); });
+			}
+		})();
+
 		// If a file was queued before a folder reload (cross-project file-pick flow), open it now.
 		// Skip the start page for this activation — the user already knows what they want to open.
 		const pendingFile = context.globalState.get<string>(PENDING_OPEN_FILE_KEY);
@@ -1259,6 +1364,10 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyHideCmd,
 		sidebarHideCmd,
 		panelHideCmd,
+		vtermOpenListener,
+		debugVtermsCmd,
+		createTerminalEditorCmd,
+		openPanelTerminalCmd,
 		windowDeleteCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
