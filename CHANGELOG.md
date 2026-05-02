@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] 
+
+### Removed
+- Remove back-navigation from which-key menu (backspace/arrow-left). Not part of Doom Emacs: use Esc to close and reopen.
+- Remove hint text from which-key footer.
+
+
 ## [0.5.0] 2026-05-01 **pre-release**
 
 ### Added

@@ -53,7 +53,7 @@ interface ViewState {
 
 interface WebviewMessage {
 	index?: number;
-	type: 'activate' | 'back' | 'close' | 'ready';
+	type: 'activate' | 'close' | 'ready';
 }
 
 interface WhichKeyTriggerBinding {
@@ -837,18 +837,7 @@ export class DoomWhichKeyMenu {
 			return;
 		}
 
-		if (message.type === 'back') {
-			if (this.stack.length === 0) {
-				await this.close();
-				return;
-			}
-
-			this.stack.pop();
-			this.render();
-			return;
-		}
-
-		if (message.type !== 'activate' || message.index === undefined) {
+if (message.type !== 'activate' || message.index === undefined) {
 			return;
 		}
 
@@ -1117,13 +1106,7 @@ export class DoomWhichKeyMenu {
 			color: var(--text);
 		}
 
-		.hint {
-			justify-self: end;
-			text-align: right;
-			white-space: nowrap;
-		}
-
-		@media (max-width: 760px) {
+@media (max-width: 760px) {
 			body {
 				padding: 6px 6px 2px;
 			}
@@ -1138,10 +1121,6 @@ export class DoomWhichKeyMenu {
 				row-gap: 2px;
 			}
 
-			.hint {
-				justify-self: start;
-				text-align: left;
-			}
 		}
 	</style>
 </head>
@@ -1151,7 +1130,6 @@ export class DoomWhichKeyMenu {
 		<div class="empty" id="empty" hidden>No bindings here.</div>
 		<div class="footer">
 			<div class="path" id="path">SPC- &lt;leader&gt;</div>
-			<div class="hint">Type key. Backspace go back. Esc close.</div>
 		</div>
 	</div>
 	<script nonce="${nonce}">
@@ -1265,14 +1243,7 @@ export class DoomWhichKeyMenu {
 				return;
 			}
 
-			if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
-				event.preventDefault();
-				pendingKeys = [];
-				vscode.postMessage({ type: 'back' });
-				return;
-			}
-
-			const bindingKey = toBindingKey(event);
+const bindingKey = toBindingKey(event);
 			if (!bindingKey) {
 				return;
 			}
