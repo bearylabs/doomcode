@@ -92,7 +92,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		// Skip the idle delay when the terminal or explorer has focus — keys typed during the
 		// delay reach the native widget before whichkeyVisible propagates, so doom.triggerKey
 		// loses the keybinding conflict. Opening immediately lets the webview capture keys itself.
-		if (delay <= 0 || menu.showContext.terminalFocus || menu.showContext.explorerVisible || menu.showContext.webviewFocused) {
+		if (delay <= 0 || menu.showContext.terminalFocus || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
 			await this.showMode('whichkey', menu);
 			return;
 		}
@@ -147,7 +147,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	}
 
 	/** Opens which-key with an explicit context (e.g. terminal focus) so conditional bindings resolve correctly. */
-	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean; webviewFocused?: boolean }): Promise<void> {
+	async showWhichKeyWithContext(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean; explorerFocused?: boolean; webviewFocused?: boolean }): Promise<void> {
 		this.whichKeyMenu.prepareShow(showContext);
 		// Hoist whichkeyVisible=true before the idle delay so doom.triggerKey keybindings
 		// activate immediately and buffer fast chords (e.g. SPC b on Windows).

@@ -2261,7 +2261,8 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalPanelOpen": false,
-          "explorerVisible": false
+          "explorerVisible": false,
+          "explorerFocused": true
         },
         "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
@@ -2270,7 +2271,8 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalPanelOpen": true,
-          "explorerVisible": false
+          "explorerVisible": false,
+          "explorerFocused": true
         },
         "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
@@ -2279,7 +2281,8 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalPanelOpen": false,
-          "explorerVisible": true
+          "explorerVisible": true,
+          "explorerFocused": true
         },
         "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && activePanel != 'terminal' && explorerViewletVisible && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
@@ -2288,7 +2291,8 @@
         "command": "doom.whichKeyShow",
         "args": {
           "terminalPanelOpen": true,
-          "explorerVisible": true
+          "explorerVisible": true,
+          "explorerFocused": true
         },
         "when": "((sideBarFocus && !inputFocus && !whichkeyActive) || (view.workbench.panel.markers.view.visible && !inputFocus)) && activePanel == 'terminal' && explorerViewletVisible && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
@@ -2335,7 +2339,7 @@
           "terminalPanelOpen": false,
           "explorerVisible": false
         },
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !sideBarFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
       {
         "key": "space",
@@ -2344,7 +2348,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !sideBarFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
       {
         "key": "space",
@@ -2353,7 +2357,7 @@
           "terminalPanelOpen": false,
           "explorerVisible": true
         },
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel != 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !sideBarFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel != 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
       {
         "key": "space",
@@ -2362,7 +2366,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "activeEditor && !editorTextFocus && !inputFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel == 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
+        "when": "activeEditor && !editorTextFocus && !inputFocus && !sideBarFocus && !inChatEditor && activeWebviewPanelId != 'claudeVSCodePanel' && activePanel == 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.fuzzySearchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible"
       },
       {
         "key": "alt+space",
