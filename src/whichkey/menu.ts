@@ -50,10 +50,12 @@ interface ViewState {
 	footerLabel: string;
 	footerPath: string;
 	items: RenderItem[];
+	suppressedKeys: string[];
 }
 
 interface WebviewMessage {
 	index?: number;
+	source?: 'keyboard' | 'mouse';
 	type: 'activate' | 'close' | 'ready';
 }
 
@@ -578,6 +580,8 @@ export class DoomWhichKeyMenu {
 	private preWhichKeyEditorGroup: vscode.ViewColumn | undefined;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
+	private suppressedHostDuplicateKeys: string[] = [];
+	private suppressedDuplicateKeys: string[] = [];
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
@@ -608,9 +612,25 @@ export class DoomWhichKeyMenu {
 
 	/** Keys pressed before the webview is ready are buffered and replayed after the first render. */
 	queueKey(key: string): void {
+		const suppressedIndex = this.suppressedHostDuplicateKeys.indexOf(key);
+		if (suppressedIndex >= 0) {
+			this.suppressedHostDuplicateKeys.splice(suppressedIndex, 1);
+			return;
+		}
+
 		this.hostPendingKeys.push(key);
 		const resolvers = this.nextKeyResolvers.splice(0);
 		resolvers.forEach((r) => r());
+	}
+
+	/** Marks a host-consumed key so one late duplicate from focus handoff can be ignored by the webview. */
+	private suppressDuplicateKey(key: string): void {
+		this.suppressedDuplicateKeys.push(key);
+	}
+
+	/** Marks a webview-consumed keyboard key so one late duplicate from VS Code host routing is ignored. */
+	private suppressHostDuplicateKey(key: string): void {
+		this.suppressedHostDuplicateKeys.push(key);
 	}
 
 	/** Resolves on the next call to queueKey — used by the idle-delay loop to wake on key arrival. */
@@ -652,6 +672,7 @@ export class DoomWhichKeyMenu {
 			}
 
 			this.hostPendingKeys.shift();
+			this.suppressDuplicateKey(key);
 
 			if (binding.type === 'bindings') {
 				stack.push(binding);
@@ -695,6 +716,8 @@ export class DoomWhichKeyMenu {
 	prepareShow(showContext?: Partial<ShowContext>): void {
 		this.isShowing = true;
 		this.hostPendingKeys = [];
+		this.suppressedHostDuplicateKeys = [];
+		this.suppressedDuplicateKeys = [];
 		this.preWhichKeyEditorGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
 		this.currentShowContext = {
 			terminalFocus: showContext?.terminalFocus === true,
@@ -854,6 +877,10 @@ if (message.type !== 'activate' || message.index === undefined) {
 			return;
 		}
 
+		if (message.source === 'keyboard') {
+			this.suppressHostDuplicateKey(binding.key);
+		}
+
 		if (binding.type === 'bindings') {
 			this.stack.push(binding);
 			this.render();
@@ -910,6 +937,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			footerLabel,
 			footerPath,
 			items: this.currentItems,
+			suppressedKeys: this.suppressedDuplicateKeys.splice(0),
 		};
 
 		void this.view.webview.postMessage({
@@ -921,6 +949,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			const key = this.hostPendingKeys.shift()!;
 			const index = this.currentItems.findIndex((item) => item.key === key);
 			if (index >= 0) {
+				this.suppressDuplicateKey(key);
 				void this.handleMessage({ type: 'activate', index });
 			}
 		}
@@ -1145,6 +1174,8 @@ if (message.type !== 'activate' || message.index === undefined) {
 		const path = document.getElementById('path');
 		let items = [];
 		let pendingKeys = [];
+		const suppressedKeys = new Map();
+		let suppressUntil = 0;
 		let blurEnabled = false;
 		let blurTimer = null;
 
@@ -1184,7 +1215,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 				button.className = item.isGroup ? 'item group' : 'item';
 				button.type = 'button';
 				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index });
+					vscode.postMessage({ type: 'activate', index, source: 'mouse' });
 				});
 				button.innerHTML = \`
 					<span class="key">\${item.key}</span>
@@ -1196,6 +1227,13 @@ if (message.type !== 'activate' || message.index === undefined) {
 
 			updateGridRowCount();
 
+			if (Array.isArray(state.suppressedKeys) && state.suppressedKeys.length > 0) {
+				suppressUntil = Date.now() + 150;
+				state.suppressedKeys.forEach((key) => {
+					suppressedKeys.set(key, (suppressedKeys.get(key) || 0) + 1);
+				});
+			}
+
 			if (shell instanceof HTMLElement && document.activeElement === document.body) {
 				shell.focus();
 			}
@@ -1204,7 +1242,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 				const key = pendingKeys.shift();
 				const index = items.findIndex((item) => item.key === key);
 				if (index >= 0) {
-					vscode.postMessage({ type: 'activate', index });
+					vscode.postMessage({ type: 'activate', index, source: 'keyboard' });
 				}
 			}
 		}
@@ -1233,6 +1271,9 @@ if (message.type !== 'activate' || message.index === undefined) {
 			} else if (event.data.type === 'hide') {
 				clearTimeout(blurTimer);
 				blurEnabled = false;
+				pendingKeys = [];
+				suppressedKeys.clear();
+				suppressUntil = 0;
 			}
 		});
 
@@ -1253,6 +1294,22 @@ const bindingKey = toBindingKey(event);
 				return;
 			}
 
+			if (Date.now() > suppressUntil) {
+				suppressedKeys.clear();
+				suppressUntil = 0;
+			}
+
+			const suppressedCount = suppressedKeys.get(bindingKey) || 0;
+			if (suppressedCount > 0) {
+				event.preventDefault();
+				if (suppressedCount === 1) {
+					suppressedKeys.delete(bindingKey);
+				} else {
+					suppressedKeys.set(bindingKey, suppressedCount - 1);
+				}
+				return;
+			}
+
 			if (items.length === 0) {
 				event.preventDefault();
 				pendingKeys.push(bindingKey);
@@ -1262,7 +1319,7 @@ const bindingKey = toBindingKey(event);
 			const index = items.findIndex((item) => item.key === bindingKey);
 			if (index >= 0) {
 				event.preventDefault();
-				vscode.postMessage({ type: 'activate', index });
+				vscode.postMessage({ type: 'activate', index, source: 'keyboard' });
 			}
 		});
 
