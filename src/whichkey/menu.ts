@@ -958,7 +958,9 @@ if (message.type !== 'activate' || message.index === undefined) {
 			}
 		} else {
 			await vscode.commands.executeCommand('workbench.action.closePanel');
-			if (this.preWhichKeyEditorGroup !== undefined) {
+			if (this.currentShowContext.explorerFocused && this.trackedContext.sidebarVisible) {
+				await vscode.commands.executeCommand('workbench.action.focusSideBar');
+			} else if (this.preWhichKeyEditorGroup !== undefined) {
 				await focusEditorGroup(this.preWhichKeyEditorGroup);
 			}
 		}

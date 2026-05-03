@@ -5,8 +5,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] 
 
 ### Removed
-- Remove back-navigation from which-key menu (backspace/arrow-left). Not part of Doom Emacs: use Esc to close and reopen.
-- Remove hint text from which-key footer.
+
+- Remove back-navigation from which-key menu (backspace/arrow-left). Not part of Doom Emacs: use Esc to close and reopen
+- Remove hint text from which-key footer
+
+### Fixed
+
+- Fix which-key opening instantly when sidebar is visible but editor is focused — delay now only skipped when sidebar itself has focus.
+- Restore sidebar focus after closing which-key when it was opened from the sidebar
+
 
 
 ## [0.5.0] 2026-05-01 **pre-release**
