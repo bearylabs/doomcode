@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] 
+## [0.5.1] 2026-05-03 **pre-release**
 
 ### Removed
 
@@ -13,7 +13,6 @@ All notable changes to this project will be documented in this file.
 
 - Fix which-key opening instantly when sidebar is visible but editor is focused — delay now only skipped when sidebar itself has focus.
 - Restore sidebar focus after closing which-key when it was opened from the sidebar
-
 
 
 ## [0.5.0] 2026-05-01 **pre-release**
