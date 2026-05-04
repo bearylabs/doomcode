@@ -298,6 +298,109 @@ suite('Extension Test Suite', () => {
 		});
 	});
 
+	test('overwrites conflicting Doom Vim bindings when resolver chooses overwrite', async () => {
+		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
+		const config = {
+			inspect<T>(key: string) {
+				if (key === 'vim.normalModeKeyBindingsNonRecursive') {
+					return {
+						globalValue: [
+							{ before: ['<C-j>'], commands: ['user.customCommand'] },
+							{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+						],
+					} as { globalValue?: T };
+				}
+
+				return {} as { globalValue?: T };
+			},
+			update(key: string, value: unknown, target: vscode.ConfigurationTarget) {
+				updates.push({ key, value, target });
+				return Promise.resolve();
+			},
+		};
+
+		const decisions: string[] = [];
+		const result = await applyDefaultsToConfiguration(
+			config,
+			{
+				'vim.normalModeKeyBindingsNonRecursive': [
+					{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+				],
+			},
+			vscode.ConfigurationTarget.Global,
+			{
+				resolveVimBindingConflict: async (conflict) => {
+					decisions.push(`${conflict.settingKey}:${conflict.before.join(' ')}`);
+					return 'overwrite';
+				},
+			},
+		);
+
+		assert.deepStrictEqual(decisions, ['vim.normalModeKeyBindingsNonRecursive:<C-j>']);
+		assert.deepStrictEqual(updates, [
+			{
+				key: 'vim.normalModeKeyBindingsNonRecursive',
+				value: [
+					{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+					{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+				],
+				target: vscode.ConfigurationTarget.Global,
+			},
+		]);
+		assert.deepStrictEqual(result, {
+			applied: 1,
+			skipped: 0,
+			unsupported: 0,
+			failed: 0,
+			failures: [],
+			total: 1,
+		});
+	});
+
+	test('does not prompt when conflicting Doom Vim binding already matches exactly', async () => {
+		let resolverCalled = false;
+		const result = await applyDefaultsToConfiguration(
+			{
+				inspect<T>(key: string) {
+					if (key === 'vim.normalModeKeyBindingsNonRecursive') {
+						return {
+							globalValue: [
+								{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+							],
+						} as { globalValue?: T };
+					}
+
+					return {} as { globalValue?: T };
+				},
+				update() {
+					return Promise.resolve();
+				},
+			},
+			{
+				'vim.normalModeKeyBindingsNonRecursive': [
+					{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+				],
+			},
+			vscode.ConfigurationTarget.Global,
+			{
+				resolveVimBindingConflict: async () => {
+					resolverCalled = true;
+					return 'overwrite';
+				},
+			},
+		);
+
+		assert.strictEqual(resolverCalled, false);
+		assert.deepStrictEqual(result, {
+			applied: 0,
+			skipped: 1,
+			unsupported: 0,
+			failed: 0,
+			failures: [],
+			total: 1,
+		});
+	});
+
 	test('marks Vim defaults installed when defaults are subset of user array', () => {
 		const installState = evaluateInstalledDefaults(
 			{

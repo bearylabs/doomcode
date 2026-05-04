@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {
 	getDoomManagedVimBindingConflictKey,
+	getDoomManagedVimBindingSignature,
 	isDoomManagedVimBindingSetting,
 } from './vimBindings';
 
@@ -32,28 +33,105 @@ export interface ApplyDefaultsResult {
 	total: number;
 }
 
-/** Merges only missing Doom-managed Vim bindings, preserving all existing user entries verbatim. */
-function mergeVimBindings(currentValue: unknown, defaultValue: unknown): unknown[] | undefined {
+export interface VimBindingConflict {
+	settingKey: string;
+	before: string[];
+	existingEntries: readonly unknown[];
+	defaultEntry: unknown;
+}
+
+export type VimBindingConflictDecision = 'keep' | 'overwrite';
+
+export interface ApplyDefaultsOptions {
+	resolveVimBindingConflict?: (conflict: VimBindingConflict) => Promise<VimBindingConflictDecision>;
+}
+
+function getVimBindingBefore(entry: unknown): string[] | undefined {
+	if (entry === null || typeof entry !== 'object' || !('before' in entry)) {
+		return undefined;
+	}
+
+	const before = (entry as { before?: unknown }).before;
+	return Array.isArray(before) && before.every((key) => typeof key === 'string') ? before : undefined;
+}
+
+function findVimBindingConflictIndexes(bindings: readonly unknown[], conflictKey: string): number[] {
+	return bindings.flatMap((entry, index) => (
+		getDoomManagedVimBindingConflictKey(entry) === conflictKey ? [index] : []
+	));
+}
+
+function replaceConflictingVimBindings(
+	bindings: readonly unknown[],
+	conflictIndexes: readonly number[],
+	replacement: unknown,
+): unknown[] {
+	const insertIndex = conflictIndexes[0];
+	const indexSet = new Set(conflictIndexes);
+	const rewritten = bindings.filter((_entry, index) => !indexSet.has(index));
+	rewritten.splice(insertIndex, 0, replacement);
+	return rewritten;
+}
+
+/**
+ * Merges Doom-managed Vim bindings into existing arrays.
+ * Exact matches are kept, missing bindings are appended, and same-chord conflicts can be resolved by callback.
+ */
+async function mergeVimBindings(
+	settingKey: string,
+	currentValue: unknown,
+	defaultValue: unknown,
+	resolveConflict?: ApplyDefaultsOptions['resolveVimBindingConflict'],
+): Promise<unknown[] | undefined> {
 	if (!Array.isArray(currentValue) || !Array.isArray(defaultValue)) {
 		return undefined;
 	}
 
-	const existingConflictKeys = new Set(
-		currentValue
-			.map((entry) => getDoomManagedVimBindingConflictKey(entry))
-			.filter((conflictKey): conflictKey is string => conflictKey !== undefined)
-	);
-
 	let changed = false;
-	const merged = [...currentValue];
+	let merged = [...currentValue];
 	for (const defaultEntry of defaultValue) {
 		const conflictKey = getDoomManagedVimBindingConflictKey(defaultEntry);
-		if (!conflictKey || existingConflictKeys.has(conflictKey)) {
+		if (!conflictKey) {
 			continue;
 		}
 
-		existingConflictKeys.add(conflictKey);
-		merged.push(defaultEntry);
+		const conflictIndexes = findVimBindingConflictIndexes(merged, conflictKey);
+		if (conflictIndexes.length === 0) {
+			merged.push(defaultEntry);
+			changed = true;
+			continue;
+		}
+
+		const existingEntries = conflictIndexes.map((index) => merged[index]);
+		const defaultSignature = getDoomManagedVimBindingSignature(defaultEntry);
+		if (
+			defaultSignature
+			&& existingEntries.some((entry) => getDoomManagedVimBindingSignature(entry) === defaultSignature)
+		) {
+			continue;
+		}
+
+		if (!resolveConflict) {
+			continue;
+		}
+
+		const before = getVimBindingBefore(defaultEntry);
+		if (!before) {
+			continue;
+		}
+
+		const decision = await resolveConflict({
+			settingKey,
+			before,
+			existingEntries,
+			defaultEntry,
+		});
+
+		if (decision !== 'overwrite') {
+			continue;
+		}
+
+		merged = replaceConflictingVimBindings(merged, conflictIndexes, defaultEntry);
 		changed = true;
 	}
 
@@ -96,6 +174,7 @@ export async function applyDefaultsToConfiguration(
 	config: ConfigurationLike,
 	defaults: Record<string, unknown>,
 	target = vscode.ConfigurationTarget.Global,
+	options: ApplyDefaultsOptions = {},
 ): Promise<ApplyDefaultsResult> {
 	let applied = 0;
 	let skipped = 0;
@@ -113,7 +192,7 @@ export async function applyDefaultsToConfiguration(
 
 		if (isDoomManagedVimBindingSetting(key)) {
 			// Managed Vim binding arrays are merged so new defaults can land without clobbering user customizations.
-			const merged = mergeVimBindings(inspected.globalValue, value);
+			const merged = await mergeVimBindings(key, inspected.globalValue, value, options.resolveVimBindingConflict);
 			if (merged !== undefined) {
 				if (merged === inspected.globalValue) {
 					skipped++;

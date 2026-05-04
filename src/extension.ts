@@ -12,7 +12,14 @@ import {
 	evaluateInstalledDefaults,
 	resolveStartupCommandsFromBindings,
 } from './onboarding/dashboard';
-import { ApplyDefaultsResult, applyDefaultsToConfiguration, runInstallFlow } from './onboarding/install';
+import {
+	ApplyDefaultsOptions,
+	ApplyDefaultsResult,
+	applyDefaultsToConfiguration,
+	runInstallFlow,
+	type VimBindingConflict,
+	type VimBindingConflictDecision,
+} from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
 import { DoomFuzzySearchPanel } from './search/fuzzy';
@@ -35,6 +42,10 @@ const PREVIOUS_WORKSPACE_TARGET_KEY = 'doom.previousWorkspaceTarget';
 const PENDING_OPEN_FILE_KEY = 'doom.pendingOpenFile';
 /** Set before an intentional project switch so the activation IIFE skips the dashboard. */
 const SKIP_DASHBOARD_KEY = 'doom.skipDashboardOnActivation';
+const KEEP_EXISTING_BINDING_ACTION = 'Keep Existing';
+const OVERWRITE_WITH_DOOM_ACTION = 'Overwrite with Doom';
+const KEEP_ALL_EXISTING_BINDINGS_ACTION = 'Keep All Existing';
+const OVERWRITE_ALL_WITH_DOOM_ACTION = 'Overwrite All with Doom';
 
 export interface StoredWorkspaceTarget {
 	label: string;
@@ -323,10 +334,11 @@ function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][]
  */
 async function applyDefaultsToUserSettings(
 	defaults: Record<string, unknown>,
-	showResultMessage = false
+	showResultMessage = false,
+	options: ApplyDefaultsOptions = {},
 ): Promise<ApplyDefaultsResult> {
 	const config = vscode.workspace.getConfiguration();
-	const result = await applyDefaultsToConfiguration(config, defaults, vscode.ConfigurationTarget.Global);
+	const result = await applyDefaultsToConfiguration(config, defaults, vscode.ConfigurationTarget.Global, options);
 
 	if (showResultMessage) {
 		if (result.total === 0) {
@@ -355,6 +367,63 @@ async function applyDefaultsToUserSettings(
 	}
 
 	return result;
+}
+
+function summarizeValueForUi(value: unknown, maxLength = 180): string {
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(value);
+	} catch {
+		serialized = String(value);
+	}
+
+	return serialized.length <= maxLength ? serialized : `${serialized.slice(0, maxLength - 1)}…`;
+}
+
+function formatVimBindingChord(before: readonly string[]): string {
+	return before.join(' ');
+}
+
+function createVimBindingConflictResolver(): ApplyDefaultsOptions['resolveVimBindingConflict'] {
+	let rememberedDecision: VimBindingConflictDecision | undefined;
+
+	return async (conflict: VimBindingConflict) => {
+		if (rememberedDecision) {
+			return rememberedDecision;
+		}
+
+		const choice = await vscode.window.showWarningMessage(
+			`Doom Code: ${conflict.settingKey} already contains a binding for ${formatVimBindingChord(conflict.before)}.`,
+			{
+				modal: true,
+				detail: [
+					`Existing: ${conflict.existingEntries.map((entry) => summarizeValueForUi(entry)).join(' | ')}`,
+					`Doom: ${summarizeValueForUi(conflict.defaultEntry)}`,
+					'Keep existing preserves your current mapping. Overwrite replaces all conflicting bindings for this chord with Doom\'s default.',
+				].join('\n'),
+			},
+			KEEP_EXISTING_BINDING_ACTION,
+			OVERWRITE_WITH_DOOM_ACTION,
+			KEEP_ALL_EXISTING_BINDINGS_ACTION,
+			OVERWRITE_ALL_WITH_DOOM_ACTION,
+		);
+
+		if (choice === OVERWRITE_ALL_WITH_DOOM_ACTION) {
+			rememberedDecision = 'overwrite';
+			return 'overwrite';
+		}
+
+		if (choice === KEEP_ALL_EXISTING_BINDINGS_ACTION) {
+			rememberedDecision = 'keep';
+			return 'keep';
+		}
+
+		if (choice === OVERWRITE_WITH_DOOM_ACTION) {
+			return 'overwrite';
+		}
+
+		return 'keep';
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -901,7 +970,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const result = await runInstallFlow(
 				async () => {
 					const choice = await vscode.window.showWarningMessage(
-						"Apply Doom default settings and keybindings to your User settings? Existing user-owned values will be left alone.",
+						"Apply Doom default settings and keybindings to your User settings? Existing user-owned values stay untouched unless you choose to overwrite a conflicting Doom Vim binding.",
 						{ modal: true },
 						"Apply"
 					);
@@ -909,7 +978,9 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				async () => {
 					await migrateLegacyWhichKeyShowBindings();
-					const settingsResult = await applyDefaultsToUserSettings(installDefaults, true);
+					const settingsResult = await applyDefaultsToUserSettings(installDefaults, true, {
+						resolveVimBindingConflict: createVimBindingConflictResolver(),
+					});
 					const addedKeybindings = await installDoomKeybindings(context);
 					if (addedKeybindings > 0) {
 						void vscode.window.showInformationMessage(
