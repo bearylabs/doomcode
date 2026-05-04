@@ -1106,8 +1106,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const VTERM_NAME = '*vterm*';
 	const VTERM_PREFIX = '*vterm*';
+	const EDITOR_TERMINAL_NAMES = new Set(['codex', 'claude', 'claude code']);
 
-	const isVtermName = (name: string) => name === VTERM_NAME || name.startsWith(`${VTERM_PREFIX}<`);
+	const isVtermName = (name: string) =>
+		name === VTERM_NAME
+		|| name.startsWith(`${VTERM_PREFIX}<`)
+		|| EDITOR_TERMINAL_NAMES.has(name.toLowerCase());
 
 	const managedVtermSet = new Set<vscode.Terminal>();
 
@@ -1131,6 +1135,7 @@ export function activate(context: vscode.ExtensionContext) {
 	/**
 	 * Opens the panel terminal without disturbing terminals in editor groups.
 	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
+	 * Known CLI editor terminals such as `codex` and `claude code` are also excluded by name.
 	 * Panel terminals are anything not carrying those names.
 	 * Falls back to creating a new panel terminal only when none exist.
 	 * Uses show(true) to pre-select the terminal, then workbench.view.terminal to reliably

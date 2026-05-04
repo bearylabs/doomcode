@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- `SPC o a a` now respects `claudeCode.useTerminal`: when enabled, it launches `claude` in a new editor terminal instead of opening the Claude UI; when disabled, it still opens the normal Claude UI
+- `SPC o t` now ignores editor-terminal tabs named `codex`, `claude`, and `claude code`, so panel terminal switching no longer jumps into those CLI tabs
 
 ## [0.6.0] 2026-05-04
 

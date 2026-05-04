@@ -182,6 +182,7 @@ function getContextValues(state: DoomWhichKeyMenu): Record<string, boolean | str
 		activeEditorLastInGroup: snapshot.activeEditorLastInGroup,
 		activePanel: snapshot.activePanel,
 		activeViewlet: snapshot.activeViewlet,
+		'config.claudeCode.useTerminal': vscode.workspace.getConfiguration().get('claudeCode.useTerminal') === true,
 		'doom.bigModeEnabled': snapshot.bigModeEnabled,
 		editorHasSelection: snapshot.editorHasSelection,
 		explorerViewletVisible: snapshot.explorerViewletVisible,

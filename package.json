@@ -902,8 +902,32 @@
                 {
                   "key": "a",
                   "name": "Open Claude chat",
-                  "type": "command",
-                  "command": "claude-vscode.primaryEditor.open"
+                  "type": "conditional",
+                  "bindings": [
+                    {
+                      "key": "",
+                      "name": "default",
+                      "type": "command",
+                      "command": "claude-vscode.primaryEditor.open"
+                    },
+                    {
+                      "key": "when:config.claudeCode.useTerminal",
+                      "name": "Open Claude terminal",
+                      "type": "command",
+                      "command": "runCommands",
+                      "args": {
+                        "commands": [
+                          "workbench.action.createTerminalEditor",
+                          {
+                            "command": "workbench.action.terminal.sendSequence",
+                            "args": {
+                              "text": "claude\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 },
                 {
                   "key": "c",
@@ -1916,6 +1940,15 @@
         "command": "doom.triggerKey",
         "args": "Z",
         "when": "whichkeyVisible"
+      },
+      {
+        "key": "a",
+        "command": "doom.triggerKey",
+        "args": {
+          "key": "a",
+          "when": "config.claudeCode.useTerminal"
+        },
+        "when": "whichkeyVisible && config.claudeCode.useTerminal"
       },
       {
         "key": "a",

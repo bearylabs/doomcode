@@ -551,6 +551,15 @@ suite('Extension Test Suite', () => {
 	test('selects trigger conditions from package-style keybindings', () => {
 		const triggerBindings = [
 			{
+				key: 'a',
+				condition: 'config.claudeCode.useTerminal',
+				when: 'whichkeyVisible && config.claudeCode.useTerminal',
+			},
+			{
+				key: 'a',
+				when: 'whichkeyVisible',
+			},
+			{
 				key: 'p',
 				condition: 'explorerViewletVisible',
 				when: 'whichkeyVisible && explorerViewletVisible',
@@ -567,6 +576,14 @@ suite('Extension Test Suite', () => {
 			},
 		];
 
+		assert.strictEqual(
+			selectTriggeredConditionForKey(
+				'a',
+				{ 'config.claudeCode.useTerminal': true, whichkeyVisible: true },
+				triggerBindings,
+			),
+			'config.claudeCode.useTerminal',
+		);
 		assert.strictEqual(
 			selectTriggeredConditionForKey(
 				'p',
