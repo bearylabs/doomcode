@@ -105,8 +105,11 @@
         "before": [
           "<C-j>"
         ],
-        "commands": [
-          "editor.action.insertLineAfter"
+        "after": [
+          "i",
+          "<CR>",
+          "<Esc>",
+          "^"
         ]
       },
       {
