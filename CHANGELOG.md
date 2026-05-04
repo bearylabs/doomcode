@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.6.0] 2026-05-04
+
+First stable release. Includes all changes shipped in 0.5.0, 0.5.1, and 0.5.2 pre-releases.
+
+### Added
+
+- Editor-group terminal workflow via SPC o T and panel terminal improvements via SPC o t.
+- Normal mode Ctrl+J add line and Ctrl+K delete line.
+
+### Changed
+
+- Explorer badge decorations disabled by default for cleaner UI.
+
+### Fixed
+
+- Which-key duplicate key resolution in sidebar/explorer contexts.
+- Managed Vim keybinding merge behavior during install defaults.
+- Dashboard install-status detection for managed Vim bindings.
+- Sidebar focus and delay behavior around which-key open/close.
+
+### Removed
+
+- Which-key back-navigation and footer hint text.
+
 ## [0.5.2] 2026-05-04 **pre-release**
 
 ### Fixed
