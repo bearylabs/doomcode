@@ -77,6 +77,37 @@ function getWorkspaceTargetLabel(targetUri: vscode.Uri): string {
 	return vscode.workspace.name || path.basename(targetUri.fsPath);
 }
 
+/** Returns true when `executable` resolves to a runnable file somewhere on PATH. */
+function hasExecutableInPath(executable: string): boolean {
+	const pathValue = process.env.PATH;
+	if (!pathValue) {
+		return false;
+	}
+
+	const isWindows = process.platform === 'win32';
+	const pathEntries = pathValue.split(path.delimiter).filter((entry) => entry.length > 0);
+	const executableNames = isWindows
+		? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT;.COM')
+			.split(';')
+			.filter((ext) => ext.length > 0)
+			.map((ext) => ext.startsWith('.') ? `${executable}${ext}` : `${executable}.${ext}`)
+		: [executable];
+
+	for (const entry of pathEntries) {
+		for (const name of executableNames) {
+			const candidate = path.join(entry, name);
+			try {
+				fs.accessSync(candidate, isWindows ? fs.constants.F_OK : fs.constants.X_OK);
+				return true;
+			} catch {
+				// Keep scanning PATH.
+			}
+		}
+	}
+
+	return false;
+}
+
 /** Returns the current workspace as a storable target. Only handles local `file://` workspaces; returns undefined for remote or untitled. */
 function getCurrentWorkspaceTarget(): StoredWorkspaceTarget | undefined {
 	const workspaceFile = vscode.workspace.workspaceFile;
@@ -1132,6 +1163,19 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const openCopilotChatSmartCmd = vscode.commands.registerCommand(
+		"doom.openCopilotChatSmart",
+		async () => {
+			if (hasExecutableInPath('copilot')) {
+				await vscode.commands.executeCommand('workbench.action.createTerminalEditor');
+				await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: 'copilot\n' });
+				return;
+			}
+
+			await vscode.commands.executeCommand('workbench.action.openChat');
+		}
+	);
+
 	/**
 	 * Opens the panel terminal without disturbing terminals in editor groups.
 	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
@@ -1367,6 +1411,7 @@ export function activate(context: vscode.ExtensionContext) {
 		sidebarHideCmd,
 		panelHideCmd,
 		createTerminalEditorCmd,
+		openCopilotChatSmartCmd,
 		openPanelTerminalCmd,
 		windowDeleteCmd,
 		configurationChangeListener,

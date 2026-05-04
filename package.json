@@ -950,7 +950,7 @@
                   "key": "g",
                   "name": "Open Copilot chat",
                   "type": "command",
-                  "command": "workbench.action.openChat"
+                  "command": "doom.openCopilotChatSmart"
                 }
               ]
             },
@@ -1614,6 +1614,11 @@
       {
         "command": "doom.whichKeyShowBindings",
         "title": "Show Which-Key Bindings",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.openCopilotChatSmart",
+        "title": "Open Copilot Chat Smart",
         "category": "Doom"
       },
       {
