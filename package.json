@@ -126,6 +126,7 @@
   "contributes": {
     "configurationDefaults": {
       "vim.leader": "<space>",
+      "explorer.decorations.badges": false,
       "todohighlight.defaultStyle": {
         "backgroundColor": "transparent",
         "fontWeight": "bold"

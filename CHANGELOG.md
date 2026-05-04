@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+
 - Fix duplicate key handling in rendered which-key menus causing wrong nested commands from Explorer/sidebar focus (for example `SPC o u` opening Output)
+
+### Changed
+
+- Set default explorer.decorations.badges to false to hide Explorer badge markers (including AI context/emphasis indicators).
+
 
 ## [0.5.1] 2026-05-03 **pre-release**
 
