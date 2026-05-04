@@ -1,6 +1,10 @@
 import { isDeepStrictEqual } from 'node:util';
 import * as vscode from 'vscode';
 import { createNonce } from '../panel/helpers';
+import {
+    hasEquivalentDoomManagedVimBinding,
+    isDoomManagedVimBindingSetting,
+} from './vimBindings';
 
 export const DASHBOARD_OPEN_ON_ACTIVATION_SETTING = 'doom.dashboard.openOnActivation';
 
@@ -265,9 +269,19 @@ export function evaluateInstalledDefaults(
 	inspectSetting: (key: string) => { globalValue?: unknown } | undefined,
 ): InstallDefaultsState {
 	const entries = Object.entries(defaults);
-	const matchingDefaults = entries.reduce((count, [key, value]) => (
-		isDeepStrictEqual(inspectSetting(key)?.globalValue, value) ? count + 1 : count
-	), 0);
+	const matchingDefaults = entries.reduce((count, [key, value]) => {
+		const currentValue = inspectSetting(key)?.globalValue;
+
+		if (isDoomManagedVimBindingSetting(key) && Array.isArray(currentValue) && Array.isArray(value)) {
+			// Mirror install-time equivalence rules so the dashboard does not report false negatives.
+			const allPresent = value.every((defaultEntry) => (
+				hasEquivalentDoomManagedVimBinding(currentValue, defaultEntry)
+			));
+			return allPresent ? count + 1 : count;
+		}
+
+		return isDeepStrictEqual(currentValue, value) ? count + 1 : count;
+	}, 0);
 
 	return {
 		matchingDefaults,

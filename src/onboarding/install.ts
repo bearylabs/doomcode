@@ -1,4 +1,8 @@
 import * as vscode from 'vscode';
+import {
+	getDoomManagedVimBindingSignature,
+	isDoomManagedVimBindingSetting,
+} from './vimBindings';
 
 export interface SettingInspectLike<T = unknown> {
 	globalValue?: T;
@@ -26,6 +30,34 @@ export interface ApplyDefaultsResult {
 	failed: number;
 	failures: ApplyDefaultsFailure[];
 	total: number;
+}
+
+/** Merges only missing Doom-managed Vim bindings, preserving all existing user entries verbatim. */
+function mergeVimBindings(currentValue: unknown, defaultValue: unknown): unknown[] | undefined {
+	if (!Array.isArray(currentValue) || !Array.isArray(defaultValue)) {
+		return undefined;
+	}
+
+	const existingSignatures = new Set(
+		currentValue
+			.map((entry) => getDoomManagedVimBindingSignature(entry))
+			.filter((signature): signature is string => signature !== undefined)
+	);
+
+	let changed = false;
+	const merged = [...currentValue];
+	for (const defaultEntry of defaultValue) {
+		const signature = getDoomManagedVimBindingSignature(defaultEntry);
+		if (!signature || existingSignatures.has(signature)) {
+			continue;
+		}
+
+		existingSignatures.add(signature);
+		merged.push(defaultEntry);
+		changed = true;
+	}
+
+	return changed ? merged : currentValue;
 }
 
 /** Extracts a human-readable reason from a caught error, falling back to 'Unknown error'. */
@@ -77,6 +109,29 @@ export async function applyDefaultsToConfiguration(
 		if (!inspected) {
 			unsupported++;
 			continue;
+		}
+
+		if (isDoomManagedVimBindingSetting(key)) {
+			// Managed Vim binding arrays are merged so new defaults can land without clobbering user customizations.
+			const merged = mergeVimBindings(inspected.globalValue, value);
+			if (merged !== undefined) {
+				if (merged === inspected.globalValue) {
+					skipped++;
+					continue;
+				}
+
+				try {
+					await config.update(key, merged, target);
+					applied++;
+				} catch (error) {
+					console.warn(`Failed to apply setting '${key}':`, error);
+					failures.push({
+						key,
+						reason: getErrorReason(error),
+					});
+				}
+				continue;
+			}
 		}
 
 		if (hasUserOwnedSettingValue(inspected)) {

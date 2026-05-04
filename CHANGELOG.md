@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix duplicate key handling in rendered which-key menus causing wrong nested commands from Explorer/sidebar focus (for example `SPC o u` opening Output)
+- fixed Doom install defaults so new managed Vim keybindings merge into existing user bindings instead of being skipped
+- fixed dashboard install-status detection for managed Vim bindings so extra user fields do not show false missing state
 
 ### Changed
 

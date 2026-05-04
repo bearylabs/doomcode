@@ -15,6 +15,11 @@ import {
 } from '../onboarding/dashboard';
 import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
+	DOOM_MANAGED_VIM_BINDING_SETTINGS,
+	hasEquivalentDoomManagedVimBinding,
+	isDoomManagedVimBindingSetting,
+} from '../onboarding/vimBindings';
+import {
 	applyTrackedUiContextCommand,
 	evaluateWhenExpression,
 	selectTriggeredConditionForKey,
@@ -102,6 +107,22 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(hasUserOwnedSettingValue({ workspaceFolderLanguageValue: ['x'] }), true);
 	});
 
+	test('keeps Doom-managed Vim binding settings centralized', () => {
+		assert.deepStrictEqual(DOOM_MANAGED_VIM_BINDING_SETTINGS, [
+			'vim.normalModeKeyBindingsNonRecursive',
+			'vim.visualModeKeyBindingsNonRecursive',
+		]);
+		assert.strictEqual(isDoomManagedVimBindingSetting('vim.normalModeKeyBindingsNonRecursive'), true);
+		assert.strictEqual(isDoomManagedVimBindingSetting('vim.insertModeKeyBindingsNonRecursive'), false);
+		assert.strictEqual(
+			hasEquivalentDoomManagedVimBinding(
+				[{ before: ['<space>'], commands: ['doom.whichKeyShow'], silent: true }],
+				{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+			),
+			true,
+		);
+	});
+
 	test('only applies defaults when no user-owned scope exists', async () => {
 		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
 		const config = {
@@ -180,6 +201,95 @@ suite('Extension Test Suite', () => {
 				{ key: 'doom.fail.string', reason: 'String failure' },
 			],
 			total: 3,
+		});
+	});
+
+	test('merges missing Doom Vim bindings into existing user arrays', async () => {
+		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
+		const config = {
+			inspect<T>(key: string) {
+				if (key === 'vim.normalModeKeyBindingsNonRecursive') {
+					return {
+						globalValue: [
+							{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+						],
+					} as { globalValue?: T };
+				}
+
+				return {} as { globalValue?: T };
+			},
+			update(key: string, value: unknown, target: vscode.ConfigurationTarget) {
+				updates.push({ key, value, target });
+				return Promise.resolve();
+			},
+		};
+
+		const result = await applyDefaultsToConfiguration(config, {
+			'vim.normalModeKeyBindingsNonRecursive': [
+				{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+				{ before: ['<C-j>'], commands: ['editor.action.insertLineAfter'] },
+			],
+			'window.restoreWindows': 'none',
+		});
+
+		assert.strictEqual(updates.length, 2);
+		assert.strictEqual(updates[0].key, 'vim.normalModeKeyBindingsNonRecursive');
+		assert.deepStrictEqual(updates[0].value, [
+			{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+			{ before: ['<C-j>'], commands: ['editor.action.insertLineAfter'] },
+		]);
+		assert.deepStrictEqual(result, {
+			applied: 2,
+			skipped: 0,
+			unsupported: 0,
+			failed: 0,
+			failures: [],
+			total: 2,
+		});
+	});
+
+	test('marks Vim defaults installed when defaults are subset of user array', () => {
+		const installState = evaluateInstalledDefaults(
+			{
+				'vim.normalModeKeyBindingsNonRecursive': [
+					{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+					{ before: ['<C-j>'], commands: ['editor.action.insertLineAfter'] },
+				],
+			},
+			() => ({
+				globalValue: [
+					{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+					{ before: ['<C-j>'], commands: ['editor.action.insertLineAfter'] },
+					{ before: ['<C-k>'], commands: ['editor.action.deleteLines'] },
+				],
+			}),
+		);
+
+		assert.deepStrictEqual(installState, {
+			matchingDefaults: 1,
+			totalDefaults: 1,
+			isInstalled: true,
+		});
+	});
+
+	test('treats Doom Vim defaults as installed when matching bindings have extra fields', () => {
+		const installState = evaluateInstalledDefaults(
+			{
+				'vim.normalModeKeyBindingsNonRecursive': [
+					{ before: ['<space>'], commands: ['doom.whichKeyShow'] },
+				],
+			},
+			() => ({
+				globalValue: [
+					{ before: ['<space>'], commands: ['doom.whichKeyShow'], silent: true },
+				],
+			}),
+		);
+
+		assert.deepStrictEqual(installState, {
+			matchingDefaults: 1,
+			totalDefaults: 1,
+			isInstalled: true,
 		});
 	});
 
