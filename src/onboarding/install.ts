@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {
-	getDoomManagedVimBindingSignature,
+	getDoomManagedVimBindingConflictKey,
 	isDoomManagedVimBindingSetting,
 } from './vimBindings';
 
@@ -38,21 +38,21 @@ function mergeVimBindings(currentValue: unknown, defaultValue: unknown): unknown
 		return undefined;
 	}
 
-	const existingSignatures = new Set(
+	const existingConflictKeys = new Set(
 		currentValue
-			.map((entry) => getDoomManagedVimBindingSignature(entry))
-			.filter((signature): signature is string => signature !== undefined)
+			.map((entry) => getDoomManagedVimBindingConflictKey(entry))
+			.filter((conflictKey): conflictKey is string => conflictKey !== undefined)
 	);
 
 	let changed = false;
 	const merged = [...currentValue];
 	for (const defaultEntry of defaultValue) {
-		const signature = getDoomManagedVimBindingSignature(defaultEntry);
-		if (!signature || existingSignatures.has(signature)) {
+		const conflictKey = getDoomManagedVimBindingConflictKey(defaultEntry);
+		if (!conflictKey || existingConflictKeys.has(conflictKey)) {
 			continue;
 		}
 
-		existingSignatures.add(signature);
+		existingConflictKeys.add(conflictKey);
 		merged.push(defaultEntry);
 		changed = true;
 	}

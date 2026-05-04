@@ -16,6 +16,7 @@ import {
 import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
 	DOOM_MANAGED_VIM_BINDING_SETTINGS,
+	getDoomManagedVimBindingConflictKey,
 	hasEquivalentDoomManagedVimBinding,
 	isDoomManagedVimBindingSetting,
 } from '../onboarding/vimBindings';
@@ -114,6 +115,12 @@ suite('Extension Test Suite', () => {
 		]);
 		assert.strictEqual(isDoomManagedVimBindingSetting('vim.normalModeKeyBindingsNonRecursive'), true);
 		assert.strictEqual(isDoomManagedVimBindingSetting('vim.insertModeKeyBindingsNonRecursive'), false);
+		assert.strictEqual(
+			getDoomManagedVimBindingConflictKey(
+				{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+			),
+			'<C-j>',
+		);
 		assert.strictEqual(
 			hasEquivalentDoomManagedVimBinding(
 				[{ before: ['<space>'], commands: ['doom.whichKeyShow'], silent: true }],
@@ -241,6 +248,49 @@ suite('Extension Test Suite', () => {
 		assert.deepStrictEqual(result, {
 			applied: 2,
 			skipped: 0,
+			unsupported: 0,
+			failed: 0,
+			failures: [],
+			total: 2,
+		});
+	});
+
+	test('does not append Doom Vim bindings when user already owns same before chord', async () => {
+		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
+		const config = {
+			inspect<T>(key: string) {
+				if (key === 'vim.normalModeKeyBindingsNonRecursive') {
+					return {
+						globalValue: [
+							{ before: ['<C-j>'], after: ['a', '<CR>', '<Esc>'] },
+						],
+					} as { globalValue?: T };
+				}
+
+				return {} as { globalValue?: T };
+			},
+			update(key: string, value: unknown, target: vscode.ConfigurationTarget) {
+				updates.push({ key, value, target });
+				return Promise.resolve();
+			},
+		};
+
+		const result = await applyDefaultsToConfiguration(config, {
+			'vim.normalModeKeyBindingsNonRecursive': [
+				{ before: ['<C-j>'], after: ['i', '<CR>', '<Esc>', '^'] },
+			],
+			'window.restoreWindows': 'none',
+		});
+
+		assert.strictEqual(updates.length, 1);
+		assert.deepStrictEqual(updates[0], {
+			key: 'window.restoreWindows',
+			value: 'none',
+			target: vscode.ConfigurationTarget.Global,
+		});
+		assert.deepStrictEqual(result, {
+			applied: 1,
+			skipped: 1,
 			unsupported: 0,
 			failed: 0,
 			failures: [],

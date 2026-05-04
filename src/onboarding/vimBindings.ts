@@ -41,6 +41,18 @@ export function isDoomManagedVimBindingSetting(key: string): boolean {
 }
 
 /**
+ * Uses only the `before` chord as install-time conflict key.
+ * If user already owns same key sequence, Doom treats it as an override and will not append another binding.
+ */
+export function getDoomManagedVimBindingConflictKey(entry: unknown): string | undefined {
+	if (!isVimBindingEntry(entry)) {
+		return undefined;
+	}
+
+	return normalizeBindingSequence(entry.before);
+}
+
+/**
  * Compares bindings by the fields Doom needs for identity.
  * Extra Vim flags like `silent` intentionally do not affect equivalence.
  */
