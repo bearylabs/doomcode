@@ -11,6 +11,7 @@
 	// Force extension to run in WSL (workspace) host during development
 	// without this, "ui" kind extensions run on local Windows host = broken WSL debugging
 	"remote.extensionKind": {
-		"bearylabs.doom": ["workspace"]
+		"bearylabs.doom": ["workspace"],
+		"vspacecode.whichkey": ["workspace"]
 	}
 }
