@@ -7,5 +7,10 @@
 		"out": true // set this to false to include "out" folder in search results
 	},
 	// Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-	"js/ts.tsc.autoDetect": "off"
+	"js/ts.tsc.autoDetect": "off",
+	// Force extension to run in WSL (workspace) host during development
+	// without this, "ui" kind extensions run on local Windows host = broken WSL debugging
+	"remote.extensionKind": {
+		"bearylabs.doom": ["workspace"]
+	}
 }
