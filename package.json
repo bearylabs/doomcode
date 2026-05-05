@@ -901,30 +901,31 @@
               "bindings": [
                 {
                   "key": "a",
-                  "name": "Open Claude chat",
+                  "name": "Open Claude cli",
+                  "type": "command",
+                  "command": "doom.openClaudeCli"
+                },
+                {
+                  "key": "A",
+                  "name": "Open Claude gui",
                   "type": "command",
                   "command": "claude-vscode.primaryEditor.open"
                 },
                 {
                   "key": "c",
-                  "name": "Open Codex",
+                  "name": "Open Codex cli",
                   "type": "command",
-                  "command": "runCommands",
-                  "args": {
-                    "commands": [
-                      "workbench.action.createTerminalEditor",
-                      {
-                        "command": "workbench.action.terminal.sendSequence",
-                        "args": {
-                          "text": "codex\n"
-                        }
-                      }
-                    ]
-                  }
+                  "command": "doom.openCodexCli"
                 },
                 {
                   "key": "g",
-                  "name": "Open Copilot chat",
+                  "name": "Open Copilot cli",
+                  "type": "command",
+                  "command": "doom.openCopilotCli"
+                },
+                {
+                  "key": "G",
+                  "name": "Open Copilot gui",
                   "type": "command",
                   "command": "workbench.action.openChat"
                 }

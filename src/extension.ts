@@ -1106,8 +1106,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const VTERM_NAME = '*vterm*';
 	const VTERM_PREFIX = '*vterm*';
+	const EDITOR_TERMINAL_NAMES = new Set(['codex', 'claude', 'claude code', 'copilot']);
 
-	const isVtermName = (name: string) => name === VTERM_NAME || name.startsWith(`${VTERM_PREFIX}<`);
+	const isVtermName = (name: string) =>
+		name === VTERM_NAME
+		|| name.startsWith(`${VTERM_PREFIX}<`)
+		|| EDITOR_TERMINAL_NAMES.has(name.toLowerCase());
 
 	const managedVtermSet = new Set<vscode.Terminal>();
 
@@ -1129,8 +1133,56 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	/**
+	 * Opens AI tool CLIs in editor terminals with fixed names.
+	 * Each terminal gets a consistent name ('claude', 'copilot', 'codex') so that:
+	 * - They're recognized by isVtermName() and excluded from panel terminal switching (SPC o t)
+	 * - Users can reliably find CLI terminals by name
+	 * Creates a new terminal each trigger (no reuse).
+	 */
+
+	const openClaudeCliCmd = vscode.commands.registerCommand(
+		"doom.openClaudeCli",
+		async () => {
+			const terminal = vscode.window.createTerminal({
+				name: 'claude',
+				location: vscode.TerminalLocation.Editor,
+			});
+			terminal.show();
+			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'claude' });
+			terminal.sendText('claude');
+		}
+	);
+
+	const openCopilotCliCmd = vscode.commands.registerCommand(
+		"doom.openCopilotCli",
+		async () => {
+			const terminal = vscode.window.createTerminal({
+				name: 'copilot',
+				location: vscode.TerminalLocation.Editor,
+			});
+			terminal.show();
+			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'copilot' });
+			terminal.sendText('copilot');
+		}
+	);
+
+	const openCodexCliCmd = vscode.commands.registerCommand(
+		"doom.openCodexCli",
+		async () => {
+			const terminal = vscode.window.createTerminal({
+				name: 'codex',
+				location: vscode.TerminalLocation.Editor,
+			});
+			terminal.show();
+			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'codex' });
+			terminal.sendText('codex');
+		}
+	);
+
+	/**
 	 * Opens the panel terminal without disturbing terminals in editor groups.
 	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
+	 * Known CLI editor terminals such as `codex` and `claude code` are also excluded by name.
 	 * Panel terminals are anything not carrying those names.
 	 * Falls back to creating a new panel terminal only when none exist.
 	 * Uses show(true) to pre-select the terminal, then workbench.view.terminal to reliably
@@ -1362,6 +1414,9 @@ export function activate(context: vscode.ExtensionContext) {
 		sidebarHideCmd,
 		panelHideCmd,
 		createTerminalEditorCmd,
+		openClaudeCliCmd,
+		openCopilotCliCmd,
+		openCodexCliCmd,
 		openPanelTerminalCmd,
 		windowDeleteCmd,
 		configurationChangeListener,

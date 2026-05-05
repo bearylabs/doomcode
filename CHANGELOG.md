@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `SPC o a g` opens Copilot CLI; `SPC o a G` opens Copilot GUI chat
+- `SPC o a a` opens Claude CLI; `SPC o a A` opens Claude GUI chat
+- `SPC o a c` opens Codex CLI (no GUI variant)
+
+### Fixed
+
+- `SPC o t` now ignores editor-terminal tabs named `codex`, `claude`, and `claude code`, so panel terminal switching no longer jumps into those CLI tabs
 
 ## [0.6.0] 2026-05-04
 
