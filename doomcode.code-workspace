@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../doomcode-workspace"
+    }
+  ],
+  "settings": {
+    "remote.extensionKind": {
+      "bearylabs.doom": [
+        "workspace"
+      ],
+      "vspacecode.whichkey": [
+        "workspace"
+      ]
+    }
+  }
+}

@@ -2,11 +2,28 @@
 
 Thank you for your interest in contributing to Doom Code! This guide explains how to set up your development environment and contribute to the project.
 
-## Prerequisites
+## Opening the Project
 
-- **Node.js** 16+ (used via npm)
-- **Nix** (optional, but recommended for reproducible builds)
-- **Git**
+**Open `doomcode.code-workspace` instead of opening the folder directly.**
+
+This multi-root workspace includes:
+- `doomcode` — the extension
+- `doomcode-workspace` — companion package for workspace configs
+
+### Why the workspace file?
+
+The workspace file configures extensions to run on the workspace (remote) host instead of the local client host. This is **required for proper debugging on Windows + WSL**:
+
+```json
+"remote.extensionKind": {
+  "bearylabs.doom": ["workspace"],
+  "vspacecode.whichkey": ["workspace"]
+}
+```
+
+UI-kind extensions default to running locally (on Windows), which breaks WSL debugging. The workspace file forces them remote.
+
+**If you open the folder directly, debugging will fail.**
 
 ## Development Setup
 
@@ -181,14 +198,6 @@ Core settings go in `contributes.configurationDefaults`. Settings that don't pas
 
 **Only maintainers can publish.** To publish a new version:
 
-### One-time setup (GitHub repository)
-
-1. Create a VS Marketplace PAT with **Marketplace (Manage)** scope.
-2. In GitHub, go to repository settings -> Secrets and variables -> Actions.
-3. Add a repository secret named `VSCE_PAT` containing that token.
-
-### Release flow (automated)
-
 1. Update `version` in `package.json` (follow [semver](https://semver.org/)).
 2. Update `CHANGELOG.md` with release notes.
 3. Commit and push to `main`.
@@ -205,42 +214,6 @@ When the tag is pushed, GitHub Actions will:
 2. Package a `.vsix` artifact.
 3. Create a GitHub Release for the tag and attach the `.vsix`.
 4. Publish that same package to VS Code Marketplace using `VSCE_PAT`.
-
-## Troubleshooting
-
-### Extension doesn't activate after F5
-
-- Ensure you've run `npm run compile` first
-- Check **Output panel** (View → Output) for "Doom Code" logs
-- Reload window with **Ctrl+R** / **Cmd+R**
-
-### Keybindings not working
-
-- Ensure VSpaceCode and VSCodeVim extensions are installed in your test profile
-- Try running `doom.install` command to apply defaults
-- Check that there are no conflicting keybindings in user settings
-
-### Build errors
-
-- Ensure you're inside the Nix shell: `nix develop`
-- Run `npm install` to fetch dependencies
-- Clear `out/` and rebuild: `rm -rf out && npm run compile`
-
-### Want to use a different version of Node.js?
-
-Edit or create `flake.nix` to specify your desired version:
-
-```nix
-inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05"; # or another branch
-```
-
-Then: `nix flake update && nix develop`
-
-## Code Style
-
-- **Language**: TypeScript (strict mode)
-- **Linter**: ESLint with typescript-eslint
-- **Format**: Run `npx eslint src --fix` to auto-format
 
 ## Questions?
 
