@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Removed
+
+- `Escape` key no longer moves focus from terminal to editor
+
 ## [0.6.1] 2026-05-05
 
 ### Added
