@@ -88,10 +88,20 @@ export async function focusWindowLeft(
 	explorerVisible: boolean,
 	explorerFocused: boolean,
 	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
+	getActiveViewColumn: () => vscode.ViewColumn | undefined = () => vscode.window.tabGroups.activeTabGroup.viewColumn,
 ): Promise<void> {
 	const target = resolveWindowLeftTarget(activeGroup, tabGroups, explorerVisible, explorerFocused);
 	if (target === 'stay') { return; }
-	await executeCommand(target === 'explorer' ? 'workbench.view.explorer' : 'workbench.action.focusLeftGroup');
+	if (target === 'explorer') {
+		await executeCommand('workbench.view.explorer');
+		return;
+	}
+	await executeCommand('workbench.action.focusLeftGroup');
+	// focusLeftGroup is a no-op when the active group is in the leftmost visual column but not
+	// the minimum viewColumn (e.g. bottom pane of a top-down split). Fall back to explorer.
+	if (explorerVisible && getActiveViewColumn() === activeGroup.viewColumn) {
+		await executeCommand('workbench.view.explorer');
+	}
 }
 
 /**

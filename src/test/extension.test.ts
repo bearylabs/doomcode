@@ -535,9 +535,39 @@ suite('Extension Test Suite', () => {
 			executedCommands.push(command);
 			return Promise.resolve();
 		});
+		// not minimum viewColumn but focusLeftGroup no-ops (top-down split, leftmost visual column) → explorer
+		await focusWindowLeft(
+			{ viewColumn: vscode.ViewColumn.Two },
+			tabGroups,
+			true,
+			false,
+			(command) => { executedCommands.push(command); return Promise.resolve(); },
+			() => vscode.ViewColumn.Two, // active group didn't change → no-op
+		);
+		// same scenario but explorer hidden → only focusLeftGroup, no fallback
+		await focusWindowLeft(
+			{ viewColumn: vscode.ViewColumn.Two },
+			tabGroups,
+			false,
+			false,
+			(command) => { executedCommands.push(command); return Promise.resolve(); },
+			() => vscode.ViewColumn.Two,
+		);
+		// not leftmost visual column (focus moved) → only focusLeftGroup
+		await focusWindowLeft(
+			{ viewColumn: vscode.ViewColumn.Two },
+			tabGroups,
+			true,
+			false,
+			(command) => { executedCommands.push(command); return Promise.resolve(); },
+			() => vscode.ViewColumn.One, // focus moved
+		);
 
 		assert.deepStrictEqual(executedCommands, [
 			'workbench.view.explorer',
+			'workbench.action.focusLeftGroup',
+			'workbench.action.focusLeftGroup', 'workbench.view.explorer',
+			'workbench.action.focusLeftGroup',
 			'workbench.action.focusLeftGroup',
 		]);
 	});
