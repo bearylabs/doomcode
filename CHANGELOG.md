@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Disable compact folders by default
+
 ### Changed
 
 - `SPC w h` now mirrors Doom-style sidebar handoff: when the active editor is already in the leftmost group and Explorer is visible, focus moves to Explorer instead of issuing another left-group focus.

@@ -188,6 +188,7 @@
         }
       ],
       "explorer.autoReveal": false,
+      "explorer.compactFolders": false,
       "terminal.integrated.enablePersistentSessions": false,
       "vim.useSystemClipboard": true,
       "vim.hlsearch": true,
