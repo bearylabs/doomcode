@@ -1299,7 +1299,7 @@
               "key": "h",
               "name": "evil-window-left",
               "type": "command",
-              "command": "workbench.action.focusLeftGroup"
+              "command": "doom.windowLeft"
             },
             {
               "key": "H",
@@ -1374,7 +1374,7 @@
               "key": "l",
               "name": "evil-window-right",
               "type": "command",
-              "command": "workbench.action.focusRightGroup"
+              "command": "doom.windowRight"
             },
             {
               "key": "L",
@@ -1576,6 +1576,16 @@
       {
         "command": "doom.cleanup",
         "title": "Clean Up Stale Settings",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.windowLeft",
+        "title": "Focus Left Group or Explorer",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.windowRight",
+        "title": "Focus Right Group or First Editor Group",
         "category": "Doom"
       },
       {

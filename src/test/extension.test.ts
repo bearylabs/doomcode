@@ -21,6 +21,13 @@ import {
 	isDoomManagedVimBindingSetting,
 } from '../onboarding/vimBindings';
 import {
+	focusWindowLeft,
+	focusWindowRight,
+	getLeftmostEditorGroup,
+	resolveWindowLeftTarget,
+	resolveWindowRightTarget,
+} from '../window/mru';
+import {
 	applyTrackedUiContextCommand,
 	evaluateWhenExpression,
 	selectTriggeredConditionForKey,
@@ -39,6 +46,8 @@ suite('Extension Test Suite', () => {
 		'doom.whichKeyHide',
 		'doom.whichKeyShow',
 		'doom.whichKeyShowBindings',
+		'doom.windowLeft',
+		'doom.windowRight',
 		'doom.windowMru',
 	] as const;
 	const expectedContributedCommands = [
@@ -51,6 +60,8 @@ suite('Extension Test Suite', () => {
 		'doom.showOpenEditors',
 		'doom.whichKeyShow',
 		'doom.whichKeyShowBindings',
+		'doom.windowLeft',
+		'doom.windowRight',
 		'doom.windowMru',
 	] as const;
 
@@ -483,6 +494,91 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
+	});
+
+	test('resolves left window target to explorer only on leftmost group', async () => {
+		const tabGroups = [
+			{ viewColumn: vscode.ViewColumn.One },
+			{ viewColumn: vscode.ViewColumn.Three },
+			{ viewColumn: vscode.ViewColumn.Two },
+		];
+
+		assert.strictEqual(getLeftmostEditorGroup(tabGroups), vscode.ViewColumn.One);
+		assert.strictEqual(
+			resolveWindowLeftTarget(
+				{ viewColumn: vscode.ViewColumn.One },
+				tabGroups,
+				true,
+			),
+			'explorer',
+		);
+		assert.strictEqual(
+			resolveWindowLeftTarget(
+				{ viewColumn: vscode.ViewColumn.One },
+				tabGroups,
+				false,
+			),
+			'leftGroup',
+		);
+		assert.strictEqual(
+			resolveWindowLeftTarget(
+				{ viewColumn: vscode.ViewColumn.Two },
+				tabGroups,
+				true,
+			),
+			'leftGroup',
+		);
+
+		const executedCommands: string[] = [];
+		await focusWindowLeft(
+			{ viewColumn: vscode.ViewColumn.One },
+			tabGroups,
+			true,
+			(command) => {
+				executedCommands.push(command);
+				return Promise.resolve();
+			},
+		);
+		await focusWindowLeft(
+			{ viewColumn: vscode.ViewColumn.Two },
+			tabGroups,
+			true,
+			(command) => {
+				executedCommands.push(command);
+				return Promise.resolve();
+			},
+		);
+
+		assert.deepStrictEqual(executedCommands, [
+			'workbench.view.explorer',
+			'workbench.action.focusLeftGroup',
+		]);
+	});
+
+	test('resolves right window target to first group from explorer focus', async () => {
+		assert.strictEqual(resolveWindowRightTarget(true), 'firstGroup');
+		assert.strictEqual(resolveWindowRightTarget(false), 'rightGroup');
+
+		const executedCommands: string[] = [];
+		await focusWindowRight(
+			true,
+			(command) => {
+				executedCommands.push(command);
+				return Promise.resolve();
+			},
+		);
+		await focusWindowRight(
+			false,
+			(command) => {
+				executedCommands.push(command);
+				return Promise.resolve();
+			},
+		);
+
+		assert.deepStrictEqual(executedCommands, [
+			'workbench.action.focusFirstEditorGroup',
+			'workbench.action.focusRightGroup',
+		]);
 	});
 
 	test('tracks sidebar context for repeated doom which-key toggles', () => {

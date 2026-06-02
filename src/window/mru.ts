@@ -31,6 +31,65 @@ export async function focusEditorGroup(viewColumn: vscode.ViewColumn): Promise<b
 	return true;
 }
 
+type EditorGroupLike = Pick<vscode.TabGroup, 'viewColumn'>;
+export type WindowLeftTarget = 'explorer' | 'leftGroup';
+export type WindowRightTarget = 'firstGroup' | 'rightGroup';
+
+/** Returns the leftmost editor group's view column, or undefined when no editor groups exist. */
+export function getLeftmostEditorGroup(tabGroups: readonly EditorGroupLike[]): vscode.ViewColumn | undefined {
+	const sortedGroups = tabGroups
+		.map((group) => group.viewColumn)
+		.filter((viewColumn): viewColumn is vscode.ViewColumn => viewColumn !== undefined)
+		.sort((left, right) => left - right);
+
+	return sortedGroups[0];
+}
+
+/**
+ * Resolves what `SPC w h` should target.
+ * Doom-style handoff only happens when Explorer is already visible and the active group is leftmost.
+ */
+export function resolveWindowLeftTarget(
+	activeGroup: EditorGroupLike,
+	tabGroups: readonly EditorGroupLike[],
+	explorerVisible: boolean,
+): WindowLeftTarget {
+	if (!explorerVisible || activeGroup.viewColumn === undefined) {
+		return 'leftGroup';
+	}
+
+	return getLeftmostEditorGroup(tabGroups) === activeGroup.viewColumn ? 'explorer' : 'leftGroup';
+}
+
+/** Executes `SPC w h` using the resolved target. */
+export async function focusWindowLeft(
+	activeGroup: EditorGroupLike,
+	tabGroups: readonly EditorGroupLike[],
+	explorerVisible: boolean,
+	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
+): Promise<void> {
+	const target = resolveWindowLeftTarget(activeGroup, tabGroups, explorerVisible);
+	await executeCommand(target === 'explorer' ? 'workbench.view.explorer' : 'workbench.action.focusLeftGroup');
+}
+
+/** Resolves what `SPC w l` should target when which-key opened from the explorer. */
+export function resolveWindowRightTarget(explorerFocused: boolean): WindowRightTarget {
+	return explorerFocused ? 'firstGroup' : 'rightGroup';
+}
+
+/** Executes `SPC w l` using the resolved target. */
+export async function focusWindowRight(
+	explorerFocused: boolean,
+	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
+): Promise<void> {
+	const target = resolveWindowRightTarget(explorerFocused);
+	await executeCommand(
+		target === 'firstGroup'
+			? 'workbench.action.focusFirstEditorGroup'
+			: 'workbench.action.focusRightGroup'
+	);
+}
+
 export interface WindowMruController {
 	getLastActiveGroup(): vscode.ViewColumn | undefined;
 	recordActiveGroup(): void;

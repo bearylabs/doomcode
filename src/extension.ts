@@ -29,7 +29,7 @@ import { SelectionHistory } from './search/selectionHistory';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
-import { focusEditorGroup, registerWindowMru } from './window/mru';
+import { focusEditorGroup, focusWindowLeft, focusWindowRight, registerWindowMru } from './window/mru';
 
 type WhichKeyMenuStyle = 'doom' | 'vspacecode';
 
@@ -1234,6 +1234,22 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const windowLeftCmd = vscode.commands.registerCommand(
+		"doom.windowLeft",
+		async () => {
+			const activeGroup = vscode.window.tabGroups.activeTabGroup;
+			const explorerVisible = whichKeyMenu.trackedUiContext.explorerViewletVisible;
+			await focusWindowLeft(activeGroup, vscode.window.tabGroups.all, explorerVisible);
+		}
+	);
+
+	const windowRightCmd = vscode.commands.registerCommand(
+		"doom.windowRight",
+		async () => {
+			await focusWindowRight(whichKeyMenu.showContext.explorerFocused);
+		}
+	);
+
 	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
 		if (event.affectsConfiguration(WHICH_KEY_MENU_SETTING) && getWhichKeyMenuStyle() === 'vspacecode') {
 			void whichKeyMenu.hide();
@@ -1419,6 +1435,8 @@ export function activate(context: vscode.ExtensionContext) {
 		openCodexCliCmd,
 		openPanelTerminalCmd,
 		windowDeleteCmd,
+		windowLeftCmd,
+		windowRightCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,

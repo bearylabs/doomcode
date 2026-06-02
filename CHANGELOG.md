@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- `SPC w h` now mirrors Doom-style sidebar handoff: when the active editor is already in the leftmost group and Explorer is visible, focus moves to Explorer instead of issuing another left-group focus.
+- `SPC w l` now mirrors reverse handoff: when Explorer is focused, focus jumps to the first editor group; otherwise it keeps normal right-group navigation.
+
 ## [0.6.2] 2026-05-27
 
 ### Removed
