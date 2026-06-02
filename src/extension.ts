@@ -1239,14 +1239,15 @@ export function activate(context: vscode.ExtensionContext) {
 		async () => {
 			const activeGroup = vscode.window.tabGroups.activeTabGroup;
 			const explorerVisible = whichKeyMenu.trackedUiContext.explorerViewletVisible;
-			await focusWindowLeft(activeGroup, vscode.window.tabGroups.all, explorerVisible);
+			await focusWindowLeft(activeGroup, vscode.window.tabGroups.all, explorerVisible, whichKeyMenu.showContext.explorerFocused);
 		}
 	);
 
 	const windowRightCmd = vscode.commands.registerCommand(
 		"doom.windowRight",
 		async () => {
-			await focusWindowRight(whichKeyMenu.showContext.explorerFocused);
+			const activeGroup = vscode.window.tabGroups.activeTabGroup;
+			await focusWindowRight(whichKeyMenu.showContext.explorerFocused, activeGroup, vscode.window.tabGroups.all);
 		}
 	);
 

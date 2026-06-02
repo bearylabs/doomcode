@@ -32,8 +32,8 @@ export async function focusEditorGroup(viewColumn: vscode.ViewColumn): Promise<b
 }
 
 type EditorGroupLike = Pick<vscode.TabGroup, 'viewColumn'>;
-export type WindowLeftTarget = 'explorer' | 'leftGroup';
-export type WindowRightTarget = 'firstGroup' | 'rightGroup';
+export type WindowLeftTarget = 'explorer' | 'leftGroup' | 'stay';
+export type WindowRightTarget = 'firstGroup' | 'rightGroup' | 'stay';
 
 /** Returns the leftmost editor group's view column, or undefined when no editor groups exist. */
 export function getLeftmostEditorGroup(tabGroups: readonly EditorGroupLike[]): vscode.ViewColumn | undefined {
@@ -45,20 +45,40 @@ export function getLeftmostEditorGroup(tabGroups: readonly EditorGroupLike[]): v
 	return sortedGroups[0];
 }
 
+/** Returns the rightmost editor group's view column, or undefined when no editor groups exist. */
+export function getRightmostEditorGroup(tabGroups: readonly EditorGroupLike[]): vscode.ViewColumn | undefined {
+	const sortedGroups = tabGroups
+		.map((group) => group.viewColumn)
+		.filter((viewColumn): viewColumn is vscode.ViewColumn => viewColumn !== undefined)
+		.sort((left, right) => right - left);
+
+	return sortedGroups[0];
+}
+
 /**
  * Resolves what `SPC w h` should target.
- * Doom-style handoff only happens when Explorer is already visible and the active group is leftmost.
+ * - Explorer focused → stay (explorer is already the leftmost pane).
+ * - Leftmost editor + explorer visible → focus explorer.
+ * - Leftmost editor + no explorer → stay (avoid wrapping to rightmost group).
+ * - Otherwise → focus left group.
  */
 export function resolveWindowLeftTarget(
 	activeGroup: EditorGroupLike,
 	tabGroups: readonly EditorGroupLike[],
 	explorerVisible: boolean,
+	explorerFocused: boolean,
 ): WindowLeftTarget {
-	if (!explorerVisible || activeGroup.viewColumn === undefined) {
+	if (explorerFocused) { return 'stay'; }
+
+	if (activeGroup.viewColumn === undefined) {
 		return 'leftGroup';
 	}
 
-	return getLeftmostEditorGroup(tabGroups) === activeGroup.viewColumn ? 'explorer' : 'leftGroup';
+	if (getLeftmostEditorGroup(tabGroups) === activeGroup.viewColumn) {
+		return explorerVisible ? 'explorer' : 'stay';
+	}
+
+	return 'leftGroup';
 }
 
 /** Executes `SPC w h` using the resolved target. */
@@ -66,23 +86,43 @@ export async function focusWindowLeft(
 	activeGroup: EditorGroupLike,
 	tabGroups: readonly EditorGroupLike[],
 	explorerVisible: boolean,
+	explorerFocused: boolean,
 	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
 ): Promise<void> {
-	const target = resolveWindowLeftTarget(activeGroup, tabGroups, explorerVisible);
+	const target = resolveWindowLeftTarget(activeGroup, tabGroups, explorerVisible, explorerFocused);
+	if (target === 'stay') { return; }
 	await executeCommand(target === 'explorer' ? 'workbench.view.explorer' : 'workbench.action.focusLeftGroup');
 }
 
-/** Resolves what `SPC w l` should target when which-key opened from the explorer. */
-export function resolveWindowRightTarget(explorerFocused: boolean): WindowRightTarget {
-	return explorerFocused ? 'firstGroup' : 'rightGroup';
+/**
+ * Resolves what `SPC w l` should target.
+ * - Explorer focused → focus first editor group.
+ * - Rightmost group → stay (avoid wrapping to leftmost group).
+ * - Otherwise → focus right group.
+ */
+export function resolveWindowRightTarget(
+	explorerFocused: boolean,
+	activeGroup: EditorGroupLike,
+	tabGroups: readonly EditorGroupLike[],
+): WindowRightTarget {
+	if (explorerFocused) { return 'firstGroup'; }
+
+	if (activeGroup.viewColumn !== undefined && getRightmostEditorGroup(tabGroups) === activeGroup.viewColumn) {
+		return 'stay';
+	}
+
+	return 'rightGroup';
 }
 
 /** Executes `SPC w l` using the resolved target. */
 export async function focusWindowRight(
 	explorerFocused: boolean,
+	activeGroup: EditorGroupLike,
+	tabGroups: readonly EditorGroupLike[],
 	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
 ): Promise<void> {
-	const target = resolveWindowRightTarget(explorerFocused);
+	const target = resolveWindowRightTarget(explorerFocused, activeGroup, tabGroups);
+	if (target === 'stay') { return; }
 	await executeCommand(
 		target === 'firstGroup'
 			? 'workbench.action.focusFirstEditorGroup'

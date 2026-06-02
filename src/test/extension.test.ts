@@ -24,6 +24,7 @@ import {
 	focusWindowLeft,
 	focusWindowRight,
 	getLeftmostEditorGroup,
+	getRightmostEditorGroup,
 	resolveWindowLeftTarget,
 	resolveWindowRightTarget,
 } from '../window/mru';
@@ -504,50 +505,36 @@ suite('Extension Test Suite', () => {
 		];
 
 		assert.strictEqual(getLeftmostEditorGroup(tabGroups), vscode.ViewColumn.One);
-		assert.strictEqual(
-			resolveWindowLeftTarget(
-				{ viewColumn: vscode.ViewColumn.One },
-				tabGroups,
-				true,
-			),
-			'explorer',
-		);
-		assert.strictEqual(
-			resolveWindowLeftTarget(
-				{ viewColumn: vscode.ViewColumn.One },
-				tabGroups,
-				false,
-			),
-			'leftGroup',
-		);
-		assert.strictEqual(
-			resolveWindowLeftTarget(
-				{ viewColumn: vscode.ViewColumn.Two },
-				tabGroups,
-				true,
-			),
-			'leftGroup',
-		);
+		// leftmost + explorer visible → focus explorer
+		assert.strictEqual(resolveWindowLeftTarget({ viewColumn: vscode.ViewColumn.One }, tabGroups, true, false), 'explorer');
+		// leftmost + no explorer → stay
+		assert.strictEqual(resolveWindowLeftTarget({ viewColumn: vscode.ViewColumn.One }, tabGroups, false, false), 'stay');
+		// not leftmost → go left
+		assert.strictEqual(resolveWindowLeftTarget({ viewColumn: vscode.ViewColumn.Two }, tabGroups, true, false), 'leftGroup');
+		// explorer focused → stay (already leftmost pane)
+		assert.strictEqual(resolveWindowLeftTarget({ viewColumn: vscode.ViewColumn.One }, tabGroups, true, true), 'stay');
 
 		const executedCommands: string[] = [];
-		await focusWindowLeft(
-			{ viewColumn: vscode.ViewColumn.One },
-			tabGroups,
-			true,
-			(command) => {
-				executedCommands.push(command);
-				return Promise.resolve();
-			},
-		);
-		await focusWindowLeft(
-			{ viewColumn: vscode.ViewColumn.Two },
-			tabGroups,
-			true,
-			(command) => {
-				executedCommands.push(command);
-				return Promise.resolve();
-			},
-		);
+		// explorer visible, not focused, at leftmost → focus explorer
+		await focusWindowLeft({ viewColumn: vscode.ViewColumn.One }, tabGroups, true, false, (command) => {
+			executedCommands.push(command);
+			return Promise.resolve();
+		});
+		// explorer focused → stay, no command
+		await focusWindowLeft({ viewColumn: vscode.ViewColumn.One }, tabGroups, true, true, (command) => {
+			executedCommands.push(command);
+			return Promise.resolve();
+		});
+		// leftmost + no explorer → stay, no command
+		await focusWindowLeft({ viewColumn: vscode.ViewColumn.One }, tabGroups, false, false, (command) => {
+			executedCommands.push(command);
+			return Promise.resolve();
+		});
+		// not leftmost → go left
+		await focusWindowLeft({ viewColumn: vscode.ViewColumn.Two }, tabGroups, true, false, (command) => {
+			executedCommands.push(command);
+			return Promise.resolve();
+		});
 
 		assert.deepStrictEqual(executedCommands, [
 			'workbench.view.explorer',
@@ -555,13 +542,33 @@ suite('Extension Test Suite', () => {
 		]);
 	});
 
-	test('resolves right window target to first group from explorer focus', async () => {
-		assert.strictEqual(resolveWindowRightTarget(true), 'firstGroup');
-		assert.strictEqual(resolveWindowRightTarget(false), 'rightGroup');
+	test('resolves right window target to first group from explorer focus, stays at rightmost', async () => {
+		const tabGroups = [
+			{ viewColumn: vscode.ViewColumn.One },
+			{ viewColumn: vscode.ViewColumn.Three },
+			{ viewColumn: vscode.ViewColumn.Two },
+		];
+
+		assert.strictEqual(getRightmostEditorGroup(tabGroups), vscode.ViewColumn.Three);
+		assert.strictEqual(resolveWindowRightTarget(true, { viewColumn: vscode.ViewColumn.One }, tabGroups), 'firstGroup');
+		assert.strictEqual(resolveWindowRightTarget(false, { viewColumn: vscode.ViewColumn.One }, tabGroups), 'rightGroup');
+		assert.strictEqual(resolveWindowRightTarget(false, { viewColumn: vscode.ViewColumn.Three }, tabGroups), 'stay');
 
 		const executedCommands: string[] = [];
 		await focusWindowRight(
 			true,
+			{ viewColumn: vscode.ViewColumn.One },
+			tabGroups,
+			(command) => {
+				executedCommands.push(command);
+				return Promise.resolve();
+			},
+		);
+		// stay — no command executed
+		await focusWindowRight(
+			false,
+			{ viewColumn: vscode.ViewColumn.Three },
+			tabGroups,
 			(command) => {
 				executedCommands.push(command);
 				return Promise.resolve();
@@ -569,6 +576,8 @@ suite('Extension Test Suite', () => {
 		);
 		await focusWindowRight(
 			false,
+			{ viewColumn: vscode.ViewColumn.One },
+			tabGroups,
 			(command) => {
 				executedCommands.push(command);
 				return Promise.resolve();
