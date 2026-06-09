@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Commands like spc b d and spc w d behaving unexpectedly (closing the wrong buffer, moving the wrong window) when a split editor contained an AI terminal (Claude, Copilot, Codex) and the bottom panel terminal was open at the same time.
+
 ## [0.6.3] 2026-06-03
 
 ### Added

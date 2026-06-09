@@ -983,7 +983,11 @@ if (message.type !== 'activate' || message.index === undefined) {
 		if (this.trackedContext.activePanel === 'terminal') {
 			await vscode.commands.executeCommand('workbench.action.terminal.focus');
 			if (!this.currentShowContext.terminalFocus) {
-				await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+				if (this.preWhichKeyEditorGroup !== undefined) {
+					await focusEditorGroup(this.preWhichKeyEditorGroup);
+				} else {
+					await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+				}
 			}
 		} else {
 			await vscode.commands.executeCommand('workbench.action.closePanel');
