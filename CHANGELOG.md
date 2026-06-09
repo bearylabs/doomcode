@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+ 
+- `SPC g r` — Revert hunk at point (`git.revertSelectedRanges`)
+- `SPC g R` — Revert file (`git.clean`)
+
 ## [0.6.4] 2026-06-09
 
 ### Fixed
