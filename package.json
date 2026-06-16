@@ -2846,6 +2846,24 @@
         "command": "doom.terminalSendEscape",
         "when": "terminalFocus && doom.terminalEscapeMode"
       },
+      {
+        "key": "escape",
+        "command": "doom.terminalEscapePrefix",
+        "when": "(activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !doom.terminalEscapeMode && !whichkeyVisible"
+      },
+      {
+        "key": "space",
+        "command": "doom.terminalEscapeSpace",
+        "args": {
+          "webviewFocused": true
+        },
+        "when": "doom.terminalEscapeMode && (activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor) && !whichkeyVisible"
+      },
+      {
+        "key": "escape",
+        "command": "doom.terminalSendEscape",
+        "when": "doom.terminalEscapeMode && (activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor)"
+      },
 
       {
         "key": "ctrl+h",
