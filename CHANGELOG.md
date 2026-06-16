@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Terminal escape key sequence for Doom muscle memory: `Esc Space` opens the which-key menu from any terminal, and `Esc Esc` sends a real escape to the terminal process. The sequence resets after 2 seconds if no second key is pressed. Run `Doom: Install` to apply the required settings automatically.
+
 ## [0.6.5] 2026-06-09
 
 ### Added

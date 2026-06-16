@@ -51,6 +51,11 @@
   ],
   "doomInstallDefaults": {
     "vim.leader": "<space>",
+    "terminal.integrated.commandsToSkipShell": [
+      "doom.terminalEscapePrefix",
+      "doom.terminalEscapeSpace",
+      "doom.terminalSendEscape"
+    ],
     "todohighlight.defaultStyle": {
       "backgroundColor": "transparent",
       "fontWeight": "bold"
@@ -1612,6 +1617,21 @@
         "category": "Doom"
       },
       {
+        "command": "doom.terminalEscapePrefix",
+        "title": "Terminal Escape Prefix",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.terminalEscapeSpace",
+        "title": "Terminal Escape + Space: Show Which Key",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.terminalSendEscape",
+        "title": "Terminal Escape + Escape: Send Escape",
+        "category": "Doom"
+      },
+      {
         "command": "doom.whichKeyShowBindings",
         "title": "Show Which-Key Bindings",
         "category": "Doom"
@@ -2776,6 +2796,57 @@
         },
         "when": "terminalFocus"
       },
+      {
+        "key": "escape",
+        "command": "doom.terminalEscapePrefix",
+        "when": "terminalFocus && !doom.terminalEscapeMode"
+      },
+      {
+        "key": "space",
+        "command": "doom.terminalEscapeSpace",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": false
+        },
+        "when": "doom.terminalEscapeMode && terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "space",
+        "command": "doom.terminalEscapeSpace",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": false,
+          "explorerVisible": true
+        },
+        "when": "doom.terminalEscapeMode && terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "space",
+        "command": "doom.terminalEscapeSpace",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": true,
+          "explorerVisible": false
+        },
+        "when": "doom.terminalEscapeMode && terminalFocus && !terminalEditorFocus && !explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "space",
+        "command": "doom.terminalEscapeSpace",
+        "args": {
+          "terminalFocus": true,
+          "terminalPanelOpen": true,
+          "explorerVisible": true
+        },
+        "when": "doom.terminalEscapeMode && terminalFocus && !terminalEditorFocus && explorerViewletVisible && !whichkeyVisible"
+      },
+      {
+        "key": "escape",
+        "command": "doom.terminalSendEscape",
+        "when": "terminalFocus && doom.terminalEscapeMode"
+      },
+
       {
         "key": "ctrl+h",
         "command": "workbench.action.quickInputBack",

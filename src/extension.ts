@@ -924,6 +924,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const whichKeyMenu = new DoomWhichKeyMenu();
 	const dashboard = new DoomDashboard(context.extensionUri);
 	let dashboardRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	let terminalEscapeTimer: ReturnType<typeof setTimeout> | undefined;
 	// Debounced refresh so rapid config changes (e.g. bulk settings apply) don't re-render on every key.
 	const scheduleDashboardRefresh = (delayMs = 50) => {
 		if (!dashboard.getCurrentMode()) {
@@ -1085,6 +1086,36 @@ export function activate(context: vscode.ExtensionContext) {
 		"doom.whichKeyHide",
 		() => {
 			void whichKeyMenu.hide();
+		}
+	);
+
+	const terminalEscapePrefixCmd = vscode.commands.registerCommand(
+		'doom.terminalEscapePrefix',
+		() => {
+			if (terminalEscapeTimer) { clearTimeout(terminalEscapeTimer); }
+			void vscode.commands.executeCommand('setContext', 'doom.terminalEscapeMode', true);
+			terminalEscapeTimer = setTimeout(() => {
+				terminalEscapeTimer = undefined;
+				void vscode.commands.executeCommand('setContext', 'doom.terminalEscapeMode', false);
+			}, 2000);
+		}
+	);
+
+	const terminalEscapeSpaceCmd = vscode.commands.registerCommand(
+		'doom.terminalEscapeSpace',
+		(showContext?: { terminalFocus?: boolean; terminalPanelOpen?: boolean; explorerVisible?: boolean }) => {
+			if (terminalEscapeTimer) { clearTimeout(terminalEscapeTimer); terminalEscapeTimer = undefined; }
+			void vscode.commands.executeCommand('setContext', 'doom.terminalEscapeMode', false);
+			void sharedPanel.showWhichKeyWithContext(showContext);
+		}
+	);
+
+	const terminalSendEscapeCmd = vscode.commands.registerCommand(
+		'doom.terminalSendEscape',
+		() => {
+			if (terminalEscapeTimer) { clearTimeout(terminalEscapeTimer); terminalEscapeTimer = undefined; }
+			void vscode.commands.executeCommand('setContext', 'doom.terminalEscapeMode', false);
+			void vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: '\u001b' });
 		}
 	);
 
@@ -1255,6 +1286,7 @@ export function activate(context: vscode.ExtensionContext) {
 		if (event.affectsConfiguration(WHICH_KEY_MENU_SETTING) && getWhichKeyMenuStyle() === 'vspacecode') {
 			void whichKeyMenu.hide();
 		}
+
 
 		if (dashboardRefreshKeys.some((key) => event.affectsConfiguration(key))) {
 			scheduleDashboardRefresh();
@@ -1428,6 +1460,9 @@ export function activate(context: vscode.ExtensionContext) {
 		whichKeyBindingsCmd,
 		whichKeyTriggerKeyCmd,
 		whichKeyHideCmd,
+		terminalEscapePrefixCmd,
+		terminalEscapeSpaceCmd,
+		terminalSendEscapeCmd,
 		sidebarHideCmd,
 		panelHideCmd,
 		createTerminalEditorCmd,
@@ -1456,6 +1491,9 @@ export function activate(context: vscode.ExtensionContext) {
 		new vscode.Disposable(() => {
 			if (dashboardRefreshTimer) {
 				clearTimeout(dashboardRefreshTimer);
+			}
+			if (terminalEscapeTimer) {
+				clearTimeout(terminalEscapeTimer);
 			}
 		}),
 	);
