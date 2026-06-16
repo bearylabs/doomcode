@@ -1342,7 +1342,7 @@
               "key": "j",
               "name": "evil-window-down",
               "type": "command",
-              "command": "workbench.action.focusBelowGroup"
+              "command": "doom.windowDown"
             },
             {
               "key": "J",
@@ -1367,7 +1367,7 @@
               "key": "k",
               "name": "evil-window-up",
               "type": "command",
-              "command": "workbench.action.focusAboveGroup"
+              "command": "doom.windowUp"
             },
             {
               "key": "K",
@@ -1604,6 +1604,16 @@
       {
         "command": "doom.windowRight",
         "title": "Focus Right Group or First Editor Group",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.windowUp",
+        "title": "Focus Above Group or Bottommost Editor Group from Panel",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.windowDown",
+        "title": "Focus Below Group or Panel",
         "category": "Doom"
       },
       {
@@ -2864,7 +2874,6 @@
         "command": "doom.terminalSendEscape",
         "when": "doom.terminalEscapeMode && (activeWebviewPanelId == 'claudeVSCodePanel' || claude-vscode.sideBarActive || inChatEditor)"
       },
-
       {
         "key": "ctrl+h",
         "command": "workbench.action.quickInputBack",

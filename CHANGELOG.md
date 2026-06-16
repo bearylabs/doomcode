@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Terminal escape key sequence for Doom muscle memory: `Esc Space` opens the which-key menu from any terminal, and `Esc Esc` sends a real escape to the terminal process. The sequence resets after 2 seconds if no second key is pressed. Run `Doom: Install` to apply the required settings automatically.
+- Terminal escape key sequence for Doom muscle memory: `Esc Space` opens the which-key menu from any terminal, and `Esc Esc` sends a real escape to the terminal process. The sequence resets aft
+- `SPC w k` now mirrors Doom Emacs behaviour when the terminal panel is focused: focus moves to the visually bottommost editor group (by walking down from the first group until there is no group below).
+- `SPC w j` now transfers focus to the panel when pressed from the bottommost editor group; does nothing if no panel is open.er 2 seconds if no second key is pressed. Run `Doom: Install` to apply the required settings automatically.
 
 ## [0.6.5] 2026-06-09
 

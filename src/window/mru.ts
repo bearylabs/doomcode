@@ -140,6 +140,50 @@ export async function focusWindowRight(
 	);
 }
 
+/**
+ * Executes `SPC w k`.
+ * - From panel: starts at the first editor group and walks down until no group below exists,
+ *   landing on the visually bottommost group (mirrors Doom Emacs behaviour).
+ * - From an editor group: focuses the group above.
+ */
+export async function focusWindowUp(
+	panelFocused: boolean,
+	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
+	getActiveViewColumn: () => vscode.ViewColumn | undefined = () => vscode.window.tabGroups.activeTabGroup.viewColumn,
+): Promise<void> {
+	if (!panelFocused) {
+		await executeCommand('workbench.action.focusAboveGroup');
+		return;
+	}
+
+	await executeCommand('workbench.action.focusFirstEditorGroup');
+	let previous = getActiveViewColumn();
+	for (let i = 0; i < 8; i++) {
+		await executeCommand('workbench.action.focusBelowGroup');
+		const current = getActiveViewColumn();
+		if (current === previous) { break; }
+		previous = current;
+	}
+}
+
+/**
+ * Executes `SPC w j`.
+ * - From the bottommost editor group: focuses the panel if one is open, otherwise stays.
+ * - From any other editor group: focuses the group below.
+ */
+export async function focusWindowDown(
+	activeGroup: EditorGroupLike,
+	panelVisible: boolean,
+	executeCommand: (command: string) => Thenable<unknown> | Promise<unknown> = vscode.commands.executeCommand,
+	getActiveViewColumn: () => vscode.ViewColumn | undefined = () => vscode.window.tabGroups.activeTabGroup.viewColumn,
+): Promise<void> {
+	const before = activeGroup.viewColumn;
+	await executeCommand('workbench.action.focusBelowGroup');
+	if (getActiveViewColumn() === before && panelVisible) {
+		await executeCommand('workbench.action.focusPanel');
+	}
+}
+
 export interface WindowMruController {
 	getLastActiveGroup(): vscode.ViewColumn | undefined;
 	recordActiveGroup(): void;
