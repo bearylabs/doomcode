@@ -51,11 +51,6 @@
   ],
   "doomInstallDefaults": {
     "vim.leader": "<space>",
-    "terminal.integrated.commandsToSkipShell": [
-      "doom.terminalEscapePrefix",
-      "doom.terminalEscapeSpace",
-      "doom.terminalSendEscape"
-    ],
     "todohighlight.defaultStyle": {
       "backgroundColor": "transparent",
       "fontWeight": "bold"
@@ -1509,7 +1504,10 @@
       "terminal.integrated.stickyScroll.enabled": false,
       "terminal.integrated.commandsToSkipShell": [
         "doom.whichKeyShow",
-        "doom.whichKeyHide"
+        "doom.whichKeyHide",
+        "doom.terminalEscapePrefix",
+        "doom.terminalEscapeSpace",
+        "doom.terminalSendEscape"
       ],
       "workbench.activityBar.location": "hidden",
       "workbench.editor.autoLockGroups": {
