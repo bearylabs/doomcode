@@ -16,6 +16,7 @@ import {
 import { applyDefaultsToConfiguration, hasUserOwnedSettingValue, runInstallFlow } from '../onboarding/install';
 import {
 	DOOM_MANAGED_VIM_BINDING_SETTINGS,
+	DOOM_STALE_VIM_BINDING_SETTINGS,
 	getDoomManagedVimBindingConflictKey,
 	hasEquivalentDoomManagedVimBinding,
 	isDoomManagedVimBindingSetting,
@@ -124,6 +125,12 @@ suite('Extension Test Suite', () => {
 		assert.deepStrictEqual(DOOM_MANAGED_VIM_BINDING_SETTINGS, [
 			'vim.normalModeKeyBindingsNonRecursive',
 			'vim.visualModeKeyBindingsNonRecursive',
+		]);
+		assert.deepStrictEqual(DOOM_STALE_VIM_BINDING_SETTINGS, [
+			'vim.normalModeKeyBindingsNonRecursive',
+			'vim.normalModeKeyBindings',
+			'vim.visualModeKeyBindingsNonRecursive',
+			'vim.visualModeKeyBindings',
 		]);
 		assert.strictEqual(isDoomManagedVimBindingSetting('vim.normalModeKeyBindingsNonRecursive'), true);
 		assert.strictEqual(isDoomManagedVimBindingSetting('vim.insertModeKeyBindingsNonRecursive'), false);
