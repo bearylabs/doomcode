@@ -113,7 +113,8 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 	let raw: unknown;
 	try {
 		raw = await vscode.commands.executeCommand('_workbench.getRecentlyOpened');
-	} catch {
+	} catch (err) {
+		console.warn('[DoomRecentProjects] getRecentlyOpened failed:', err);
 		return [];
 	}
 
@@ -190,16 +191,17 @@ export class DoomRecentProjectsPanel {
 	private viewDisposables: vscode.Disposable[] = [];
 
 	/**
-	 * Resets state. Always returns true — no precondition needed.
+	 * Resets state.
 	 * Pass `onProjectSelected` to intercept selection instead of opening the folder.
+	 * Returns void (not boolean) because there is no precondition to check; the shared
+	 * panel interface calls prepareShow() for its boolean, but this panel always proceeds.
 	 */
-	prepareShow(onProjectSelected?: (item: RecentProjectItem) => Promise<void>): boolean {
+	prepareShow(onProjectSelected?: (item: RecentProjectItem) => Promise<void>): void {
 		this.onProjectSelected = onProjectSelected;
 		this.query = '';
 		this.activeIndex = 0;
 		this.allItems = [];
 		this.filteredItems = [];
-		return true;
 	}
 
 	/** Loads recent projects from VS Code's MRU list and renders them, excluding the current workspace. */
@@ -230,7 +232,7 @@ export class DoomRecentProjectsPanel {
 	}
 
 	/** Moves the active result by `delta` rows. No-op at list boundaries. */
-	async moveSelection(delta: number): Promise<void> {
+	moveSelection(delta: number): void {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}

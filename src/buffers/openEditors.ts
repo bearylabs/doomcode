@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import { createNonce, formatFileSize, fuzzyMatch, tildeCollapse } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
 
+const REFRESH_DEBOUNCE_MS = 50;
+
 // ---------------------------------------------------------------------------
 // Open editor models
 // ---------------------------------------------------------------------------
@@ -586,7 +588,7 @@ export class DoomOpenEditorsPanel {
 		this.refreshTimer = setTimeout(() => {
 			this.refreshTimer = undefined;
 			void this.refreshItems();
-		}, 50);
+		}, REFRESH_DEBOUNCE_MS);
 	}
 
 	/** Rebuilds the flat item list from all tab groups, deduplicating by key and skipping hidden tabs. */

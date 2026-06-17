@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { createNonce, fuzzyMatch } from '../panel/helpers';
 
+const MAX_RESULTS = 200;
+
 // ---------------------------------------------------------------------------
 // Search models
 // ---------------------------------------------------------------------------
@@ -114,7 +116,7 @@ export class DoomFuzzySearchPanel {
 	}
 
 	/** Moves the active result by `delta` rows and live-previews the line in editor mode. No-op at list boundaries. */
-	async moveSelection(delta: number): Promise<void> {
+	moveSelection(delta: number): void {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -130,7 +132,7 @@ export class DoomFuzzySearchPanel {
 
 		this.activeIndex = nextIndex;
 		if (this.mode === 'editor') {
-			await this.revealEditorLine(this.filteredItems[nextIndex].item.line);
+			this.revealEditorLine(this.filteredItems[nextIndex].item.line);
 		}
 		this.render();
 	}
@@ -150,7 +152,7 @@ export class DoomFuzzySearchPanel {
 		if (this.mode === 'workspace') {
 			await this.openWorkspaceItem(item.item);
 		} else {
-			await this.revealEditorLine(item.item.line);
+			this.revealEditorLine(item.item.line);
 		}
 		await this.close();
 	}
@@ -382,7 +384,8 @@ export class DoomFuzzySearchPanel {
 		let stat: vscode.FileStat | undefined;
 		try {
 			stat = await vscode.workspace.fs.stat(uri);
-		} catch {
+		} catch (err) {
+			console.warn('[DoomFuzzySearch] stat failed:', err);
 			return [];
 		}
 		if (!stat || stat.size > DoomFuzzySearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
@@ -392,7 +395,8 @@ export class DoomFuzzySearchPanel {
 		try {
 			const document = await vscode.workspace.openTextDocument(uri);
 			return this.buildWorkspaceItems(document);
-		} catch {
+		} catch (err) {
+			console.warn('[DoomFuzzySearch] openTextDocument failed:', err);
 			return [];
 		}
 	}
@@ -415,8 +419,8 @@ export class DoomFuzzySearchPanel {
 	}
 
 	/**
-	 * Applies fuzzy filter to `currentItems` and caps results at 200.
-	 * Editor mode: shows first 200 lines unranked for queries < 2 chars, then sorts by line number.
+	 * Applies fuzzy filter to `currentItems` and caps results at MAX_RESULTS.
+	 * Editor mode: shows first MAX_RESULTS lines unranked for queries < 2 chars, then sorts by line number.
 	 * Workspace mode: shows nothing until 2+ chars are typed, then groups by file via `groupWorkspaceMatches`.
 	 */
 	private filterItems(): void {
@@ -435,7 +439,7 @@ export class DoomFuzzySearchPanel {
 			}
 
 			this.filteredItems = this.currentItems
-				.slice(0, 200)
+				.slice(0, MAX_RESULTS)
 				.map((item) => ({
 					item,
 					matches: [],
@@ -460,10 +464,10 @@ export class DoomFuzzySearchPanel {
 			.filter((entry): entry is SearchMatch => entry !== undefined);
 
 		this.filteredItems = this.mode === 'workspace'
-			? this.groupWorkspaceMatches(matches).slice(0, 200)
+			? this.groupWorkspaceMatches(matches).slice(0, MAX_RESULTS)
 			: matches
 				.sort((left, right) => left.item.line - right.item.line)
-				.slice(0, 200);
+				.slice(0, MAX_RESULTS);
 	}
 
 	/** Groups matches by file (alphabetically), with lines within each file sorted by line number. */
@@ -501,7 +505,7 @@ export class DoomFuzzySearchPanel {
 			this.filterItems();
 			this.render();
 			if (this.mode === 'editor' && this.filteredItems.length > 0) {
-				await this.revealEditorLine(this.filteredItems[0].item.line);
+				this.revealEditorLine(this.filteredItems[0].item.line);
 			}
 			return;
 		case 'move': {
@@ -516,7 +520,7 @@ export class DoomFuzzySearchPanel {
 
 			this.activeIndex = message.index;
 			if (this.mode === 'editor') {
-				await this.revealEditorLine(item.item.line);
+				this.revealEditorLine(item.item.line);
 			}
 			this.render();
 			return;
@@ -537,7 +541,7 @@ export class DoomFuzzySearchPanel {
 	}
 
 	/** Scrolls the target editor to `line` and moves the cursor there for live preview during navigation. */
-	private async revealEditorLine(line: number): Promise<void> {
+	private revealEditorLine(line: number): void {
 		const editor = this.targetEditor;
 		if (!editor) {
 			return;

@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
 
 // ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ export class DoomFindFilePanel {
 		this.ready = false;
 	}
 
-	async moveSelection(delta: number): Promise<void> {
+	moveSelection(delta: number): void {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -250,7 +250,8 @@ export class DoomFindFilePanel {
 				'doom-workspace.readDirectory',
 				this.makeUri(this.currentDir).toString()
 			);
-		} catch {
+		} catch (err) {
+			console.warn('[DoomFindFile] readDirectory failed:', err);
 			this.allItems = [];
 			return;
 		}

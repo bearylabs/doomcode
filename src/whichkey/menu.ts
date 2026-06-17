@@ -146,6 +146,9 @@ export function applyTrackedUiContextCommand(
 	}
 }
 
+const BLUR_ENABLE_DELAY_MS = 200;
+const SUPPRESS_WINDOW_MS = 150;
+
 /** Narrows `unknown` to an object for safe property access on untyped packageJSON entries. */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
@@ -554,7 +557,7 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 
 /** Per-load random nonce for the Content-Security-Policy script-src directive. */
 function getNonce(): string {
-	return Math.random().toString(36).slice(2, 12);
+	return crypto.randomUUID();
 }
 
 // ---------------------------------------------------------------------------
@@ -863,7 +866,7 @@ export class DoomWhichKeyMenu {
 			return;
 		}
 
-if (message.type !== 'activate' || message.index === undefined) {
+		if (message.type !== 'activate' || message.index === undefined) {
 			return;
 		}
 
@@ -1144,7 +1147,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			color: var(--text);
 		}
 
-@media (max-width: 760px) {
+		@media (max-width: 760px) {
 			body {
 				padding: 6px 6px 2px;
 			}
@@ -1232,7 +1235,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			updateGridRowCount();
 
 			if (Array.isArray(state.suppressedKeys) && state.suppressedKeys.length > 0) {
-				suppressUntil = Date.now() + 150;
+				suppressUntil = Date.now() + SUPPRESS_WINDOW_MS;
 				state.suppressedKeys.forEach((key) => {
 					suppressedKeys.set(key, (suppressedKeys.get(key) || 0) + 1);
 				});
@@ -1270,7 +1273,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 		window.addEventListener('message', (event) => {
 			if (event.data.type === 'render') {
 				clearTimeout(blurTimer);
-				blurTimer = setTimeout(() => { blurEnabled = true; }, 200);
+				blurTimer = setTimeout(() => { blurEnabled = true; }, BLUR_ENABLE_DELAY_MS);
 				render(event.data.state);
 			} else if (event.data.type === 'hide') {
 				clearTimeout(blurTimer);
@@ -1293,7 +1296,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 				return;
 			}
 
-const bindingKey = toBindingKey(event);
+			const bindingKey = toBindingKey(event);
 			if (!bindingKey) {
 				return;
 			}

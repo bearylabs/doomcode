@@ -42,6 +42,9 @@ const PREVIOUS_WORKSPACE_TARGET_KEY = 'doom.previousWorkspaceTarget';
 const PENDING_OPEN_FILE_KEY = 'doom.pendingOpenFile';
 /** Set before an intentional project switch so the activation IIFE skips the dashboard. */
 const SKIP_DASHBOARD_KEY = 'doom.skipDashboardOnActivation';
+
+const TERMINAL_ESCAPE_TIMEOUT_MS = 2000;
+const DASHBOARD_REFRESH_DEBOUNCE_MS = 50;
 const KEEP_EXISTING_BINDING_ACTION = 'Keep Existing';
 const OVERWRITE_WITH_DOOM_ACTION = 'Overwrite with Doom';
 const KEEP_ALL_EXISTING_BINDINGS_ACTION = 'Keep All Existing';
@@ -570,7 +573,8 @@ function readKeybindingsJson(keybindingsPath: string): Array<Record<string, unkn
 		const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
 		const parsed = JSON.parse(sanitized);
 		return Array.isArray(parsed) ? parsed : undefined;
-	} catch {
+	} catch (err) {
+		console.warn('[Doom] readKeybindingsJson failed:', err);
 		return undefined;
 	}
 }
@@ -926,7 +930,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let dashboardRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 	let terminalEscapeTimer: ReturnType<typeof setTimeout> | undefined;
 	// Debounced refresh so rapid config changes (e.g. bulk settings apply) don't re-render on every key.
-	const scheduleDashboardRefresh = (delayMs = 50) => {
+	const scheduleDashboardRefresh = (delayMs = DASHBOARD_REFRESH_DEBOUNCE_MS) => {
 		if (!dashboard.getCurrentMode()) {
 			return;
 		}
@@ -1097,7 +1101,7 @@ export function activate(context: vscode.ExtensionContext) {
 			terminalEscapeTimer = setTimeout(() => {
 				terminalEscapeTimer = undefined;
 				void vscode.commands.executeCommand('setContext', 'doom.terminalEscapeMode', false);
-			}, 2000);
+			}, TERMINAL_ESCAPE_TIMEOUT_MS);
 		}
 	);
 
@@ -1436,8 +1440,9 @@ export function activate(context: vscode.ExtensionContext) {
 				const fileUri = vscode.Uri.parse(pendingFile, true);
 				const document = await vscode.workspace.openTextDocument(fileUri);
 				await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false });
-			} catch {
+			} catch (err) {
 				// File may have moved or be outside the workspace — silently skip.
+				console.warn('[Doom] pendingOpenFile failed to open:', err);
 			}
 
 			await context.globalState.update(LAST_SEEN_VERSION_KEY, getExtensionMetadata(context).version);

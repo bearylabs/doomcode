@@ -68,9 +68,9 @@ export interface FuzzyMatch {
 	score: number;
 }
 
-/** Generates a random 10-char alphanumeric nonce for CSP script-src directives. */
+/** Generates a cryptographically random nonce for CSP script-src directives. */
 export function createNonce(): string {
-	return Math.random().toString(36).slice(2, 12);
+	return crypto.randomUUID();
 }
 
 /** Substring match. Returns undefined if query is not found as a contiguous run in text. */

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
 
+const MAX_RESULTS = 200;
+
 // ---------------------------------------------------------------------------
 // Project file models
 // ---------------------------------------------------------------------------
@@ -133,7 +135,7 @@ export class DoomProjectFilePanel {
 	}
 
 	/** Moves the active result by `delta` rows. No-op at list boundaries. */
-	async moveSelection(delta: number): Promise<void> {
+	moveSelection(delta: number): void {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -353,7 +355,7 @@ export class DoomProjectFilePanel {
 		const query = this.query.trim().toLowerCase();
 
 		if (query.length === 0) {
-			this.filteredItems = this.allItems.slice(0, 200).map((item) => ({
+			this.filteredItems = this.allItems.slice(0, MAX_RESULTS).map((item) => ({
 				item,
 				matches: [],
 				score: 0,
@@ -378,7 +380,7 @@ export class DoomProjectFilePanel {
 				if (bHistory !== aHistory) { return bHistory - aHistory; }
 				return (b.item.lastModifiedMs ?? 0) - (a.item.lastModifiedMs ?? 0);
 			})
-			.slice(0, 200);
+			.slice(0, MAX_RESULTS);
 	}
 
 	/** Dispatches webview messages. */
