@@ -1,6 +1,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { DoomWebviewController, type PanelWebviewMessage } from '../panel/controller';
 import { createFilePickerHtml, createNonce, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
 
@@ -49,12 +50,6 @@ interface FindFileState {
 	title: string;
 }
 
-interface FindFileMessage {
-	index?: number;
-	query?: string;
-	type: 'activate' | 'close' | 'move' | 'query' | 'ready' | 'tab';
-}
-
 // ---------------------------------------------------------------------------
 // Panel
 // ---------------------------------------------------------------------------
@@ -71,12 +66,15 @@ interface FindFileMessage {
  * appends its name to the query, advancing into the directory. Backspacing
  * past a `/` retreats into the parent.
  */
-export class DoomFindFilePanel {
+export class DoomFindFilePanel extends DoomWebviewController {
 	static readonly visibleContextKey = 'doom.findFileVisible';
 
-	constructor(private readonly history: SelectionHistory) {}
+	protected readonly visibleContextKey = DoomFindFilePanel.visibleContextKey;
 
-	private activeIndex = 0;
+	constructor(private readonly history: SelectionHistory) {
+		super();
+	}
+
 	private allItems: FindFileItem[] = [];
 	private baseAuthority = '';
 	private baseScheme = 'file';
@@ -85,10 +83,6 @@ export class DoomFindFilePanel {
 	private filteredItems: FindFileItem[] = [];
 	private forceQueryUpdate = false;
 	private loading = false;
-	private query = '';
-	private ready = false;
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
 
 	/**
 	 * Sets the starting directory. `startDir` should be an absolute path
@@ -118,36 +112,21 @@ export class DoomFindFilePanel {
 		this.render();
 	}
 
-	attachToView(webviewView: vscode.WebviewView): void {
-		this.resolveWebviewView(webviewView);
+	protected get itemCount(): number {
+		return this.filteredItems.length;
 	}
 
-	detachFromView(): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
-		this.ready = false;
-	}
-
-	moveSelection(delta: number): void {
-		if (!this.view?.visible || this.filteredItems.length === 0) {
+	/** Stamps the pane header. */
+	protected updateViewMetadata(): void {
+		if (!this.view) {
 			return;
 		}
 
-		const nextIndex = Math.min(
-			Math.max(this.activeIndex + delta, 0),
-			this.filteredItems.length - 1
-		);
-
-		if (nextIndex === this.activeIndex) {
-			return;
-		}
-
-		this.activeIndex = nextIndex;
-		this.render();
+		this.view.title = 'Find File';
+		this.view.description = undefined;
 	}
 
-	async activateSelection(): Promise<void> {
+	protected async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -186,32 +165,6 @@ export class DoomFindFilePanel {
 		}
 
 		await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false });
-	}
-
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.webview.options = { enableScripts: true };
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		webviewView.title = 'Find File';
-		webviewView.description = undefined;
-
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-					void this.updateVisibilityContext(false);
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-			}),
-			webviewView.webview.onDidReceiveMessage((message: FindFileMessage) => {
-				void this.handleMessage(message);
-			})
-		);
 	}
 
 	/**
@@ -292,7 +245,7 @@ export class DoomFindFilePanel {
 		this.allItems = [...dirs, ...files];
 	}
 
-	private filterItems(): void {
+	protected filterItems(): void {
 		this.activeIndex = 0;
 		const q = this.filter.toLowerCase();
 
@@ -304,64 +257,42 @@ export class DoomFindFilePanel {
 		this.filteredItems = this.allItems.filter((item) => item.searchText.includes(q));
 	}
 
-	private async handleMessage(message: FindFileMessage): Promise<void> {
-		switch (message.type) {
-		case 'ready':
-			this.ready = true;
-			this.render();
-			return;
-		case 'query': {
-			const expanded = tildeExpand(message.query ?? '');
-			if (!expanded && this.query === normalizePath(os.homedir()) + '/') {
-				this.query = normalizePath(path.dirname(normalizePath(os.homedir()))) + '/';
-				this.forceQueryUpdate = true;
-			} else {
-				this.query = expanded;
-			}
-			await this.applyQueryChange();
-			return;
-		}
-		case 'move': {
-			if (this.filteredItems.length === 0 || message.index === undefined) {
-				return;
-			}
-			this.activeIndex = message.index;
-			this.render();
-			return;
-		}
-		case 'activate': {
-			if (message.index !== undefined) {
-				this.activeIndex = message.index;
-			}
-			await this.activateSelection();
-			return;
-		}
-		case 'tab': {
-			if (this.filteredItems.length === 0 || message.index === undefined) {
-				return;
-			}
-			const tabItem = this.filteredItems[message.index];
-			if (!tabItem) {
-				return;
-			}
-			this.query = tabItem.isDir ? tabItem.fsPath + '/' : tabItem.fsPath;
+	/**
+	 * The query input IS the path being typed: expand `~`, retreat past the home dir on
+	 * a leading delete, then re-parse into dir + filter via `applyQueryChange`.
+	 */
+	protected async onQuery(query: string): Promise<void> {
+		const expanded = tildeExpand(query);
+		if (!expanded && this.query === normalizePath(os.homedir()) + '/') {
+			this.query = normalizePath(path.dirname(normalizePath(os.homedir()))) + '/';
 			this.forceQueryUpdate = true;
-			await this.applyQueryChange();
-			return;
+		} else {
+			this.query = expanded;
 		}
-		case 'close':
-			await this.close();
-			return;
-		default:
-			return;
-		}
+		await this.applyQueryChange();
 	}
 
-	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
+	/** Handles Tab autocompletion: replaces the query with the active item's full path. */
+	protected async onMessage(message: PanelWebviewMessage): Promise<void> {
+		if (message.type !== 'tab') {
 			return;
 		}
 
+		if (this.filteredItems.length === 0 || message.index === undefined) {
+			return;
+		}
+
+		const tabItem = this.filteredItems[message.index];
+		if (!tabItem) {
+			return;
+		}
+
+		this.query = tabItem.isDir ? tabItem.fsPath + '/' : tabItem.fsPath;
+		this.forceQueryUpdate = true;
+		await this.applyQueryChange();
+	}
+
+	protected buildRenderState(): FindFileState {
 		const activeIndex = this.filteredItems.length === 0
 			? 0
 			: Math.min(this.activeIndex, this.filteredItems.length - 1);
@@ -383,7 +314,7 @@ export class DoomFindFilePanel {
 		const forceQuery = this.forceQueryUpdate;
 		this.forceQueryUpdate = false;
 
-		const state: FindFileState = {
+		return {
 			activeIndex,
 			emptyText: this.loading ? 'Reading directory...' : 'No matches.',
 			forceQuery,
@@ -395,8 +326,6 @@ export class DoomFindFilePanel {
 			statusWidthCh: this.getStatusWidthCh(),
 			title: 'Find File',
 		};
-
-		void this.view.webview.postMessage({ type: 'render', state });
 	}
 
 	private getStatusLabel(): string {
@@ -410,15 +339,7 @@ export class DoomFindFilePanel {
 		return digits * 2 + 1;
 	}
 
-	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand('setContext', DoomFindFilePanel.visibleContextKey, isVisible);
-	}
-
-	private async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
-	}
-
-	private getHtml(webview: vscode.Webview): string {
+	protected getHtml(webview: vscode.Webview): string {
 		return createFilePickerHtml({
 			cspSource: webview.cspSource,
 			nonce: createNonce(),

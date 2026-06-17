@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { DoomWebviewController } from '../panel/controller';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
 
@@ -46,12 +47,6 @@ interface ProjectFileState {
 	title: string;
 }
 
-interface ProjectFileMessage {
-	index?: number;
-	query?: string;
-	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
-}
-
 // ---------------------------------------------------------------------------
 // File listing
 // ---------------------------------------------------------------------------
@@ -88,20 +83,19 @@ async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequenc
  * Results are sorted by fuzzy score when a query is present, preserving the MRU
  * ordering for equal-score items (stable sort is guaranteed by V8).
  */
-export class DoomProjectFilePanel {
+export class DoomProjectFilePanel extends DoomWebviewController {
 	static readonly visibleContextKey = 'doom.projectFileVisible';
 
-	constructor(private readonly history: SelectionHistory) {}
+	protected readonly visibleContextKey = DoomProjectFilePanel.visibleContextKey;
 
-	private activeIndex = 0;
+	constructor(private readonly history: SelectionHistory) {
+		super();
+	}
+
 	private allItems: ProjectFileItem[] = [];
 	private filteredItems: ProjectFileMatch[] = [];
 	private loading = false;
 	private loadSequence = 0;
-	private query = '';
-	private ready = false;
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
 	private workspaceCache: ProjectFileItem[] | undefined;
 	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
 
@@ -121,40 +115,41 @@ export class DoomProjectFilePanel {
 		await this.loadProjectItems();
 	}
 
-	/** Wires the panel to an already-created WebviewView. */
-	attachToView(webviewView: vscode.WebviewView): void {
-		this.resolveWebviewView(webviewView);
+	protected get itemCount(): number {
+		return this.filteredItems.length;
 	}
 
-	/** Tears down listeners and clears the view ref. */
-	detachFromView(): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
-		this.ready = false;
-	}
-
-	/** Moves the active result by `delta` rows. No-op at list boundaries. */
-	moveSelection(delta: number): void {
-		if (!this.view?.visible || this.filteredItems.length === 0) {
+	/** Stamps the pane header. */
+	protected updateViewMetadata(): void {
+		if (!this.view) {
 			return;
 		}
 
-		const nextIndex = Math.min(
-			Math.max(this.activeIndex + delta, 0),
-			this.filteredItems.length - 1
-		);
+		this.view.title = 'Find File';
+		this.view.description = `Project: ${this.getWorkspaceLabel()}`;
+	}
 
-		if (nextIndex === this.activeIndex) {
+	/** Seeds open-tab ordering before the first render once items are loaded. */
+	protected onReady(): void {
+		if (!this.loading) {
+			this.seedItems();
+		}
+	}
+
+	/** Re-seeds from the current tab layout each time the panel is revealed. */
+	protected onVisibilityChanged(visible: boolean): void {
+		if (!visible) {
 			return;
 		}
 
-		this.activeIndex = nextIndex;
+		this.query = '';
+		this.activeIndex = 0;
+		this.seedItems();
 		this.render();
 	}
 
 	/** Opens the active result and closes the panel. */
-	async activateSelection(): Promise<void> {
+	protected async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -189,47 +184,6 @@ export class DoomProjectFilePanel {
 
 		// Not open anywhere → open in active group.
 		await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false });
-	}
-
-	/**
-	 * Bootstraps the WebviewView: injects HTML, wires dispose/visibility/message listeners.
-	 * Re-entrant — cleans up previous listeners first.
-	 */
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.webview.options = { enableScripts: true };
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		webviewView.title = 'Find File';
-		webviewView.description = `Project: ${this.getWorkspaceLabel()}`;
-
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-					void this.updateVisibilityContext(false);
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-				if (webviewView.visible) {
-					this.query = '';
-					this.activeIndex = 0;
-					this.seedItems();
-					this.render();
-				}
-			}),
-			webviewView.webview.onDidReceiveMessage((message: ProjectFileMessage) => {
-				void this.handleMessage(message);
-			})
-		);
-	}
-
-	/** Syncs the `doom.projectFileVisible` context key so keybindings can scope to panel visibility. */
-	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand('setContext', DoomProjectFilePanel.visibleContextKey, isVisible);
 	}
 
 	/**
@@ -350,7 +304,7 @@ export class DoomProjectFilePanel {
 	 * Empty query: shows all items preserving MRU order (open tabs first, then remaining by mtime desc).
 	 * Non-empty query: sorts by fuzzy score (higher = better); mtime breaks ties.
 	 */
-	private filterItems(): void {
+	protected filterItems(): void {
 		this.activeIndex = 0;
 		const query = this.query.trim().toLowerCase();
 
@@ -383,52 +337,8 @@ export class DoomProjectFilePanel {
 			.slice(0, MAX_RESULTS);
 	}
 
-	/** Dispatches webview messages. */
-	private async handleMessage(message: ProjectFileMessage): Promise<void> {
-		switch (message.type) {
-		case 'ready':
-			this.ready = true;
-			if (!this.loading) {
-				this.seedItems();
-			}
-			this.render();
-			return;
-		case 'query':
-			this.query = message.query ?? '';
-			this.filterItems();
-			this.render();
-			return;
-		case 'move': {
-			if (this.filteredItems.length === 0 || message.index === undefined) {
-				return;
-			}
-
-			this.activeIndex = message.index;
-			this.render();
-			return;
-		}
-		case 'activate': {
-			if (message.index !== undefined) {
-				this.activeIndex = message.index;
-			}
-
-			await this.activateSelection();
-			return;
-		}
-		case 'close':
-			await this.close();
-			return;
-		default:
-			return;
-		}
-	}
-
-	/** Builds the full ProjectFileState and pushes it to the webview. Guards against rendering before 'ready'. */
-	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
-			return;
-		}
-
+	/** Builds the full ProjectFileState. Clamps `activeIndex` into range first. */
+	protected buildRenderState(): ProjectFileState {
 		const activeIndex = this.filteredItems.length === 0
 			? 0
 			: Math.min(this.activeIndex, this.filteredItems.length - 1);
@@ -446,7 +356,7 @@ export class DoomProjectFilePanel {
 			type: 'result',
 		}));
 
-		const state: ProjectFileState = {
+		return {
 			activeIndex,
 			emptyText: this.loading ? 'Loading project files...' : 'No matches.',
 			items,
@@ -457,8 +367,6 @@ export class DoomProjectFilePanel {
 			statusWidthCh: this.getStatusWidthCh(),
 			title: 'Find File in Project',
 		};
-
-		void this.view.webview.postMessage({ type: 'render', state });
 	}
 
 	private getStatusLabel(): string {
@@ -476,13 +384,8 @@ export class DoomProjectFilePanel {
 		return vscode.workspace.name ?? 'workspace';
 	}
 
-	/** Collapses the bottom panel — keeps the webview alive so cache survives the next open. */
-	private async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
-	}
-
 	/** Generates the webview HTML using the shared file-picker template. */
-	private getHtml(webview: vscode.Webview): string {
+	protected getHtml(webview: vscode.Webview): string {
 		return createFilePickerHtml({
 			cspSource: webview.cspSource,
 			nonce: createNonce(),

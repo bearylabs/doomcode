@@ -152,33 +152,20 @@ export function formatRelativeTime(ms: number, now: number): string {
 	return `${mon} ${d.getDate()} ${hh}:${mm}`;
 }
 
-/**
- * Generates the full webview HTML for a two-column file-picker panel
- * (project files / recent projects).
- *
- * Items posted to the webview via `render` state must have the shape:
- *   { index, path, matches, lastModified }
- */
-export function createFilePickerHtml(options: {
-	cspSource: string;
-	nonce: string;
-	title: string;
-}): string {
-	const { cspSource, nonce, title } = options;
-	const csp = [
-		"default-src 'none'",
-		`style-src ${cspSource} 'unsafe-inline'`,
-		`script-src 'nonce-${nonce}'`,
-	].join('; ');
+// ---------------------------------------------------------------------------
+// Shared webview panel template (Finding 2)
+// ---------------------------------------------------------------------------
 
-	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta http-equiv="Content-Security-Policy" content="${csp}">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${title}</title>
-	<style>
+/**
+ * Shared "chrome" CSS for every Doom picker panel: the `:root` custom-property block,
+ * the base element rules, and the `.shell` / `.promptbar` / `.status` / `.prompt` /
+ * `.input` / `.results` / `.empty` / `.match` rules. Panel-specific result-row layout
+ * (`.item` grid + cell rules) is appended after this via the builder's `layoutCss`.
+ *
+ * Values that previously drifted slightly between panels (promptbar gap, status
+ * alignment, paddings) are intentionally unified to a single canonical value.
+ */
+const PANEL_CHROME_CSS = `
 		html {
 			height: 100%;
 		}
@@ -186,6 +173,8 @@ export function createFilePickerHtml(options: {
 		:root {
 			color-scheme: dark;
 			--bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+			--chrome: color-mix(in srgb, var(--bg) 92%, white 8%);
+			--border: var(--vscode-panel-border, color-mix(in srgb, var(--bg) 82%, white 18%));
 			--input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground));
 			--muted: var(--vscode-editorLineNumber-foreground, var(--vscode-descriptionForeground));
 			--text: var(--vscode-editor-foreground);
@@ -245,6 +234,11 @@ export function createFilePickerHtml(options: {
 			text-align: right;
 		}
 
+		.prompt {
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
 		.input {
 			width: 100%;
 			padding: 0;
@@ -269,7 +263,216 @@ export function createFilePickerHtml(options: {
 			padding: 2px 0 0;
 		}
 
-		.item {
+		.match {
+			background: var(--match-bg);
+			color: var(--match-fg);
+		}
+
+		.empty {
+			color: var(--muted);
+			white-space: nowrap;
+			padding: 0 10px;
+		}`;
+
+/**
+ * Builds the full webview HTML for a Doom picker panel. Owns everything the panels
+ * shared verbatim: the nonce-locked CSP, the chrome CSS ({@link PANEL_CHROME_CSS}),
+ * the `appendHighlightedText` highlighter, the render reconcile (focus/`setSelectionRange`,
+ * `forceQuery` handling, grow-only status width), and the keydown handler
+ * (Escape / Arrow / Enter / Ctrl+J / Ctrl+K).
+ *
+ * Callers supply only what genuinely differs:
+ *   - `layoutCss`   — the `.item` grid + per-cell rules for this panel's rows,
+ *   - `renderItem`  — the `items.forEach((item) => { ... })` body that builds each row,
+ *   - `extraKeydown`— optional extra key handling inserted before the shared keys.
+ *
+ * The render state posted to the webview must include `items`, `activeIndex`, `title`,
+ * `promptLabel`, `placeholder`, `emptyText`, `query`, and `statusLabel` (plus optional
+ * `statusWidthCh` and `forceQuery`).
+ */
+export function createPanelHtml(options: {
+	cspSource: string;
+	nonce: string;
+	title: string;
+	layoutCss: string;
+	renderItem: string;
+	extraKeydown?: string;
+}): string {
+	const { cspSource, nonce, title, layoutCss, renderItem, extraKeydown = '' } = options;
+	const csp = [
+		"default-src 'none'",
+		`style-src ${cspSource} 'unsafe-inline'`,
+		`script-src 'nonce-${nonce}'`,
+	].join('; ');
+
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Security-Policy" content="${csp}">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>${title}</title>
+	<style>${PANEL_CHROME_CSS}
+${layoutCss}
+	</style>
+</head>
+<body>
+	<div class="shell">
+		<div class="promptbar">
+			<div class="status" id="status">0/0</div>
+			<label class="prompt" id="prompt" for="query"></label>
+			<input class="input" id="query" type="text" spellcheck="false" placeholder="" />
+		</div>
+		<div class="results" id="results"></div>
+		<div class="empty" id="empty" hidden></div>
+	</div>
+	<script nonce="${nonce}">
+		const vscode = acquireVsCodeApi();
+		const empty = document.getElementById('empty');
+		const prompt = document.getElementById('prompt');
+		const query = document.getElementById('query');
+		const results = document.getElementById('results');
+		const status = document.getElementById('status');
+		let items = [];
+		let maxStatusWidth = 0;
+
+		// Renders text into container, wrapping matched char indices in <span class="match">.
+		function appendHighlightedText(container, text, matches) {
+			if (!matches || matches.length === 0) {
+				container.textContent = text;
+				return;
+			}
+
+			let cursor = 0;
+			let matchCursor = 0;
+			while (cursor < text.length) {
+				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
+					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
+					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
+					cursor = nextMatch;
+					continue;
+				}
+
+				let end = cursor;
+				while (matchCursor < matches.length && matches[matchCursor] === end) {
+					end++;
+					matchCursor++;
+				}
+
+				const mark = document.createElement('span');
+				mark.className = 'match';
+				mark.textContent = text.slice(cursor, end);
+				container.append(mark);
+				cursor = end;
+			}
+		}
+
+		// Full DOM reconcile from state. Skips overwriting the input while focused (unless forced)
+		// to avoid caret jump. Status width only grows so the column never causes layout shift.
+		function render(state) {
+			items = state.items;
+			document.title = state.title;
+			prompt.textContent = state.promptLabel;
+			query.placeholder = state.placeholder;
+			empty.textContent = state.emptyText;
+
+			if (state.forceQuery || document.activeElement !== query) {
+				query.value = state.query;
+			}
+
+			results.innerHTML = '';
+			empty.hidden = items.length > 0;
+
+			if (state.statusWidthCh !== undefined) {
+				maxStatusWidth = Math.max(maxStatusWidth, state.statusWidthCh);
+				status.style.width = maxStatusWidth + 'ch';
+			}
+			status.textContent = state.statusLabel;
+
+			items.forEach((item) => {
+${renderItem}
+			});
+
+			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
+			if (activeButton instanceof HTMLElement) {
+				activeButton.scrollIntoView({ block: 'nearest' });
+			}
+
+			query.focus();
+			query.setSelectionRange(query.value.length, query.value.length);
+		}
+
+		query.addEventListener('input', () => {
+			vscode.postMessage({ type: 'query', query: query.value });
+		});
+
+		window.addEventListener('message', (event) => {
+			if (event.data.type === 'render') {
+				render(event.data.state);
+			}
+		});
+
+		window.addEventListener('keydown', (event) => {
+			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
+			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
+
+			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
+				return;
+			}
+${extraKeydown}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				vscode.postMessage({ type: 'close' });
+				return;
+			}
+
+			const resultItems = items.filter((item) => item.type !== 'header');
+
+			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
+				if (resultItems.length === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
+				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, resultItems.length - 1) });
+				return;
+			}
+
+			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
+				if (resultItems.length === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
+				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
+				return;
+			}
+
+			if (event.key === 'Enter') {
+				if (resultItems.length === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
+				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
+			}
+		});
+
+		vscode.postMessage({ type: 'ready' });
+	</script>
+</body>
+</html>`;
+}
+
+// ---------------------------------------------------------------------------
+// File-picker template (find-file / project files / recent projects)
+// ---------------------------------------------------------------------------
+
+/** Four-column result-row layout for the file pickers: path · perm/host · size · time. */
+const FILE_PICKER_LAYOUT_CSS = `		.item {
 			display: grid;
 			grid-template-columns: minmax(0, 55ch) 12ch 5ch 15ch;
 			align-items: center;
@@ -320,91 +523,10 @@ export function createFilePickerHtml(options: {
 			color: var(--selected-text);
 			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
 			outline-offset: -1px;
-		}
+		}`;
 
-		.match {
-			background: var(--match-bg);
-			color: var(--match-fg);
-		}
-
-		.empty {
-			color: var(--muted);
-			white-space: nowrap;
-			padding: 0 10px;
-		}
-	</style>
-</head>
-<body>
-	<div class="shell">
-		<div class="promptbar">
-			<div class="status" id="status">0/0</div>
-			<label class="prompt" id="prompt" for="query">Open:</label>
-			<input class="input" id="query" type="text" spellcheck="false" placeholder="..." />
-		</div>
-		<div class="results" id="results"></div>
-		<div class="empty" id="empty" hidden></div>
-	</div>
-	<script nonce="${nonce}">
-		const vscode = acquireVsCodeApi();
-		const empty = document.getElementById('empty');
-		const prompt = document.getElementById('prompt');
-		const query = document.getElementById('query');
-		const results = document.getElementById('results');
-		const status = document.getElementById('status');
-		let items = [];
-		let maxStatusWidth = 0;
-
-		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
-		function appendHighlightedText(container, text, matches) {
-			if (!matches || matches.length === 0) {
-				container.textContent = text;
-				return;
-			}
-
-			let cursor = 0;
-			let matchCursor = 0;
-			while (cursor < text.length) {
-				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
-					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
-					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
-					cursor = nextMatch;
-					continue;
-				}
-
-				let end = cursor;
-				while (matchCursor < matches.length && matches[matchCursor] === end) {
-					end++;
-					matchCursor++;
-				}
-
-				const mark = document.createElement('span');
-				mark.className = 'match';
-				mark.textContent = text.slice(cursor, end);
-				container.append(mark);
-				cursor = end;
-			}
-		}
-
-		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump.
-		function render(state) {
-			items = state.items;
-			document.title = state.title;
-			prompt.textContent = state.promptLabel;
-			query.placeholder = state.placeholder;
-			empty.textContent = state.emptyText;
-
-			if (state.forceQuery || document.activeElement !== query) {
-				query.value = state.query;
-			}
-
-			results.innerHTML = '';
-			empty.hidden = items.length > 0;
-			maxStatusWidth = Math.max(maxStatusWidth, state.statusWidthCh);
-			status.style.width = maxStatusWidth + 'ch';
-			status.textContent = state.statusLabel;
-
-			items.forEach((item) => {
-				const button = document.createElement('button');
+/** Builds one file-picker row: highlighted path, host/permissions, size, relative time. */
+const FILE_PICKER_RENDER_ITEM = `				const button = document.createElement('button');
 				button.type = 'button';
 				button.className = item.index === state.activeIndex ? 'item active' : 'item';
 				button.dataset.index = String(item.index);
@@ -434,34 +556,13 @@ export function createFilePickerHtml(options: {
 				button.addEventListener('click', () => {
 					vscode.postMessage({ type: 'activate', index: item.index });
 				});
-				results.appendChild(button);
-			});
+				results.appendChild(button);`;
 
-			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
-			if (activeButton instanceof HTMLElement) {
-				activeButton.scrollIntoView({ block: 'nearest' });
-			}
-
-			query.focus();
-			query.setSelectionRange(query.value.length, query.value.length);
-		}
-
-		query.addEventListener('input', () => {
-			vscode.postMessage({ type: 'query', query: query.value });
-		});
-
-		window.addEventListener('message', (event) => {
-			if (event.data.type === 'render') {
-				render(event.data.state);
-			}
-		});
-
-		window.addEventListener('keydown', (event) => {
-			if (event.metaKey || event.altKey || event.ctrlKey) {
-				return;
-			}
-
-			if (event.key === 'Backspace') {
+/**
+ * Path-as-query key handling unique to the file pickers: Backspace deletes a whole
+ * path component back to the previous `/`, and Tab autocompletes to the active row.
+ */
+const FILE_PICKER_EXTRA_KEYDOWN = `			if (event.key === 'Backspace') {
 				const val = query.value;
 				const selStart = query.selectionStart ?? val.length;
 				const selEnd = query.selectionEnd ?? val.length;
@@ -478,34 +579,6 @@ export function createFilePickerHtml(options: {
 				}
 			}
 
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				vscode.postMessage({ type: 'close' });
-				return;
-			}
-
-			if (event.key === 'ArrowDown') {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, items.length - 1) });
-				return;
-			}
-
-			if (event.key === 'ArrowUp') {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
-				return;
-			}
-
 			if (event.key === 'Tab') {
 				if (items.length === 0) {
 					return;
@@ -515,21 +588,24 @@ export function createFilePickerHtml(options: {
 				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
 				vscode.postMessage({ type: 'tab', index: activeIndex });
 				return;
-			}
+			}`;
 
-			if (event.key === 'Enter') {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
-			}
-		});
-
-		vscode.postMessage({ type: 'ready' });
-	</script>
-</body>
-</html>`;
+/**
+ * Generates the full webview HTML for a two-column file-picker panel
+ * (find-file / project files / recent projects). Delegates to {@link createPanelHtml}.
+ *
+ * Items posted to the webview via `render` state must have the shape:
+ *   { index, path, matches, lastModified, permissions?, host?, size? }
+ */
+export function createFilePickerHtml(options: {
+	cspSource: string;
+	nonce: string;
+	title: string;
+}): string {
+	return createPanelHtml({
+		...options,
+		layoutCss: FILE_PICKER_LAYOUT_CSS,
+		renderItem: FILE_PICKER_RENDER_ITEM,
+		extraKeydown: FILE_PICKER_EXTRA_KEYDOWN,
+	});
 }

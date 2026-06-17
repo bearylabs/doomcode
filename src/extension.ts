@@ -1344,52 +1344,10 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const findFileMoveDownCmd = vscode.commands.registerCommand(
-		'doom.findFileMoveDown',
-		() => {
-			void findFilePanel.moveSelection(1);
-		}
-	);
-
-	const findFileMoveUpCmd = vscode.commands.registerCommand(
-		'doom.findFileMoveUp',
-		() => {
-			void findFilePanel.moveSelection(-1);
-		}
-	);
-
 	const showRecentProjectsCmd = vscode.commands.registerCommand(
 		'doom.showRecentProjects',
 		() => {
 			void sharedPanel.showRecentProjectsForFilePick(openProjectAndSkipDashboard);
-		}
-	);
-
-	const recentProjectsMoveDownCmd = vscode.commands.registerCommand(
-		'doom.recentProjectsMoveDown',
-		() => {
-			void recentProjectsPanel.moveSelection(1);
-		}
-	);
-
-	const recentProjectsMoveUpCmd = vscode.commands.registerCommand(
-		'doom.recentProjectsMoveUp',
-		() => {
-			void recentProjectsPanel.moveSelection(-1);
-		}
-	);
-
-	const projectFileMoveDownCmd = vscode.commands.registerCommand(
-		'doom.projectFileMoveDown',
-		() => {
-			void projectFilePanel.moveSelection(1);
-		}
-	);
-
-	const projectFileMoveUpCmd = vscode.commands.registerCommand(
-		'doom.projectFileMoveUp',
-		() => {
-			void projectFilePanel.moveSelection(-1);
 		}
 	);
 
@@ -1494,14 +1452,8 @@ export function activate(context: vscode.ExtensionContext) {
 		openEditorsCmd,
 		allOpenEditorsCmd,
 		findFileCmd,
-		findFileMoveDownCmd,
-		findFileMoveUpCmd,
 		findFileInProjectCmd,
 		showRecentProjectsCmd,
-		recentProjectsMoveDownCmd,
-		recentProjectsMoveUpCmd,
-		projectFileMoveDownCmd,
-		projectFileMoveUpCmd,
 		sharedPanelViewProvider,
 		new vscode.Disposable(() => {
 			if (dashboardRefreshTimer) {

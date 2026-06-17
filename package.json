@@ -1670,28 +1670,8 @@
         "category": "Doom"
       },
       {
-        "command": "doom.projectFileMoveDown",
-        "title": "Project File: Move Selection Down",
-        "category": "Doom"
-      },
-      {
-        "command": "doom.projectFileMoveUp",
-        "title": "Project File: Move Selection Up",
-        "category": "Doom"
-      },
-      {
         "command": "doom.showRecentProjects",
         "title": "Show Recent Projects",
-        "category": "Doom"
-      },
-      {
-        "command": "doom.recentProjectsMoveDown",
-        "title": "Recent Projects: Move Selection Down",
-        "category": "Doom"
-      },
-      {
-        "command": "doom.recentProjectsMoveUp",
-        "title": "Recent Projects: Move Selection Up",
         "category": "Doom"
       },
       {
@@ -2876,36 +2856,6 @@
         "key": "ctrl+h",
         "command": "workbench.action.quickInputBack",
         "when": "inQuickInput && !whichkeyVisible"
-      },
-      {
-        "key": "ctrl+j",
-        "command": "doom.recentProjectsMoveDown",
-        "when": "doom.recentProjectsVisible"
-      },
-      {
-        "key": "ctrl+k",
-        "command": "doom.recentProjectsMoveUp",
-        "when": "doom.recentProjectsVisible"
-      },
-      {
-        "key": "ctrl+j",
-        "command": "doom.projectFileMoveDown",
-        "when": "doom.projectFileVisible"
-      },
-      {
-        "key": "ctrl+k",
-        "command": "doom.projectFileMoveUp",
-        "when": "doom.projectFileVisible"
-      },
-      {
-        "key": "ctrl+j",
-        "command": "doom.findFileMoveDown",
-        "when": "doom.findFileVisible"
-      },
-      {
-        "key": "ctrl+k",
-        "command": "doom.findFileMoveUp",
-        "when": "doom.findFileVisible"
       },
       {
         "key": "ctrl+j",

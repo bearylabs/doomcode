@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { createNonce, substringMatch } from '../panel/helpers';
+import { DoomWebviewController } from '../panel/controller';
+import { createNonce, createPanelHtml, substringMatch } from '../panel/helpers';
 
 const MAX_RESULTS = 200;
 
@@ -49,12 +50,6 @@ interface SearchState {
 	title: string;
 }
 
-interface SearchMessage {
-	index?: number;
-	query?: string;
-	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
-}
-
 interface SearchOptions {
 	notifyWhenMissing?: boolean;
 	resetQuery?: boolean;
@@ -62,25 +57,129 @@ interface SearchOptions {
 
 type SearchMode = 'editor' | 'workspace';
 
-export class DoomSearchPanel {
+/** Line-number + content layout, plus the workspace file-group header rows. */
+const SEARCH_LAYOUT_CSS = `		.item {
+			display: grid;
+			grid-template-columns: minmax(4ch, auto) 1fr;
+			align-items: baseline;
+			gap: 12px;
+			flex: 0 0 auto;
+			padding: 0 10px;
+			border: none;
+			background: transparent;
+			color: inherit;
+			text-align: left;
+			font: inherit;
+			cursor: pointer;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.item.active {
+			color: inherit;
+		}
+
+		.group {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 4px 8px 0;
+			color: var(--muted);
+			font-style: italic;
+		}
+
+		.group::before {
+			content: '';
+			flex: 0 0 auto;
+			width: 5ch;
+			border-top: 1px solid var(--border);
+			opacity: 0.8;
+		}
+
+		.group::after {
+			content: '';
+			flex: 1 1 auto;
+			border-top: 1px solid var(--border);
+			opacity: 0.8;
+		}
+
+		.group-label {
+			white-space: nowrap;
+			color: color-mix(in srgb, var(--accent) 65%, var(--text));
+		}
+
+		.line {
+			color: var(--muted);
+			font-variant-numeric: tabular-nums;
+			justify-self: end;
+			text-align: right;
+			opacity: 0.95;
+		}
+
+		.content {
+			display: block;
+			min-width: 0;
+			padding-left: 5px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.item.active .content {
+			background: var(--selected);
+			color: var(--selected-text);
+			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+			outline-offset: -1px;
+		}`;
+
+/** Builds a workspace file-group header or a line-number + highlighted-content row. */
+const SEARCH_RENDER_ITEM = `				if (item.type === 'header') {
+					const header = document.createElement('div');
+					header.className = 'group';
+
+					const label = document.createElement('span');
+					label.className = 'group-label';
+					label.textContent = item.fileLabel;
+					header.append(label);
+					results.appendChild(header);
+					return;
+				}
+
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = item.index === state.activeIndex ? 'item active' : 'item';
+				button.dataset.index = String(item.index);
+
+				const line = document.createElement('span');
+				line.className = 'line';
+				line.textContent = item.lineLabel;
+
+				const content = document.createElement('span');
+				content.className = 'content';
+				appendHighlightedText(content, item.text, item.matches);
+
+				button.append(line, content);
+				button.addEventListener('click', () => {
+					vscode.postMessage({ type: 'activate', index: item.index });
+				});
+				results.appendChild(button);`;
+
+export class DoomSearchPanel extends DoomWebviewController {
 	static readonly visibleContextKey = 'doom.fuzzySearchVisible';
+
+	protected readonly visibleContextKey = DoomSearchPanel.visibleContextKey;
 
 	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
 	private static readonly workspaceFileSizeLimit = 1024 * 1024;
 
 	private accepted = false;
-	private activeIndex = 0;
 	private currentItems: SearchItem[] = [];
 	private filteredItems: SearchMatch[] = [];
 	private loadSequence = 0;
 	private loading = false;
 	private mode: SearchMode = 'editor';
-	private query = '';
-	private ready = false;
 	private startingSelection: vscode.Selection | undefined;
 	private targetEditor: vscode.TextEditor | undefined;
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
 	private workspaceCache: SearchItem[] | undefined;
 	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
 
@@ -101,44 +200,12 @@ export class DoomSearchPanel {
 		await this.loadWorkspaceItems();
 	}
 
-	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
-	attachToView(webviewView: vscode.WebviewView): void {
-		this.resolveWebviewView(webviewView);
-	}
-
-	/** Tears down listeners, restores the original editor selection if search was cancelled, and clears the view ref. */
-	detachFromView(): void {
-		this.restoreSelectionIfNeeded();
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
-		this.ready = false;
-	}
-
-	/** Moves the active result by `delta` rows and live-previews the line in editor mode. No-op at list boundaries. */
-	moveSelection(delta: number): void {
-		if (!this.view?.visible || this.filteredItems.length === 0) {
-			return;
-		}
-
-		const nextIndex = Math.min(
-			Math.max(this.activeIndex + delta, 0),
-			this.filteredItems.length - 1
-		);
-
-		if (nextIndex === this.activeIndex) {
-			return;
-		}
-
-		this.activeIndex = nextIndex;
-		if (this.mode === 'editor') {
-			this.revealEditorLine(this.filteredItems[nextIndex].item.line);
-		}
-		this.render();
+	protected get itemCount(): number {
+		return this.filteredItems.length;
 	}
 
 	/** Confirms the active result: opens the file/line and closes the panel. Sets `accepted` to suppress selection restore. */
-	async activateSelection(): Promise<void> {
+	protected async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -157,47 +224,33 @@ export class DoomSearchPanel {
 		await this.close();
 	}
 
-	/**
-	 * Bootstraps a WebviewView: injects HTML, wires dispose/visibility/message listeners.
-	 * Re-entrant — cleans up previous listeners first, so safe to call on view recycle.
-	 */
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		this.updateViewMetadata();
+	/** Live-previews the active line in editor mode after a query/move render. Skips the initial reveal. */
+	protected async afterRender(initial: boolean): Promise<void> {
+		if (initial || this.mode !== 'editor' || this.filteredItems.length === 0) {
+			return;
+		}
 
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.restoreSelectionIfNeeded();
-					this.view = undefined;
-					this.ready = false;
-					void this.updateVisibilityContext(false);
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-				if (webviewView.visible) {
-					void this.refreshVisibleSearch();
-					return;
-				}
-
-				this.restoreSelectionIfNeeded();
-			}),
-			webviewView.webview.onDidReceiveMessage((message: SearchMessage) => {
-				void this.handleMessage(message);
-			})
-		);
+		this.revealEditorLine(this.filteredItems[this.activeIndex].item.line);
 	}
 
-	/** Syncs the `doom.fuzzySearchVisible` context key so keybindings can scope to panel visibility. */
-	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand('setContext', DoomSearchPanel.visibleContextKey, isVisible);
+	/** Restores the pre-search selection when the panel is detached. */
+	protected onDetach(): void {
+		this.restoreSelectionIfNeeded();
+	}
+
+	/** Restores the pre-search selection when the underlying view is disposed. */
+	protected onDispose(): void {
+		this.restoreSelectionIfNeeded();
+	}
+
+	/** Re-initializes on reveal, or restores the pre-search selection on hide. */
+	protected onVisibilityChanged(visible: boolean): void {
+		if (visible) {
+			void this.refreshVisibleSearch();
+			return;
+		}
+
+		this.restoreSelectionIfNeeded();
 	}
 
 	/** Re-initializes and re-renders when the panel becomes visible again — handles both modes. */
@@ -221,7 +274,7 @@ export class DoomSearchPanel {
 	}
 
 	/** Stamps mode-appropriate title and description onto the sidebar pane header. */
-	private updateViewMetadata(): void {
+	protected updateViewMetadata(): void {
 		if (!this.view) {
 			return;
 		}
@@ -423,7 +476,7 @@ export class DoomSearchPanel {
 	 * Editor mode: shows first MAX_RESULTS lines unranked for queries < 2 chars, then sorts by line number.
 	 * Workspace mode: shows nothing until 2+ chars are typed, then groups by file via `groupWorkspaceMatches`.
 	 */
-	private filterItems(): void {
+	protected filterItems(): void {
 		this.activeIndex = 0;
 		const query = this.query.trim().toLowerCase();
 
@@ -493,53 +546,6 @@ export class DoomSearchPanel {
 			.flatMap((group) => group.matches.sort((left, right) => left.item.line - right.item.line));
 	}
 
-	/** Dispatches webview messages. `query` also triggers a live editor preview of the first result. */
-	private async handleMessage(message: SearchMessage): Promise<void> {
-		switch (message.type) {
-		case 'ready':
-			this.ready = true;
-			this.render();
-			return;
-		case 'query':
-			this.query = message.query ?? '';
-			this.filterItems();
-			this.render();
-			if (this.mode === 'editor' && this.filteredItems.length > 0) {
-				this.revealEditorLine(this.filteredItems[0].item.line);
-			}
-			return;
-		case 'move': {
-			if (this.filteredItems.length === 0 || message.index === undefined) {
-				return;
-			}
-
-			const item = this.filteredItems[message.index];
-			if (!item) {
-				return;
-			}
-
-			this.activeIndex = message.index;
-			if (this.mode === 'editor') {
-				this.revealEditorLine(item.item.line);
-			}
-			this.render();
-			return;
-		}
-		case 'activate': {
-			if (message.index !== undefined) {
-				this.activeIndex = message.index;
-			}
-			await this.activateSelection();
-			return;
-		}
-		case 'close':
-			await this.close();
-			return;
-		default:
-			return;
-		}
-	}
-
 	/** Scrolls the target editor to `line` and moves the cursor there for live preview during navigation. */
 	private revealEditorLine(line: number): void {
 		const editor = this.targetEditor;
@@ -570,18 +576,14 @@ export class DoomSearchPanel {
 		editor.selection = new vscode.Selection(position, position);
 	}
 
-	/** Builds the full SearchState and pushes it to the webview. Guards against rendering before 'ready'. */
-	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
-			return;
-		}
-
+	/** Builds the full SearchState. Clamps `activeIndex` into range first. */
+	protected buildRenderState(): SearchState {
 		const activeIndex = this.filteredItems.length === 0
 			? 0
 			: Math.min(this.activeIndex, this.filteredItems.length - 1);
 		this.activeIndex = activeIndex;
 
-		const state: SearchState = {
+		return {
 			activeIndex,
 			emptyText: this.getEmptyText(),
 			items: this.toRenderItems(),
@@ -596,11 +598,6 @@ export class DoomSearchPanel {
 			statusWidthCh: this.getStatusWidthCh(),
 			title: this.mode === 'workspace' ? 'Project Search' : 'Fuzzy Search',
 		};
-
-		void this.view.webview.postMessage({
-			type: 'render',
-			state,
-		});
 	}
 
 	/** Converts filtered matches to the render model. In workspace mode inserts file header rows on group boundaries. */
@@ -698,387 +695,13 @@ export class DoomSearchPanel {
 		this.targetEditor.selection = this.startingSelection;
 	}
 
-	/** Collapses the bottom panel — keeps the webview alive so state survives the next open. */
-	private async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
-	}
-
-	/**
-	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
-	 * The embedded script owns all DOM interaction and communicates exclusively via postMessage.
-	 */
-	private getHtml(webview: vscode.Webview): string {
-		const nonce = createNonce();
-		const csp = [
-			"default-src 'none'",
-			`style-src ${webview.cspSource} 'unsafe-inline'`,
-			`script-src 'nonce-${nonce}'`,
-		].join('; ');
-
-		return `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta http-equiv="Content-Security-Policy" content="${csp}">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Fuzzy Search</title>
-	<style>
-		html {
-			height: 100%;
-		}
-
-		:root {
-			color-scheme: dark;
-			--bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-			--chrome: color-mix(in srgb, var(--bg) 92%, white 8%);
-			--border: var(--vscode-panel-border, color-mix(in srgb, var(--bg) 82%, white 18%));
-			--input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground));
-			--muted: var(--vscode-editorLineNumber-foreground, var(--vscode-descriptionForeground));
-			--text: var(--vscode-editor-foreground);
-			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
-			--selected-text: var(--vscode-editor-foreground);
-			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
-			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
-			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
-			--font-family: var(--vscode-editor-font-family, monospace);
-			--font-size: var(--vscode-editor-font-size, 13px);
-			--line-height: var(--vscode-editor-line-height, 20px);
-		}
-
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			margin: 0;
-			height: 100%;
-			background: var(--bg);
-			color: var(--text);
-			font-family: var(--font-family);
-			font-size: var(--font-size);
-			line-height: var(--line-height);
-			overflow: hidden;
-			display: flex;
-		}
-
-		.shell {
-			display: flex;
-			flex-direction: column;
-			flex: 1 1 auto;
-			min-height: 0;
-			overflow: hidden;
-		}
-
-		.promptbar {
-			display: grid;
-			grid-template-columns: auto auto 1fr;
-			align-items: center;
-			gap: 8px;
-			min-height: calc(var(--line-height) + 8px);
-			padding: 2px 8px;
-			background: var(--bg);
-		}
-
-		.status,
-		.prompt {
-			color: var(--muted);
-			white-space: nowrap;
-		}
-
-		.status {
-			font-variant-numeric: tabular-nums;
-			text-align: right;
-		}
-
-		.input {
-			width: 100%;
-			padding: 0;
-			border: none;
-			outline: none;
-			background: transparent;
-			color: var(--input-fg);
-			font: inherit;
-			caret-color: var(--accent);
-		}
-
-		.input::placeholder {
-			color: color-mix(in srgb, var(--muted) 72%, transparent);
-		}
-
-		.results {
-			flex: 1 1 0;
-			min-height: 0;
-			overflow: auto;
-			display: flex;
-			flex-direction: column;
-			padding: 2px 0 0;
-		}
-
-		.item {
-			display: grid;
-			grid-template-columns: minmax(4ch, auto) 1fr;
-			align-items: baseline;
-			gap: 12px;
-			flex: 0 0 auto;
-			padding: 0 10px;
-			border: none;
-			background: transparent;
-			color: inherit;
-			text-align: left;
-			font: inherit;
-			cursor: pointer;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-
-		.item.active {
-			color: inherit;
-		}
-
-		.group {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			padding: 4px 8px 0;
-			color: var(--muted);
-			font-style: italic;
-		}
-
-		.group::before {
-			content: '';
-			flex: 0 0 auto;
-			width: 5ch;
-			border-top: 1px solid var(--border);
-			opacity: 0.8;
-		}
-
-		.group::after {
-			content: '';
-			flex: 1 1 auto;
-			border-top: 1px solid var(--border);
-			opacity: 0.8;
-		}
-
-		.group-label {
-			white-space: nowrap;
-			color: color-mix(in srgb, var(--accent) 65%, var(--text));
-		}
-
-		.line {
-			color: var(--muted);
-			font-variant-numeric: tabular-nums;
-			justify-self: end;
-			text-align: right;
-			opacity: 0.95;
-		}
-
-		.content {
-			display: block;
-			min-width: 0;
-			padding-left: 5px;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-
-		.item.active .content {
-			background: var(--selected);
-			color: var(--selected-text);
-			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-			outline-offset: -1px;
-		}
-
-		.match {
-			background: var(--match-bg);
-			color: var(--match-fg);
-		}
-
-		.empty {
-			color: var(--muted);
-			white-space: nowrap;
-			padding: 0 10px;
-		}
-	</style>
-</head>
-<body>
-	<div class="shell">
-		<div class="promptbar">
-			<div class="status" id="status">0/0</div>
-			<label class="prompt" id="prompt" for="query">Go to line:</label>
-			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to search current file" />
-		</div>
-		<div class="results" id="results"></div>
-		<div class="empty" id="empty" hidden>No matches.</div>
-	</div>
-	<script nonce="${nonce}">
-		const vscode = acquireVsCodeApi();
-		const empty = document.getElementById('empty');
-		const prompt = document.getElementById('prompt');
-		const query = document.getElementById('query');
-		const results = document.getElementById('results');
-		const status = document.getElementById('status');
-		let items = [];
-
-		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
-		function appendHighlightedText(container, text, matches) {
-			if (!matches || matches.length === 0) {
-				container.textContent = text;
-				return;
-			}
-
-			let cursor = 0;
-			let matchCursor = 0;
-			while (cursor < text.length) {
-				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
-					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
-					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
-					cursor = nextMatch;
-					continue;
-				}
-
-				let end = cursor;
-				while (matchCursor < matches.length && matches[matchCursor] === end) {
-					end++;
-					matchCursor++;
-				}
-
-				const mark = document.createElement('span');
-				mark.className = 'match';
-				mark.textContent = text.slice(cursor, end);
-				container.append(mark);
-				cursor = end;
-			}
-		}
-
-		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump. Inserts header divs for workspace file groups.
-		function render(state) {
-			items = state.items;
-			document.title = state.title;
-			prompt.textContent = state.promptLabel;
-			query.placeholder = state.placeholder;
-			empty.textContent = state.emptyText;
-
-			if (document.activeElement !== query) {
-				query.value = state.query;
-			}
-
-			results.innerHTML = '';
-			empty.hidden = items.length > 0;
-			status.style.width = state.statusWidthCh + 'ch';
-			status.textContent = state.statusLabel;
-
-			items.forEach((item) => {
-				if (item.type === 'header') {
-					const header = document.createElement('div');
-					header.className = 'group';
-
-					const label = document.createElement('span');
-					label.className = 'group-label';
-					label.textContent = item.fileLabel;
-					header.append(label);
-					results.appendChild(header);
-					return;
-				}
-
-				const button = document.createElement('button');
-				button.type = 'button';
-				button.className = item.index === state.activeIndex ? 'item active' : 'item';
-				button.dataset.index = String(item.index);
-
-				const line = document.createElement('span');
-				line.className = 'line';
-				line.textContent = item.lineLabel;
-
-				const content = document.createElement('span');
-				content.className = 'content';
-				appendHighlightedText(content, item.text, item.matches);
-
-				button.append(line, content);
-				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index: item.index });
-				});
-				results.appendChild(button);
-			});
-
-			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
-			if (activeButton instanceof HTMLElement) {
-				activeButton.scrollIntoView({ block: 'nearest' });
-			}
-
-			query.focus();
-			query.setSelectionRange(query.value.length, query.value.length);
-		}
-
-		query.addEventListener('input', () => {
-			vscode.postMessage({ type: 'query', query: query.value });
+	protected getHtml(webview: vscode.Webview): string {
+		return createPanelHtml({
+			cspSource: webview.cspSource,
+			nonce: createNonce(),
+			title: 'Fuzzy Search',
+			layoutCss: SEARCH_LAYOUT_CSS,
+			renderItem: SEARCH_RENDER_ITEM,
 		});
-
-		window.addEventListener('message', (event) => {
-			if (event.data.type === 'render') {
-				render(event.data.state);
-			}
-		});
-
-		window.addEventListener('keydown', (event) => {
-			if (event.metaKey || event.altKey) {
-				return;
-			}
-
-			if (event.ctrlKey && !event.metaKey && !event.altKey) {
-				const key = event.key.toLowerCase();
-				if (key !== 'j' && key !== 'k') {
-					return;
-				}
-			}
-
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				vscode.postMessage({ type: 'close' });
-				return;
-			}
-
-			const isMoveDown = event.key === 'ArrowDown' || (event.ctrlKey && event.key.toLowerCase() === 'j');
-			const isMoveUp = event.key === 'ArrowUp' || (event.ctrlKey && event.key.toLowerCase() === 'k');
-
-			if (isMoveDown) {
-				const resultItems = items.filter((item) => item.type === 'result');
-				if (resultItems.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, resultItems.length - 1) });
-				return;
-			}
-
-			if (isMoveUp) {
-				const resultItems = items.filter((item) => item.type === 'result');
-				if (resultItems.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
-				return;
-			}
-
-			if (event.key === 'Enter') {
-				const resultItems = items.filter((item) => item.type === 'result');
-				if (resultItems.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
-			}
-		});
-
-		vscode.postMessage({ type: 'ready' });
-	</script>
-</body>
-</html>`;
 	}
 }
