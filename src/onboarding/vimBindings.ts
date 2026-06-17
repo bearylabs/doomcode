@@ -5,6 +5,7 @@ const DOOM_VIM_BINDING_MODES = [
 
 const DOOM_VIM_BINDING_ARRAY_KINDS = [
 	'KeyBindingsNonRecursive',
+	'KeyBindings',
 ] as const;
 
 type VimBindingEntry = {

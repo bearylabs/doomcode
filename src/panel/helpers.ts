@@ -63,6 +63,11 @@ export function formatPermissions(mode: number): string {
 		+ (mode & 0o001 ? 'x' : '-');
 }
 
+/** Guards against null — `typeof null === 'object'` would otherwise pass. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object';
+}
+
 export interface FuzzyMatch {
 	indices: number[];
 	score: number;

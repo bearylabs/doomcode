@@ -5,6 +5,7 @@ import {
     getConfiguredWhichKeyBindings,
     type WhichKeyBinding,
 } from './bindings';
+import { createNonce, isRecord } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Which-key menu models
@@ -148,11 +149,6 @@ export function applyTrackedUiContextCommand(
 
 const BLUR_ENABLE_DELAY_MS = 200;
 const SUPPRESS_WINDOW_MS = 150;
-
-/** Narrows `unknown` to an object for safe property access on untyped packageJSON entries. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object';
-}
 
 /** Maps literal chars to symbolic names matching the webview keydown handler. */
 function normalizeBindingKey(value: string): string {
@@ -563,10 +559,6 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 	}
 }
 
-/** Per-load random nonce for the Content-Security-Policy script-src directive. */
-function getNonce(): string {
-	return crypto.randomUUID();
-}
 
 // ---------------------------------------------------------------------------
 // Which-key panel controller
@@ -1030,7 +1022,7 @@ export class DoomWhichKeyMenu {
 	 * The blur listener is delayed 200ms post-render so VS Code can settle focus before the guard activates.
 	 */
 	private getHtml(webview: vscode.Webview): string {
-		const nonce = getNonce();
+		const nonce = createNonce();
 		const csp = [
 			"default-src 'none'",
 			`style-src ${webview.cspSource} 'unsafe-inline'`,

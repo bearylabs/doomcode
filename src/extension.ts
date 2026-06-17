@@ -20,6 +20,7 @@ import {
 	type VimBindingConflict,
 	type VimBindingConflictDecision,
 } from './onboarding/install';
+import { DOOM_MANAGED_VIM_BINDING_SETTINGS } from './onboarding/vimBindings';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
 import { DoomSearchPanel } from './search/search';
@@ -481,12 +482,7 @@ function containsStaleCommand(value: unknown): boolean {
  */
 async function cleanStaleSettings(): Promise<string[]> {
 	const config = vscode.workspace.getConfiguration();
-	const keysToCheck = [
-		"vim.normalModeKeyBindingsNonRecursive",
-		"vim.visualModeKeyBindingsNonRecursive",
-		"vim.normalModeKeyBindings",
-		"vim.visualModeKeyBindings",
-	];
+	const keysToCheck = DOOM_MANAGED_VIM_BINDING_SETTINGS;
 
 	const cleaned: string[] = [];
 
@@ -703,12 +699,7 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 	const conflicts = detectConflictingExtensions();
 
 	const config = vscode.workspace.getConfiguration();
-	const keysToCheck = [
-		"vim.normalModeKeyBindingsNonRecursive",
-		"vim.visualModeKeyBindingsNonRecursive",
-		"vim.normalModeKeyBindings",
-		"vim.visualModeKeyBindings",
-	];
+	const keysToCheck = DOOM_MANAGED_VIM_BINDING_SETTINGS;
 
 	const hasStaleSettings = keysToCheck.some((key) => {
 		const inspected = config.inspect(key);
