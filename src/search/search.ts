@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 import { DoomWebviewController } from '../panel/controller';
 import { createNonce, createPanelHtml, substringMatch } from '../panel/helpers';
-import { WorkspaceFileIndex } from './workspaceFileIndex';
+
+interface WorkspaceTextSearchResult {
+	rel: string;
+	line: number;
+	text: string;
+}
 
 const MAX_RESULTS = 200;
 
@@ -171,22 +176,20 @@ export class DoomSearchPanel extends DoomWebviewController {
 	protected readonly visibleContextKey = DoomSearchPanel.visibleContextKey;
 
 	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
-	private static readonly workspaceFileSizeLimit = 1024 * 1024;
 
 	private accepted = false;
 	private currentItems: SearchItem[] = [];
 	private filteredItems: SearchMatch[] = [];
-	private loadSequence = 0;
 	private loading = false;
 	private mode: SearchMode = 'editor';
+	private resultsCapped = false;
+	private searchCanceller: vscode.CancellationTokenSource | undefined;
+	private searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 	private startingSelection: vscode.Selection | undefined;
 	private targetEditor: vscode.TextEditor | undefined;
-	private workspaceCache: SearchItem[] | undefined;
 
-	constructor(private readonly fileIndex: WorkspaceFileIndex) {
+	constructor() {
 		super();
-		// Drop the cached workspace line index whenever the workspace tree changes.
-		this.fileIndex.onCacheInvalidated(() => { this.workspaceCache = undefined; });
 	}
 
 	/** Switches to editor mode and seeds search state from the active editor. Returns false if no editor is open. */
@@ -199,11 +202,6 @@ export class DoomSearchPanel extends DoomWebviewController {
 	prepareShowWorkspace(): boolean {
 		this.mode = 'workspace';
 		return this.initializeWorkspaceSearch({ notifyWhenMissing: true, resetQuery: true });
-	}
-
-	/** Kicks off workspace file loading in the background after the panel is shown. */
-	async loadPreparedWorkspaceItems(): Promise<void> {
-		await this.loadWorkspaceItems();
 	}
 
 	protected get itemCount(): number {
@@ -260,7 +258,7 @@ export class DoomSearchPanel extends DoomWebviewController {
 	}
 
 	/** Re-initializes and re-renders when the panel becomes visible again — handles both modes. */
-	private async refreshVisibleSearch(): Promise<void> {
+	private refreshVisibleSearch(): void {
 		this.updateViewMetadata();
 		if (this.mode === 'workspace') {
 			if (!this.initializeWorkspaceSearch({ resetQuery: true })) {
@@ -268,7 +266,6 @@ export class DoomSearchPanel extends DoomWebviewController {
 			}
 
 			this.render();
-			await this.loadWorkspaceItems();
 			return;
 		}
 
@@ -333,10 +330,17 @@ export class DoomSearchPanel extends DoomWebviewController {
 	}
 
 	/**
-	 * Resets state for a fresh workspace search. Items are empty until `loadWorkspaceItems` resolves.
+	 * Resets state for a fresh workspace search. Items are empty until a query triggers `runWorkspaceSearch`.
 	 * Returns false (and optionally notifies) when no workspace folder exists.
 	 */
 	private initializeWorkspaceSearch(options: SearchOptions = {}): boolean {
+		this.searchCanceller?.cancel();
+		this.searchCanceller = undefined;
+		if (this.searchDebounceTimer !== undefined) {
+			clearTimeout(this.searchDebounceTimer);
+			this.searchDebounceTimer = undefined;
+		}
+
 		if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
 			this.accepted = false;
 			this.activeIndex = 0;
@@ -358,13 +362,90 @@ export class DoomSearchPanel extends DoomWebviewController {
 		this.activeIndex = 0;
 		this.currentItems = [];
 		this.filteredItems = [];
-		this.loading = true;
+		this.loading = false;
 		this.startingSelection = undefined;
 		this.targetEditor = undefined;
 		if (options.resetQuery) {
 			this.query = '';
 		}
 		return true;
+	}
+
+	/** Overrides base query handler to debounce and delegate to `findTextInFiles` in workspace mode. */
+	protected async onQuery(query: string): Promise<void> {
+		this.query = query;
+		if (this.mode !== 'workspace') {
+			this.filterItems();
+			this.render();
+			await this.afterRender(false);
+			return;
+		}
+
+		this.searchCanceller?.cancel();
+		this.searchCanceller = undefined;
+		if (this.searchDebounceTimer !== undefined) {
+			clearTimeout(this.searchDebounceTimer);
+			this.searchDebounceTimer = undefined;
+		}
+
+		if (query.trim().length < 2) {
+			this.loading = false;
+			this.currentItems = [];
+			this.filterItems();
+			this.render();
+			return;
+		}
+
+		this.loading = true;
+		this.currentItems = [];
+		this.render();
+
+		this.searchDebounceTimer = setTimeout(() => {
+			this.searchDebounceTimer = undefined;
+			void this.runWorkspaceSearch(query);
+		}, 200);
+	}
+
+	/** Runs a text search via the `doom-workspace` sidecar, discards result if superseded. */
+	private async runWorkspaceSearch(query: string): Promise<void> {
+		const canceller = new vscode.CancellationTokenSource();
+		this.searchCanceller = canceller;
+
+		const rootUri = vscode.workspace.workspaceFolders?.[0]?.uri;
+		let rawResults: WorkspaceTextSearchResult[] = [];
+
+		if (rootUri) {
+			try {
+				rawResults = await vscode.commands.executeCommand<WorkspaceTextSearchResult[]>(
+					'doom-workspace.searchText',
+					rootUri.toString(),
+					query,
+					MAX_RESULTS,
+				) ?? [];
+			} catch {
+				// doom-workspace not installed or search failed — show empty results.
+			}
+		}
+
+		if (canceller.token.isCancellationRequested) {
+			canceller.dispose();
+			return;
+		}
+
+		canceller.dispose();
+		this.searchCanceller = undefined;
+		this.resultsCapped = rawResults.length >= MAX_RESULTS;
+		this.loading = false;
+		this.currentItems = rawResults.map(r => ({
+			uri: vscode.Uri.joinPath(rootUri!, r.rel),
+			fileLabel: r.rel,
+			line: r.line,
+			lineLabel: String(r.line + 1),
+			text: r.text,
+			searchText: r.text.toLowerCase(),
+		}));
+		this.filterItems();
+		this.render();
 	}
 
 	/** Splits a document into trimmed, non-empty line items for editor-mode search. */
@@ -377,94 +458,6 @@ export class DoomSearchPanel extends DoomWebviewController {
 				lineLabel: String(index + 1),
 				searchText: text.trim().toLowerCase(),
 				text: text.trim(),
-			}))
-			.filter((item) => item.text.length > 0);
-	}
-
-	private static readonly loadBatchSize = 20;
-
-	/**
-	 * Finds all workspace files, loads them in batches, then caches the result.
-	 * Uses `loadSequence` to abandon stale loads when a new search is triggered mid-flight.
-	 * Cache is invalidated by a filesystem watcher on any create/delete/change.
-	 */
-	private async loadWorkspaceItems(): Promise<void> {
-		if (this.workspaceCache) {
-			this.loading = false;
-			this.currentItems = this.workspaceCache;
-			this.filterItems();
-			this.render();
-			return;
-		}
-
-		const loadId = ++this.loadSequence;
-		this.loading = true;
-		this.render();
-
-		const files = await vscode.workspace.findFiles('**/*', DoomSearchPanel.workspaceExcludeGlob);
-		const items: SearchItem[] = [];
-
-		for (let i = 0; i < files.length; i += DoomSearchPanel.loadBatchSize) {
-			if (loadId !== this.loadSequence || this.mode !== 'workspace') {
-				return;
-			}
-
-			const batch = files.slice(i, i + DoomSearchPanel.loadBatchSize);
-			const results = await Promise.allSettled(batch.map((uri) => this.loadFileItems(uri)));
-
-			for (const result of results) {
-				if (result.status === 'fulfilled') {
-					items.push(...result.value);
-				}
-			}
-		}
-
-		if (loadId !== this.loadSequence || this.mode !== 'workspace') {
-			return;
-		}
-
-		this.workspaceCache = items;
-		this.loading = false;
-		this.currentItems = items;
-		this.filterItems();
-		this.render();
-	}
-
-	/** Loads a single file's lines, silently skipping files that are oversized, non-file, or unreadable. */
-	private async loadFileItems(uri: vscode.Uri): Promise<SearchItem[]> {
-		let stat: vscode.FileStat | undefined;
-		try {
-			stat = await vscode.workspace.fs.stat(uri);
-		} catch (err) {
-			console.warn('[DoomFuzzySearch] stat failed:', err);
-			return [];
-		}
-		if (!stat || stat.size > DoomSearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
-			return [];
-		}
-
-		try {
-			const document = await vscode.workspace.openTextDocument(uri);
-			return this.buildWorkspaceItems(document);
-		} catch (err) {
-			console.warn('[DoomFuzzySearch] openTextDocument failed:', err);
-			return [];
-		}
-	}
-
-	/** Same as `buildDocumentItems` but attaches `fileLabel` and `uri` for workspace-mode navigation. */
-	private buildWorkspaceItems(document: vscode.TextDocument): SearchItem[] {
-		const lines = document.getText().split(/\r?\n/);
-		const fileLabel = vscode.workspace.asRelativePath(document.uri, false);
-
-		return lines
-			.map((text, index) => ({
-				fileLabel,
-				line: index,
-				lineLabel: String(index + 1),
-				searchText: text.trim().toLowerCase(),
-				text: text.trim(),
-				uri: document.uri,
 			}))
 			.filter((item) => item.text.length > 0);
 	}

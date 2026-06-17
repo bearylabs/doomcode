@@ -436,7 +436,7 @@ export function activate(context: vscode.ExtensionContext) {
 	];
 	const workspaceFileIndex = new WorkspaceFileIndex();
 	context.subscriptions.push(workspaceFileIndex);
-	const searchPanel = new DoomSearchPanel(workspaceFileIndex);
+	const searchPanel = new DoomSearchPanel();
 
 	/** Opens a project folder in the current window and suppresses the dashboard on the next activation. */
 	const openProjectAndSkipDashboard = async (projectUri: vscode.Uri): Promise<void> => {

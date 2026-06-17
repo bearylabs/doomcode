@@ -164,14 +164,13 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.showMode('search', this.searchPanel);
 	}
 
-	/** Opens workspace search, then kicks off file indexing after the panel is visible. No-op if no folder is open. */
+	/** Opens workspace search. No-op if no folder is open. */
 	async showWorkspaceSearch(): Promise<void> {
 		if (!this.searchPanel.prepareShowWorkspace()) {
 			return;
 		}
 
 		await this.showMode('search', this.searchPanel);
-		await this.searchPanel.loadPreparedWorkspaceItems();
 	}
 
 	/** Opens the buffer/open-editors picker. */
