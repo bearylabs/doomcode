@@ -1245,7 +1245,7 @@ export class DoomWhichKeyMenu {
 			updateGridRowCount();
 
 			if (Array.isArray(state.suppressedKeys) && state.suppressedKeys.length > 0) {
-				suppressUntil = Date.now() + SUPPRESS_WINDOW_MS;
+				suppressUntil = Date.now() + ${SUPPRESS_WINDOW_MS};
 				state.suppressedKeys.forEach((key) => {
 					suppressedKeys.set(key, (suppressedKeys.get(key) || 0) + 1);
 				});
@@ -1283,7 +1283,7 @@ export class DoomWhichKeyMenu {
 		window.addEventListener('message', (event) => {
 			if (event.data.type === 'render') {
 				clearTimeout(blurTimer);
-				blurTimer = setTimeout(() => { blurEnabled = true; }, BLUR_ENABLE_DELAY_MS);
+				blurTimer = setTimeout(() => { blurEnabled = true; }, ${BLUR_ENABLE_DELAY_MS});
 				render(event.data.state);
 			} else if (event.data.type === 'hide') {
 				clearTimeout(blurTimer);
