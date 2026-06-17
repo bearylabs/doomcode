@@ -255,13 +255,12 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.syncVisibilityContexts(true);
 	}
 
-	/** Swaps the active controller, detaching the previous one first. No-op if same controller is reused. */
+	/**
+	 * Swaps the active controller, detaching the previous one first. Detaches even when the same
+	 * controller is reused so its `ready` flag is reset — `showMode`'s subsequent re-attach replaces
+	 * the webview HTML, and without the reset `render()` could fire before the new JS loads.
+	 */
 	private setActiveController(mode: SharedPanelMode, controller: SharedPanelController): void {
-		if (this.activeController === controller) {
-			this.activeMode = mode;
-			return;
-		}
-
 		this.activeController?.detachFromView();
 		this.activeController = controller;
 		this.activeMode = mode;

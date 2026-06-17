@@ -993,6 +993,13 @@ export class DoomWhichKeyMenu {
 		this.hostPendingKeys = [];
 		void this.view?.webview.postMessage({ type: 'hide' });
 		await this.updateVisibilityContext(false);
+		// Fast path: the chord resolved before the panel was revealed, so the doom panel
+		// was never shown. Skip closePanel/focus-restore — there is nothing to close and the
+		// deferred focus would race the subsequent panel.focus of whatever command runs next.
+		if (!this.view?.visible) {
+			return;
+		}
+
 		if (this.trackedContext.activePanel === 'terminal') {
 			await vscode.commands.executeCommand('workbench.action.terminal.focus');
 			if (!this.currentShowContext.terminalFocus) {
