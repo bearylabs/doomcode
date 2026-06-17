@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
 import { DoomFindFilePanel } from '../search/findFile';
-import { DoomFuzzySearchPanel } from '../search/fuzzy';
+import { DoomSearchPanel } from '../search/search';
 import { DoomProjectFilePanel } from '../search/projectFile';
 import { DoomRecentProjectsPanel } from '../search/recentProjects';
 import { DoomWhichKeyBindingsPanel } from '../whichkey/bindingsPanel';
@@ -33,7 +33,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 	constructor(
 		private readonly whichKeyMenu: DoomWhichKeyMenu,
-		private readonly fuzzySearchPanel: DoomFuzzySearchPanel,
+		private readonly searchPanel: DoomSearchPanel,
 		private readonly openEditorsPanel: DoomOpenEditorsPanel,
 		private readonly whichKeyBindingsPanel: DoomWhichKeyBindingsPanel,
 		private readonly projectFilePanel: DoomProjectFilePanel,
@@ -157,21 +157,21 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 	/** Opens fuzzy search for the active editor. No-op if no editor is open. */
 	async showFuzzySearch(): Promise<void> {
-		if (!this.fuzzySearchPanel.prepareShow()) {
+		if (!this.searchPanel.prepareShow()) {
 			return;
 		}
 
-		await this.showMode('search', this.fuzzySearchPanel);
+		await this.showMode('search', this.searchPanel);
 	}
 
 	/** Opens workspace search, then kicks off file indexing after the panel is visible. No-op if no folder is open. */
 	async showWorkspaceSearch(): Promise<void> {
-		if (!this.fuzzySearchPanel.prepareShowWorkspace()) {
+		if (!this.searchPanel.prepareShowWorkspace()) {
 			return;
 		}
 
-		await this.showMode('search', this.fuzzySearchPanel);
-		await this.fuzzySearchPanel.loadPreparedWorkspaceItems();
+		await this.showMode('search', this.searchPanel);
+		await this.searchPanel.loadPreparedWorkspaceItems();
 	}
 
 	/** Opens the buffer/open-editors picker. */
@@ -277,7 +277,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		);
 		await vscode.commands.executeCommand(
 			'setContext',
-			DoomFuzzySearchPanel.visibleContextKey,
+			DoomSearchPanel.visibleContextKey,
 			isVisible && this.activeMode === 'search'
 		);
 		await vscode.commands.executeCommand(

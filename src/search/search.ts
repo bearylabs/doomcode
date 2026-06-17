@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createNonce, fuzzyMatch } from '../panel/helpers';
+import { createNonce, substringMatch } from '../panel/helpers';
 
 const MAX_RESULTS = 200;
 
@@ -62,7 +62,7 @@ interface SearchOptions {
 
 type SearchMode = 'editor' | 'workspace';
 
-export class DoomFuzzySearchPanel {
+export class DoomSearchPanel {
 	static readonly visibleContextKey = 'doom.fuzzySearchVisible';
 
 	private static readonly workspaceExcludeGlob = '**/{.git,node_modules,out,dist,coverage,build,.next}/**';
@@ -197,7 +197,7 @@ export class DoomFuzzySearchPanel {
 
 	/** Syncs the `doom.fuzzySearchVisible` context key so keybindings can scope to panel visibility. */
 	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand('setContext', DoomFuzzySearchPanel.visibleContextKey, isVisible);
+		await vscode.commands.executeCommand('setContext', DoomSearchPanel.visibleContextKey, isVisible);
 	}
 
 	/** Re-initializes and re-renders when the panel becomes visible again — handles both modes. */
@@ -255,7 +255,7 @@ export class DoomFuzzySearchPanel {
 				this.query = '';
 			}
 			if (options.notifyWhenMissing) {
-				void vscode.window.showInformationMessage('Open a file first to use fuzzy search.');
+				void vscode.window.showInformationMessage('Open a file first to use search.');
 			}
 			return false;
 		}
@@ -342,15 +342,15 @@ export class DoomFuzzySearchPanel {
 		this.loading = true;
 		this.render();
 
-		const files = await vscode.workspace.findFiles('**/*', DoomFuzzySearchPanel.workspaceExcludeGlob);
+		const files = await vscode.workspace.findFiles('**/*', DoomSearchPanel.workspaceExcludeGlob);
 		const items: SearchItem[] = [];
 
-		for (let i = 0; i < files.length; i += DoomFuzzySearchPanel.loadBatchSize) {
+		for (let i = 0; i < files.length; i += DoomSearchPanel.loadBatchSize) {
 			if (loadId !== this.loadSequence || this.mode !== 'workspace') {
 				return;
 			}
 
-			const batch = files.slice(i, i + DoomFuzzySearchPanel.loadBatchSize);
+			const batch = files.slice(i, i + DoomSearchPanel.loadBatchSize);
 			const results = await Promise.allSettled(batch.map((uri) => this.loadFileItems(uri)));
 
 			for (const result of results) {
@@ -388,7 +388,7 @@ export class DoomFuzzySearchPanel {
 			console.warn('[DoomFuzzySearch] stat failed:', err);
 			return [];
 		}
-		if (!stat || stat.size > DoomFuzzySearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
+		if (!stat || stat.size > DoomSearchPanel.workspaceFileSizeLimit || stat.type !== vscode.FileType.File) {
 			return [];
 		}
 
@@ -450,7 +450,7 @@ export class DoomFuzzySearchPanel {
 
 		const matches = this.currentItems
 			.map((item) => {
-				const match = fuzzyMatch(item.searchText, query);
+				const match = substringMatch(item.searchText, query);
 				if (!match) {
 					return undefined;
 				}
@@ -586,8 +586,8 @@ export class DoomFuzzySearchPanel {
 			emptyText: this.getEmptyText(),
 			items: this.toRenderItems(),
 			placeholder: this.mode === 'workspace'
-				? 'Type to fuzzy search project'
-				: 'Type to fuzzy search current file',
+				? 'Type to search project'
+				: 'Type to search current file',
 			promptLabel: this.mode === 'workspace'
 				? `Search (Project ${this.getWorkspaceLabel()}):`
 				: 'Go to line:',
@@ -676,7 +676,7 @@ export class DoomFuzzySearchPanel {
 		}
 
 		if (this.mode === 'workspace' && this.query.trim().length === 0) {
-			return 'Type to fuzzy search project.';
+			return 'Type to search project.';
 		}
 
 		return 'No matches.';
@@ -905,7 +905,7 @@ export class DoomFuzzySearchPanel {
 		<div class="promptbar">
 			<div class="status" id="status">0/0</div>
 			<label class="prompt" id="prompt" for="query">Go to line:</label>
-			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to fuzzy search current file" />
+			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to search current file" />
 		</div>
 		<div class="results" id="results"></div>
 		<div class="empty" id="empty" hidden>No matches.</div>

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createNonce, fuzzyMatch } from '../panel/helpers';
+import { createNonce, substringMatch } from '../panel/helpers';
 import { executeWhichKeyBindingCommands } from './bindings';
 import {
     getFlattenedWhichKeyBindings,
@@ -146,12 +146,12 @@ export class DoomWhichKeyBindingsPanel {
 					};
 				}
 
-				const searchMatch = fuzzyMatch(item.searchText, query);
+				const searchMatch = substringMatch(item.searchText, query);
 				if (!searchMatch) {
 					return undefined;
 				}
 
-				const pathMatch = fuzzyMatch(item.path.toLowerCase(), query);
+				const pathMatch = substringMatch(item.path.toLowerCase(), query);
 				return {
 					index,
 					item,

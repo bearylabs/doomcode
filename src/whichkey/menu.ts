@@ -392,19 +392,25 @@ export function evaluateWhenExpression(
 	return new WhenExpressionParser(contextValues, tokens).parse();
 }
 
+type PackageJsonWithKeybindings = {
+	contributes?: {
+		keybindings?: unknown[];
+	};
+};
+
+let cachedTriggerBindings: WhichKeyTriggerBinding[] | undefined;
+
 /**
  * Reads package.json at runtime to discover keys routed through `whichkey.triggerKey`.
  * Args can be a plain string (key only) or an object with an optional condition.
+ * Result is memoized — package.json is static for the session.
  */
-function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
-	const extension = vscode.extensions.getExtension('bearylabs.doom');
-	const packageJson = extension?.packageJSON as {
-		contributes?: {
-			keybindings?: unknown[];
-		};
-	} | undefined;
+function getWhichKeyTriggerBindings(packageJson: PackageJsonWithKeybindings): WhichKeyTriggerBinding[] {
+	if (cachedTriggerBindings) {
+		return cachedTriggerBindings;
+	}
 
-	return (packageJson?.contributes?.keybindings ?? []).flatMap((entry) => {
+	cachedTriggerBindings = (packageJson.contributes?.keybindings ?? []).flatMap((entry) => {
 		if (!isRecord(entry) || entry.command !== 'doom.triggerKey' || typeof entry.when !== 'string') {
 			return [];
 		}
@@ -426,6 +432,8 @@ function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
 			when: entry.when,
 		}];
 	});
+
+	return cachedTriggerBindings;
 }
 
 /**
@@ -491,7 +499,7 @@ function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBin
 	const triggeredCondition = selectTriggeredConditionForKey(
 		binding.key,
 		contextValues,
-		getWhichKeyTriggerBindings(),
+		getWhichKeyTriggerBindings(state.extensionPackageJson),
 	);
 
 	if (triggeredCondition) {
@@ -568,7 +576,9 @@ export class DoomWhichKeyMenu {
 	static readonly visibleContextKey = 'whichkeyVisible';
 
 	private bigModeEnabled = false;
+	private readonly packageJson: PackageJsonWithKeybindings;
 	private currentBindings: WhichKeyBinding[] = [];
+
 	private currentItems: RenderItem[] = [];
 	private currentShowContext: ShowContext = {
 		terminalFocus: false,
@@ -588,6 +598,14 @@ export class DoomWhichKeyMenu {
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
+
+	constructor(packageJson: PackageJsonWithKeybindings) {
+		this.packageJson = packageJson;
+	}
+
+	get extensionPackageJson(): PackageJsonWithKeybindings {
+		return this.packageJson;
+	}
 
 	get isBigModeEnabled(): boolean {
 		return this.bigModeEnabled;

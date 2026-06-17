@@ -74,7 +74,7 @@ export function createNonce(): string {
 }
 
 /** Substring match. Returns undefined if query is not found as a contiguous run in text. */
-export function fuzzyMatch(text: string, query: string): FuzzyMatch | undefined {
+export function substringMatch(text: string, query: string): FuzzyMatch | undefined {
 	if (query.length === 0) {
 		return { indices: [], score: 0 };
 	}
@@ -100,14 +100,14 @@ export function orderlessMatch(text: string, query: string): FuzzyMatch | undefi
 		return { indices: [], score: 0 };
 	}
 	if (tokens.length === 1) {
-		return fuzzyMatch(text, tokens[0]);
+		return substringMatch(text, tokens[0]);
 	}
 
 	let totalScore = 0;
 	const allIndices: number[] = [];
 
 	for (const token of tokens) {
-		const match = fuzzyMatch(text, token);
+		const match = substringMatch(text, token);
 		if (!match) {
 			return undefined;
 		}

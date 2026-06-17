@@ -22,7 +22,7 @@ import {
 } from './onboarding/install';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
-import { DoomFuzzySearchPanel } from './search/fuzzy';
+import { DoomSearchPanel } from './search/search';
 import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
 import { SelectionHistory } from './search/selectionHistory';
@@ -918,14 +918,14 @@ export function activate(context: vscode.ExtensionContext) {
 		DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 		...Object.keys(installDefaults),
 	];
-	const fuzzySearchPanel = new DoomFuzzySearchPanel();
+	const searchPanel = new DoomSearchPanel();
 
 	/** Opens a project folder in the current window and suppresses the dashboard on the next activation. */
 	const openProjectAndSkipDashboard = async (projectUri: vscode.Uri): Promise<void> => {
 		await context.globalState.update(SKIP_DASHBOARD_KEY, true);
 		await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
 	};
-	const whichKeyMenu = new DoomWhichKeyMenu();
+	const whichKeyMenu = new DoomWhichKeyMenu(context.extension.packageJSON as { contributes?: { keybindings?: unknown[] } });
 	const dashboard = new DoomDashboard(context.extensionUri);
 	let dashboardRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 	let terminalEscapeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -960,7 +960,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const findFilePanel = new DoomFindFilePanel(selectionHistory);
 	const sharedPanel = new DoomSharedPanel(
 		whichKeyMenu,
-		fuzzySearchPanel,
+		searchPanel,
 		openEditorsPanel,
 		whichKeyBindingsPanel,
 		projectFilePanel,

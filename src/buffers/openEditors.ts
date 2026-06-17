@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createNonce, formatFileSize, fuzzyMatch, tildeCollapse } from '../panel/helpers';
+import { createNonce, formatFileSize, substringMatch, tildeCollapse } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
 
 const REFRESH_DEBOUNCE_MS = 50;
@@ -658,12 +658,12 @@ export class DoomOpenEditorsPanel {
 					};
 				}
 
-				const searchMatch = fuzzyMatch(item.searchText, query);
+				const searchMatch = substringMatch(item.searchText, query);
 				if (!searchMatch) {
 					return undefined;
 				}
 
-				const labelMatch = fuzzyMatch(item.label.toLowerCase(), query);
+				const labelMatch = substringMatch(item.label.toLowerCase(), query);
 
 				return {
 					displayMatches: labelMatch?.indices ?? [],
