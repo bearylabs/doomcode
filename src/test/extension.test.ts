@@ -2,7 +2,6 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
 	computeWorkspaceHistoryUpdate,
-	resolveWindowDeleteAction,
 	selectReloadWorkspaceTarget,
 	type StoredWorkspaceTarget,
 } from '../extension';
@@ -29,6 +28,7 @@ import {
 	resolveWindowLeftTarget,
 	resolveWindowRightTarget,
 } from '../window/mru';
+import { resolveWindowDeleteAction } from '../window/windowCommands';
 import {
 	applyTrackedUiContextCommand,
 	evaluateWhenExpression,

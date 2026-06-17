@@ -1,6 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -13,13 +12,19 @@ import {
 	resolveStartupCommandsFromBindings,
 } from './onboarding/dashboard';
 import {
-	ApplyDefaultsOptions,
-	ApplyDefaultsResult,
-	applyDefaultsToConfiguration,
-	runInstallFlow,
-	type VimBindingConflict,
-	type VimBindingConflictDecision,
-} from './onboarding/install';
+	getDoomUserKeybindings,
+	getKeybindingsPath,
+	readKeybindingsJson,
+} from './onboarding/keybindingsFile';
+import {
+	CONFLICTING_EXTENSIONS,
+	detectConflictingExtensions,
+	register as registerOnboardingCommands,
+} from './onboarding/onboardingCommands';
+import {
+	containsStaleCommand,
+	STALE_COMMAND_PREFIXES,
+} from './onboarding/staleCleanup';
 import { DOOM_STALE_VIM_BINDING_SETTINGS } from './onboarding/vimBindings';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
@@ -28,10 +33,12 @@ import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
 import { SelectionHistory } from './search/selectionHistory';
 import { WorkspaceFileIndex } from './search/workspaceFileIndex';
+import * as terminalCommands from './terminal/terminalCommands';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
-import { focusEditorGroup, focusWindowDown, focusWindowLeft, focusWindowRight, focusWindowUp, registerWindowMru } from './window/mru';
+import { registerWindowMru } from './window/mru';
+import * as windowCommands from './window/windowCommands';
 
 type WhichKeyMenuStyle = 'doom' | 'vspacecode';
 
@@ -47,10 +54,6 @@ const SKIP_DASHBOARD_KEY = 'doom.skipDashboardOnActivation';
 
 const TERMINAL_ESCAPE_TIMEOUT_MS = 2000;
 const DASHBOARD_REFRESH_DEBOUNCE_MS = 50;
-const KEEP_EXISTING_BINDING_ACTION = 'Keep Existing';
-const OVERWRITE_WITH_DOOM_ACTION = 'Overwrite with Doom';
-const KEEP_ALL_EXISTING_BINDINGS_ACTION = 'Keep All Existing';
-const OVERWRITE_ALL_WITH_DOOM_ACTION = 'Overwrite All with Doom';
 
 export interface StoredWorkspaceTarget {
 	label: string;
@@ -155,27 +158,6 @@ export function selectReloadWorkspaceTarget(
 	return undefined;
 }
 
-export type WindowDeleteAction = 'closeGroup' | 'closePanel' | 'moveTerminalEditorToPanelAndCloseGroup';
-
-/**
- * Pure function: determines the correct `doom.windowDelete` action based on focus context.
- * Terminal panel focus → close panel. Terminal editor tab → move back to panel first. Otherwise → close group.
- */
-export function resolveWindowDeleteAction(
-	terminalFocus: boolean,
-	activeTerminalEditor: boolean,
-): WindowDeleteAction {
-	if (terminalFocus && !activeTerminalEditor) {
-		return 'closePanel';
-	}
-
-	if (activeTerminalEditor) {
-		return 'moveTerminalEditorToPanelAndCloseGroup';
-	}
-
-	return 'closeGroup';
-}
-
 /** Snapshots the current workspace into globalState if it differs from the last recorded one. */
 async function persistWorkspaceHistory(context: vscode.ExtensionContext): Promise<void> {
 	const next = computeWorkspaceHistoryUpdate(
@@ -269,20 +251,6 @@ async function showConfiguredWhichKeyMenu(
 }
 
 // ---------------------------------------------------------------------------
-// Conflicting extensions that override the same settings Doom Code manages.
-// ---------------------------------------------------------------------------
-const CONFLICTING_EXTENSIONS = [
-	{
-		id: "VSpaceCode.vspacecode",
-		name: "VSpaceCode",
-		reason: "overrides whichkey.bindings and vim keybindings with its own defaults",
-	},
-];
-
-// Stale command prefixes left behind by conflicting extensions.
-const STALE_COMMAND_PREFIXES = ["vspacecode."];
-
-// ---------------------------------------------------------------------------
 // Install defaults
 // ---------------------------------------------------------------------------
 
@@ -333,357 +301,6 @@ function getStartupCommandKeyPaths(context: vscode.ExtensionContext): string[][]
 	});
 }
 
-/**
- * Writes install defaults to the user's global settings, skipping user-owned keys.
- * Optionally shows a toast summarising applied/skipped/failed counts.
- */
-async function applyDefaultsToUserSettings(
-	defaults: Record<string, unknown>,
-	showResultMessage = false,
-	options: ApplyDefaultsOptions = {},
-): Promise<ApplyDefaultsResult> {
-	const config = vscode.workspace.getConfiguration();
-	const result = await applyDefaultsToConfiguration(config, defaults, vscode.ConfigurationTarget.Global, options);
-
-	if (showResultMessage) {
-		if (result.total === 0) {
-			void vscode.window.showWarningMessage("No Doom install defaults are configured in package.json.");
-			return result;
-		}
-
-		const parts: string[] = [
-			`${result.applied} applied`,
-			`${result.skipped} skipped (already customized by you)`,
-		];
-		if (result.unsupported > 0) {
-			parts.push(`${result.unsupported} not recognized by VS Code`);
-		}
-		if (result.failed > 0) {
-			parts.push(`${result.failed} failed`);
-		}
-		const failureDetails = result.failures.length > 0
-			? ` Failures: ${result.failures.slice(0, 3).map((failure) => (
-				`${failure.key} (${failure.reason})`
-			)).join('; ')}${result.failures.length > 3 ? `; +${result.failures.length - 3} more` : ''}.`
-			: '';
-		void vscode.window.showInformationMessage(
-			`Doom defaults applied to your global User settings: ${parts.join(', ')}.${failureDetails}`
-		);
-	}
-
-	return result;
-}
-
-function summarizeValueForUi(value: unknown, maxLength = 180): string {
-	let serialized: string;
-	try {
-		serialized = JSON.stringify(value);
-	} catch {
-		serialized = String(value);
-	}
-
-	return serialized.length <= maxLength ? serialized : `${serialized.slice(0, maxLength - 1)}…`;
-}
-
-function formatVimBindingChord(before: readonly string[]): string {
-	return before.join(' ');
-}
-
-function createVimBindingConflictResolver(): ApplyDefaultsOptions['resolveVimBindingConflict'] {
-	let rememberedDecision: VimBindingConflictDecision | undefined;
-
-	return async (conflict: VimBindingConflict) => {
-		if (rememberedDecision) {
-			return rememberedDecision;
-		}
-
-		const choice = await vscode.window.showWarningMessage(
-			`Doom Code: ${conflict.settingKey} already contains a binding for ${formatVimBindingChord(conflict.before)}.`,
-			{
-				modal: true,
-				detail: [
-					`Existing: ${conflict.existingEntries.map((entry) => summarizeValueForUi(entry)).join(' | ')}`,
-					`Doom: ${summarizeValueForUi(conflict.defaultEntry)}`,
-					'Keep existing preserves your current mapping. Overwrite replaces all conflicting bindings for this chord with Doom\'s default.',
-				].join('\n'),
-			},
-			KEEP_EXISTING_BINDING_ACTION,
-			OVERWRITE_WITH_DOOM_ACTION,
-			KEEP_ALL_EXISTING_BINDINGS_ACTION,
-			OVERWRITE_ALL_WITH_DOOM_ACTION,
-		);
-
-		if (choice === OVERWRITE_ALL_WITH_DOOM_ACTION) {
-			rememberedDecision = 'overwrite';
-			return 'overwrite';
-		}
-
-		if (choice === KEEP_ALL_EXISTING_BINDINGS_ACTION) {
-			rememberedDecision = 'keep';
-			return 'keep';
-		}
-
-		if (choice === OVERWRITE_WITH_DOOM_ACTION) {
-			return 'overwrite';
-		}
-
-		return 'keep';
-	};
-}
-
-// ---------------------------------------------------------------------------
-// Conflict detection
-// ---------------------------------------------------------------------------
-
-/** Returns the subset of `CONFLICTING_EXTENSIONS` that are currently installed. */
-function detectConflictingExtensions(): typeof CONFLICTING_EXTENSIONS {
-	return CONFLICTING_EXTENSIONS.filter(
-		(ext) => vscode.extensions.getExtension(ext.id) !== undefined
-	);
-}
-
-/** Shows a modal warning for each conflicting extension with an "Open Extensions" action. */
-async function warnAboutConflicts(conflicts: typeof CONFLICTING_EXTENSIONS): Promise<void> {
-	for (const ext of conflicts) {
-		const choice = await vscode.window.showWarningMessage(
-			`Doom Code: "${ext.name}" is installed and ${ext.reason}. This will cause keybinding conflicts. Please uninstall "${ext.name}" and reload.`,
-			"Open Extensions"
-		);
-		if (choice === "Open Extensions") {
-			await vscode.commands.executeCommand("workbench.extensions.action.showInstalledExtensions");
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Stale-command cleanup  (settings.json + keybindings.json)
-// ---------------------------------------------------------------------------
-
-/**
- * Returns true if `value` (at any depth) contains a string that starts with
- * one of the stale command prefixes.
- */
-function containsStaleCommand(value: unknown): boolean {
-	if (typeof value === 'string') {
-		return STALE_COMMAND_PREFIXES.some((p) => value.startsWith(p));
-	}
-	if (Array.isArray(value)) {
-		return value.some(containsStaleCommand);
-	}
-	if (value !== null && typeof value === 'object') {
-		return Object.values(value as Record<string, unknown>).some(containsStaleCommand);
-	}
-	return false;
-}
-
-/**
- * Scan vim keybinding arrays in user settings for stale commands.
- * Only removes individual stale entries, preserving all user-defined bindings.
- * Returns the list of setting keys that were cleaned.
- */
-async function cleanStaleSettings(): Promise<string[]> {
-	const config = vscode.workspace.getConfiguration();
-	const keysToCheck = DOOM_STALE_VIM_BINDING_SETTINGS;
-
-	const cleaned: string[] = [];
-
-	for (const key of keysToCheck) {
-		const inspected = config.inspect(key);
-		const currentValue = inspected?.globalValue;
-		if (!Array.isArray(currentValue)) {
-			continue;
-		}
-
-		const filtered = currentValue.filter((entry) => !containsStaleCommand(entry));
-		if (filtered.length !== currentValue.length) {
-			await config.update(key, filtered, vscode.ConfigurationTarget.Global);
-			cleaned.push(key);
-		}
-	}
-
-	return cleaned;
-}
-
-/**
- * Read the user keybindings.json, filter out entries whose `command` starts
- * with a stale prefix, and write back if anything changed.
- * Returns the number of entries removed.
- */
-async function cleanStaleKeybindings(context: vscode.ExtensionContext): Promise<number> {
-	const keybindingsPath = getKeybindingsPath(context);
-	if (!keybindingsPath) {
-		return 0;
-	}
-
-	const bindings = readKeybindingsJson(keybindingsPath);
-	if (!bindings) {
-		return 0;
-	}
-
-	const before = bindings.length;
-	const filtered = bindings.filter((entry) => {
-		const cmd = entry.command;
-		if (typeof cmd !== 'string') { return true; }
-		// Keep negations (e.g. "-vspacecode.space") — they disable a default.
-		if (cmd.startsWith('-')) { return true; }
-		return !STALE_COMMAND_PREFIXES.some((p) => cmd.startsWith(p));
-	});
-
-	const removed = before - filtered.length;
-	if (removed === 0) { return 0; }
-
-	const output = "// Place your key bindings in this file to override the defaults\n"
-		+ JSON.stringify(filtered, null, '\t')
-		+ '\n';
-
-	try {
-		fs.writeFileSync(keybindingsPath, output, 'utf-8');
-	} catch (err) {
-		console.warn("Doom Code: failed to write cleaned keybindings.json:", err);
-		return 0;
-	}
-
-	return removed;
-}
-
-function getKeybindingsPath(context: vscode.ExtensionContext): string | undefined {
-	// globalStorageUri points to:
-	//   <userData>/User/globalStorage/<ext-id>       (default profile)
-	//   <userData>/User/profiles/<id>/globalStorage/<ext-id>  (named profile)
-	// Go up 2 levels to reach the active profile's User directory.
-	const profileDir = path.dirname(path.dirname(context.globalStorageUri.fsPath));
-	return path.join(profileDir, 'keybindings.json');
-}
-
-/**
- * Reads and parses a VS Code keybindings.json, tolerating single-line comments
- * and trailing commas. Returns the parsed array, or undefined if the file is
- * missing, unreadable, or malformed.
- */
-function readKeybindingsJson(keybindingsPath: string): Array<Record<string, unknown>> | undefined {
-	if (!fs.existsSync(keybindingsPath)) {
-		return undefined;
-	}
-	try {
-		const raw = fs.readFileSync(keybindingsPath, 'utf-8');
-		const stripped = raw.replace(/^\s*\/\/.*$/gm, '');
-		const sanitized = stripped.replace(/,\s*([}\]])/g, '$1');
-		const parsed = JSON.parse(sanitized);
-		return Array.isArray(parsed) ? parsed : undefined;
-	} catch (err) {
-		console.warn('[Doom] readKeybindingsJson failed:', err);
-		return undefined;
-	}
-}
-
-/**
- * Returns the magit-related keybindings from Doom's own contributes.keybindings:
- * entries scoped to the magit editor language and negation entries that disable
- * kahole.magit's default key assignments.
- */
-function getDoomUserKeybindings(context: vscode.ExtensionContext): Array<Record<string, unknown>> {
-	const doomKeybindings = (context.extension.packageJSON as {
-		contributes?: { keybindings?: Array<Record<string, unknown>> };
-	}).contributes?.keybindings;
-
-	if (!Array.isArray(doomKeybindings)) {
-		return [];
-	}
-
-	const magitKeybindings = doomKeybindings.filter((kb) => {
-		const when = kb['when'];
-		return typeof when === 'string' && when.includes("editorLangId == 'magit'");
-	});
-
-	// Negation entries that disable kahole.magit's default key assignments.
-	const negationKeybindings = doomKeybindings.filter((kb) => {
-		const cmd = kb['command'];
-		return typeof cmd === 'string' && cmd.startsWith('-magit.');
-	});
-
-	return [...magitKeybindings, ...negationKeybindings];
-}
-
-/**
- * Read the user keybindings.json, add any magit-related keybindings declared
- * in Doom's own contributes.keybindings that are not already present, and
- * write back.  User-level keybindings have higher precedence than all
- * extension keybindings, which is necessary for magit.dispatch to display the
- * correct key hints.
- * Returns the number of keybindings added.
- */
-async function installDoomKeybindings(context: vscode.ExtensionContext): Promise<number> {
-	const allMagitRelated = getDoomUserKeybindings(context);
-
-	if (allMagitRelated.length === 0) {
-		return 0;
-	}
-
-	const keybindingsPath = getKeybindingsPath(context);
-	if (!keybindingsPath) {
-		return 0;
-	}
-
-	let existing: Array<Record<string, unknown>> = [];
-	let rawContent: string | undefined;
-	if (fs.existsSync(keybindingsPath)) {
-		try {
-			rawContent = fs.readFileSync(keybindingsPath, 'utf-8');
-		} catch {
-			console.warn("Doom Code: could not read keybindings.json, skipping magit install.");
-			return 0;
-		}
-		const parsed = readKeybindingsJson(keybindingsPath);
-		if (parsed === undefined) {
-			console.warn("Doom Code: could not parse keybindings.json, skipping magit install.");
-			return 0;
-		}
-		existing = parsed;
-	}
-
-	const toAdd = allMagitRelated.filter((kb) =>
-		!existing.some((e) => e['key'] === kb['key'] && e['command'] === kb['command'] && e['when'] === kb['when']),
-	);
-
-	if (toAdd.length === 0) {
-		return 0;
-	}
-
-	let output: string;
-	const newEntries = toAdd.map((kb) => '\t' + JSON.stringify(kb)).join(',\n');
-	const block = '\t// #region Doom Code keybindings\n' + newEntries + '\n\t// #endregion Doom Code keybindings';
-
-	if (rawContent !== undefined && existing.length > 0) {
-		// Append to existing file — preserve original content and comments.
-		const lastBracket = rawContent.lastIndexOf(']');
-		if (lastBracket !== -1) {
-			const beforeBracket = rawContent.slice(0, lastBracket).trimEnd();
-			const rest = rawContent.slice(lastBracket + 1);
-			output = beforeBracket + ',\n' + block + '\n]' + rest;
-		} else {
-			// Malformed — fall back to full rewrite.
-			output = "// Place your key bindings in this file to override the defaults\n"
-				+ JSON.stringify([...existing, ...toAdd], null, '\t')
-				+ '\n';
-		}
-	} else {
-		// File doesn't exist or is empty — write fresh.
-		output = "// Place your key bindings in this file to override the defaults\n[\n"
-			+ block
-			+ '\n]\n';
-	}
-
-	try {
-		fs.mkdirSync(path.dirname(keybindingsPath), { recursive: true });
-		fs.writeFileSync(keybindingsPath, output, 'utf-8');
-	} catch (err) {
-		console.warn("Doom Code: failed to write magit keybindings to keybindings.json:", err);
-		return 0;
-	}
-
-	return toAdd.length;
-}
-
 // ---------------------------------------------------------------------------
 // Detection-only check (reads state, never mutates)
 // ---------------------------------------------------------------------------
@@ -726,42 +343,6 @@ function detectStaleState(context: vscode.ExtensionContext): StaleDetectionResul
 		: false;
 
 	return { conflicts, hasStaleSettings, hasStaleKeybindings, hasMagitKeybindings };
-}
-
-// ---------------------------------------------------------------------------
-// Full cleanup — mutating path (manual command or user-confirmed)
-// ---------------------------------------------------------------------------
-
-/** Runs both setting and keybinding cleanup, then shows a summary toast with a "Reload" action. */
-async function runCleanup(context: vscode.ExtensionContext): Promise<void> {
-	const cleanedSettings = await cleanStaleSettings();
-	const removedKeybindings = await cleanStaleKeybindings(context);
-
-	const conflicts = detectConflictingExtensions();
-
-	const parts: string[] = [];
-	if (cleanedSettings.length > 0) {
-		parts.push(`cleaned ${cleanedSettings.length} setting(s)`);
-	}
-	if (removedKeybindings > 0) {
-		parts.push(`removed ${removedKeybindings} stale keybinding(s)`);
-	}
-	if (conflicts.length > 0) {
-		parts.push(`${conflicts.length} conflicting extension(s) detected`);
-	}
-
-	if (parts.length > 0) {
-		void vscode.window.showInformationMessage(
-			`Doom Code cleanup: ${parts.join(', ')}. Please reload the window.`,
-			"Reload"
-		).then((choice: string | undefined) => {
-			if (choice === "Reload") {
-				void vscode.commands.executeCommand("workbench.action.reloadWindow");
-			}
-		});
-	} else {
-		void vscode.window.showInformationMessage("Doom Code: no stale settings or conflicts found.");
-	}
 }
 
 /** Extracts version and repository URL from package.json for display in the start page. */
@@ -839,63 +420,6 @@ function refreshDashboardIfOpen(
 }
 
 // ---------------------------------------------------------------------------
-// Which-key migration
-// ---------------------------------------------------------------------------
-
-/** One-time migration: rewrites `whichkey.show` → `doom.whichKeyShow` in user vim keybindings so SPC still works after install. */
-async function migrateLegacyWhichKeyShowBindings(): Promise<void> {
-	const config = vscode.workspace.getConfiguration();
-	const keysToCheck = [
-		"vim.normalModeKeyBindingsNonRecursive",
-		"vim.visualModeKeyBindingsNonRecursive",
-	];
-
-	for (const key of keysToCheck) {
-		const inspected = config.inspect(key);
-		const currentValue = inspected?.globalValue;
-		if (!Array.isArray(currentValue)) {
-			continue;
-		}
-
-		let changed = false;
-		const migrated = currentValue.map((entry) => {
-			if (
-				entry !== null
-				&& typeof entry === 'object'
-				&& 'before' in entry
-				&& 'commands' in entry
-			) {
-				const binding = entry as {
-					before?: unknown;
-					commands?: unknown;
-				};
-
-				if (
-					Array.isArray(binding.before)
-					&& binding.before.length === 1
-					&& binding.before[0] === '<space>'
-					&& Array.isArray(binding.commands)
-					&& binding.commands.length === 1
-					&& binding.commands[0] === 'whichkey.show'
-				) {
-					changed = true;
-					return {
-						...entry,
-						commands: ['doom.whichKeyShow'],
-					};
-				}
-			}
-
-			return entry;
-		});
-
-		if (changed) {
-			await config.update(key, migrated, vscode.ConfigurationTarget.Global);
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
 // Extension lifecycle
 // ---------------------------------------------------------------------------
 
@@ -962,69 +486,11 @@ export function activate(context: vscode.ExtensionContext) {
 		findFilePanel,
 	);
 
-	// Manual install command
-	const installCmd = vscode.commands.registerCommand(
-		"doom.install",
-		async () => {
-			const result = await runInstallFlow(
-				async () => {
-					const choice = await vscode.window.showWarningMessage(
-						"Apply Doom default settings and keybindings to your User settings? Existing user-owned values stay untouched unless you choose to overwrite a conflicting Doom Vim binding.",
-						{ modal: true },
-						"Apply"
-					);
-					return choice === "Apply";
-				},
-				async () => {
-					await migrateLegacyWhichKeyShowBindings();
-					const settingsResult = await applyDefaultsToUserSettings(installDefaults, true, {
-						resolveVimBindingConflict: createVimBindingConflictResolver(),
-					});
-					const addedKeybindings = await installDoomKeybindings(context);
-					if (addedKeybindings > 0) {
-						void vscode.window.showInformationMessage(
-							`Doom Code: installed ${addedKeybindings} magit keybinding(s) into keybindings.json so the magit dispatch recognises them.`
-						);
-					}
-					return settingsResult;
-				},
-			);
-
-			if (!result) {
-				return;
-			}
-
-			scheduleDashboardRefresh(0);
-		}
-	);
-
-	// Manual cleanup command
-	const cleanupCmd = vscode.commands.registerCommand(
-		"doom.cleanup",
-		async () => {
-			const choice = await vscode.window.showWarningMessage(
-				"This will remove stale settings and keybindings left behind by conflicting extensions (e.g. vspacecode.* commands) from your User settings.json and keybindings.json. Note: keybindings.json will be rewritten — all comments and custom formatting will be lost. This cannot be undone.",
-				{ modal: true },
-				"Clean Up"
-			);
-			if (choice !== "Clean Up") {
-				return;
-			}
-			const conflicts = detectConflictingExtensions();
-			if (conflicts.length > 0) {
-				await warnAboutConflicts(conflicts);
-			}
-			await runCleanup(context);
-			scheduleDashboardRefresh(0);
-		}
-	);
-
-	const showDashboardCmd = vscode.commands.registerCommand(
-		"doom.dashboard",
-		async () => {
-			await showDashboard(context, dashboard, 'startup', installDefaults);
-		}
-	);
+	registerOnboardingCommands(context, {
+		installDefaults,
+		scheduleDashboardRefresh,
+		showStartupDashboard: () => showDashboard(context, dashboard, 'startup', installDefaults),
+	});
 
 	const reloadLastSessionCmd = vscode.commands.registerCommand(
 		"doom.reloadLastSession",
@@ -1133,169 +599,8 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const VTERM_NAME = '*vterm*';
-	const VTERM_PREFIX = '*vterm*';
-	const EDITOR_TERMINAL_NAMES = new Set(['codex', 'claude', 'claude code', 'copilot']);
-
-	const isVtermName = (name: string) =>
-		name === VTERM_NAME
-		|| name.startsWith(`${VTERM_PREFIX}<`)
-		|| EDITOR_TERMINAL_NAMES.has(name.toLowerCase());
-
-	const managedVtermSet = new Set<vscode.Terminal>();
-
-	/** Creates a named editor-group terminal so `doom.openPanelTerminal` can exclude it by name. */
-	const createTerminalEditorCmd = vscode.commands.registerCommand(
-		"doom.createTerminalEditor",
-		async () => {
-			const vtermCount = vscode.window.terminals.filter((t) => isVtermName(t.name)).length;
-			const name = vtermCount === 0 ? VTERM_NAME : `${VTERM_PREFIX}<${vtermCount + 1}>`;
-			const terminal = vscode.window.createTerminal({
-				name,
-				location: vscode.TerminalLocation.Editor,
-			});
-			managedVtermSet.add(terminal);
-			terminal.show();
-			// Lock the title so the shell (bash PROMPT_COMMAND / PS1) cannot override it
-			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
-		}
-	);
-
-	/**
-	 * Opens AI tool CLIs in editor terminals with fixed names.
-	 * Each terminal gets a consistent name ('claude', 'copilot', 'codex') so that:
-	 * - They're recognized by isVtermName() and excluded from panel terminal switching (SPC o t)
-	 * - Users can reliably find CLI terminals by name
-	 * Creates a new terminal each trigger (no reuse).
-	 */
-
-	const openClaudeCliCmd = vscode.commands.registerCommand(
-		"doom.openClaudeCli",
-		async () => {
-			const terminal = vscode.window.createTerminal({
-				name: 'claude',
-				location: vscode.TerminalLocation.Editor,
-			});
-			terminal.show();
-			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'claude' });
-			terminal.sendText('claude');
-		}
-	);
-
-	const openCopilotCliCmd = vscode.commands.registerCommand(
-		"doom.openCopilotCli",
-		async () => {
-			const terminal = vscode.window.createTerminal({
-				name: 'copilot',
-				location: vscode.TerminalLocation.Editor,
-			});
-			terminal.show();
-			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'copilot' });
-			terminal.sendText('copilot');
-		}
-	);
-
-	const openCodexCliCmd = vscode.commands.registerCommand(
-		"doom.openCodexCli",
-		async () => {
-			const terminal = vscode.window.createTerminal({
-				name: 'codex',
-				location: vscode.TerminalLocation.Editor,
-			});
-			terminal.show();
-			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name: 'codex' });
-			terminal.sendText('codex');
-		}
-	);
-
-	/**
-	 * Opens the panel terminal without disturbing terminals in editor groups.
-	 * Editor terminals created via `doom.createTerminalEditor` are named `*vterm*` or `*vterm*<N>`.
-	 * Known CLI editor terminals such as `codex` and `claude code` are also excluded by name.
-	 * Panel terminals are anything not carrying those names.
-	 * Falls back to creating a new panel terminal only when none exist.
-	 * Uses show(true) to pre-select the terminal, then workbench.view.terminal to reliably
-	 * open the panel — terminal.show() alone doesn't guarantee the panel opens.
-	 */
-	const openPanelTerminalCmd = vscode.commands.registerCommand(
-		"doom.openPanelTerminal",
-		() => {
-			const panelTerminals = vscode.window.terminals.filter((t) => !isVtermName(t.name));
-
-			if (panelTerminals.length > 0) {
-				panelTerminals[panelTerminals.length - 1].show(false);
-			} else {
-				vscode.window.createTerminal({ location: vscode.TerminalLocation.Panel }).show(false);
-			}
-		}
-	);
-
-	const windowDeleteCmd = vscode.commands.registerCommand(
-		"doom.windowDelete",
-		async () => {
-			const activeGroup = vscode.window.tabGroups.activeTabGroup;
-			const activeTerminalEditor = activeGroup.activeTab?.input instanceof vscode.TabInputTerminal;
-			const action = resolveWindowDeleteAction(
-				whichKeyMenu.showContext.terminalFocus,
-				activeTerminalEditor,
-			);
-
-			if (action === 'closePanel') {
-				await vscode.commands.executeCommand('workbench.action.closePanel');
-				return;
-			}
-
-			if (action === 'moveTerminalEditorToPanelAndCloseGroup') {
-				await vscode.commands.executeCommand('workbench.action.terminal.moveToTerminalPanel');
-				await focusEditorGroup(activeGroup.viewColumn);
-				await vscode.commands.executeCommand('workbench.action.closeGroup');
-				return;
-			}
-
-			// Use the group that was active when whichkey opened (preWhichKeyEditorGroupColumn is set
-			// during whichkey command execution and undefined for direct invocations). This avoids
-			// relying on workbench.action.closeGroup honouring focus, which VS Code does not guarantee
-			// after the whichkey panel closes.
-			const targetColumn = whichKeyMenu.preWhichKeyEditorGroupColumn ?? activeGroup.viewColumn;
-			const groupToClose = vscode.window.tabGroups.all.find(g => g.viewColumn === targetColumn)
-				?? activeGroup;
-			await vscode.window.tabGroups.close(groupToClose);
-		}
-	);
-
-	const windowLeftCmd = vscode.commands.registerCommand(
-		"doom.windowLeft",
-		async () => {
-			const activeGroup = vscode.window.tabGroups.activeTabGroup;
-			const explorerVisible = whichKeyMenu.trackedUiContext.explorerViewletVisible;
-			await focusWindowLeft(activeGroup, vscode.window.tabGroups.all, explorerVisible, whichKeyMenu.showContext.explorerFocused);
-		}
-	);
-
-	const windowRightCmd = vscode.commands.registerCommand(
-		"doom.windowRight",
-		async () => {
-			const activeGroup = vscode.window.tabGroups.activeTabGroup;
-			await focusWindowRight(whichKeyMenu.showContext.explorerFocused, activeGroup, vscode.window.tabGroups.all);
-		}
-	);
-
-	const windowUpCmd = vscode.commands.registerCommand(
-		"doom.windowUp",
-		async () => {
-			const panelFocused = whichKeyMenu.showContext.terminalFocus && whichKeyMenu.showContext.terminalPanelOpen;
-			await focusWindowUp(panelFocused);
-		}
-	);
-
-	const windowDownCmd = vscode.commands.registerCommand(
-		"doom.windowDown",
-		async () => {
-			const activeGroup = vscode.window.tabGroups.activeTabGroup;
-			const panelVisible = whichKeyMenu.trackedUiContext.activePanel !== '';
-			await focusWindowDown(activeGroup, panelVisible);
-		}
-	);
+	terminalCommands.register(context);
+	windowCommands.register(context, { whichKeyMenu });
 
 	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration((event) => {
 		if (event.affectsConfiguration(WHICH_KEY_MENU_SETTING) && getWhichKeyMenuStyle() === 'vspacecode') {
@@ -1426,9 +731,6 @@ export function activate(context: vscode.ExtensionContext) {
 	})();
 
 	context.subscriptions.push(
-		installCmd,
-		cleanupCmd,
-		showDashboardCmd,
 		reloadLastSessionCmd,
 		whichKeyCmd,
 		whichKeyBindingsCmd,
@@ -1439,16 +741,6 @@ export function activate(context: vscode.ExtensionContext) {
 		terminalSendEscapeCmd,
 		sidebarHideCmd,
 		panelHideCmd,
-		createTerminalEditorCmd,
-		openClaudeCliCmd,
-		openCopilotCliCmd,
-		openCodexCliCmd,
-		openPanelTerminalCmd,
-		windowDeleteCmd,
-		windowLeftCmd,
-		windowRightCmd,
-		windowUpCmd,
-		windowDownCmd,
 		configurationChangeListener,
 		fuzzySearchCmd,
 		workspaceFuzzySearchCmd,
