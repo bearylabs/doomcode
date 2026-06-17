@@ -1625,21 +1625,6 @@
         "category": "Doom"
       },
       {
-        "command": "doom.terminalEscapePrefix",
-        "title": "Terminal Escape Prefix",
-        "category": "Doom"
-      },
-      {
-        "command": "doom.terminalEscapeSpace",
-        "title": "Terminal Escape + Space: Show Which Key",
-        "category": "Doom"
-      },
-      {
-        "command": "doom.terminalSendEscape",
-        "title": "Terminal Escape + Escape: Send Escape",
-        "category": "Doom"
-      },
-      {
         "command": "doom.whichKeyShowBindings",
         "title": "Show Which-Key Bindings",
         "category": "Doom"
@@ -1682,6 +1667,36 @@
       {
         "command": "doom.triggerKey",
         "title": "Which-Key: Trigger Key",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.windowDelete",
+        "title": "Delete Window",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.createTerminalEditor",
+        "title": "Open Terminal in Editor",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.openClaudeCli",
+        "title": "Open Claude CLI",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.openCopilotCli",
+        "title": "Open Copilot CLI",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.openCodexCli",
+        "title": "Open Codex CLI",
+        "category": "Doom"
+      },
+      {
+        "command": "doom.openPanelTerminal",
+        "title": "Open Panel Terminal",
         "category": "Doom"
       }
     ],

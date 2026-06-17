@@ -37,35 +37,23 @@ import {
 
 suite('Extension Test Suite', () => {
 	const extensionId = 'bearylabs.doom';
-	const expectedRuntimeCommands = [
-		'doom.cleanup',
-		'doom.fuzzySearchActiveTextEditor',
-		'doom.fuzzySearchWorkspace',
-		'doom.install',
-		'doom.reloadLastSession',
-		'doom.dashboard',
-		'doom.showOpenEditors',
-		'doom.whichKeyHide',
-		'doom.whichKeyShow',
-		'doom.whichKeyShowBindings',
-		'doom.windowLeft',
-		'doom.windowRight',
-		'doom.windowMru',
-	] as const;
-	const expectedContributedCommands = [
-		'doom.cleanup',
-		'doom.fuzzySearchActiveTextEditor',
-		'doom.fuzzySearchWorkspace',
-		'doom.install',
-		'doom.reloadLastSession',
-		'doom.dashboard',
-		'doom.showOpenEditors',
-		'doom.whichKeyShow',
-		'doom.whichKeyShowBindings',
-		'doom.windowLeft',
-		'doom.windowRight',
-		'doom.windowMru',
-	] as const;
+
+	type PackageJson = {
+		contributes?: {
+			commands?: Array<{ command: string }>;
+			keybindings?: Array<{ command?: string }>;
+			configuration?: {
+				properties?: Record<string, { default?: unknown }>;
+			};
+			configurationDefaults?: Record<string, unknown>;
+		};
+		extensionDependencies?: string[];
+		extensionPack?: string[];
+	};
+
+	function getDoomPackageJson(extension: vscode.Extension<unknown>): PackageJson {
+		return extension.packageJSON as PackageJson;
+	}
 
 	test('activates and registers Doom commands', async () => {
 		const extension = vscode.extensions.getExtension(extensionId);
@@ -73,9 +61,21 @@ suite('Extension Test Suite', () => {
 
 		await extension.activate();
 
-		const commands = await vscode.commands.getCommands(true);
-			for (const command of expectedRuntimeCommands) {
-			assert.ok(commands.includes(command), `Expected command ${command} to be registered`);
+		const registered = new Set(await vscode.commands.getCommands(true));
+		const pkg = getDoomPackageJson(extension);
+
+		// Every command declared in contributes.commands must be registered.
+		const declaredCommands = pkg.contributes?.commands?.map((c) => c.command) ?? [];
+		for (const id of declaredCommands) {
+			assert.ok(registered.has(id), `contributes.commands declares "${id}" but it is not registered`);
+		}
+
+		// Every doom.* command referenced in contributes.keybindings must be registered.
+		const keybindingCommands = (pkg.contributes?.keybindings ?? [])
+			.map((kb) => kb.command)
+			.filter((cmd): cmd is string => typeof cmd === 'string' && cmd.startsWith('doom.'));
+		for (const id of keybindingCommands) {
+			assert.ok(registered.has(id), `contributes.keybindings references "${id}" but it is not registered`);
 		}
 	});
 
@@ -83,24 +83,7 @@ suite('Extension Test Suite', () => {
 		const extension = vscode.extensions.getExtension(extensionId);
 		assert.ok(extension, `Expected extension ${extensionId} to be installed`);
 
-		const packageJson = extension.packageJSON as {
-			contributes?: {
-				commands?: Array<{ command: string }>;
-				configuration?: {
-					properties?: Record<string, { default?: unknown }>;
-				};
-				configurationDefaults?: Record<string, unknown>;
-			};
-			extensionDependencies?: string[];
-			extensionPack?: string[];
-		};
-
-		const contributedCommands = new Set(
-			packageJson.contributes?.commands?.map((entry) => entry.command) ?? []
-		);
-			for (const command of expectedContributedCommands) {
-			assert.ok(contributedCommands.has(command), `Expected command ${command} in package.json contributes.commands`);
-		}
+		const packageJson = getDoomPackageJson(extension);
 
 		assert.strictEqual(
 			packageJson.contributes?.configuration?.properties?.['doom.whichKey.menuStyle']?.default,
