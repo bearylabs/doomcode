@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { DoomWebviewController } from '../panel/controller';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
+import { WorkspaceFileIndex } from './workspaceFileIndex';
 
 const MAX_RESULTS = 200;
 
@@ -88,8 +89,13 @@ export class DoomProjectFilePanel extends DoomWebviewController {
 
 	protected readonly visibleContextKey = DoomProjectFilePanel.visibleContextKey;
 
-	constructor(private readonly history: SelectionHistory) {
+	constructor(
+		private readonly history: SelectionHistory,
+		private readonly fileIndex: WorkspaceFileIndex,
+	) {
 		super();
+		// Drop the cached file list whenever the workspace tree changes.
+		this.fileIndex.onCacheInvalidated(() => { this.workspaceCache = undefined; });
 	}
 
 	private allItems: ProjectFileItem[] = [];
@@ -97,7 +103,6 @@ export class DoomProjectFilePanel extends DoomWebviewController {
 	private loading = false;
 	private loadSequence = 0;
 	private workspaceCache: ProjectFileItem[] | undefined;
-	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
 
 	/** Resets query/index and validates a workspace exists. Returns false if not. */
 	prepareShow(): boolean {
@@ -235,15 +240,6 @@ export class DoomProjectFilePanel extends DoomWebviewController {
 		}
 
 		this.workspaceCache = items;
-
-		if (!this.workspaceCacheWatcher) {
-			this.workspaceCacheWatcher = vscode.workspace.createFileSystemWatcher('**/*');
-			const invalidate = (): void => { this.workspaceCache = undefined; };
-			this.workspaceCacheWatcher.onDidCreate(invalidate);
-			this.workspaceCacheWatcher.onDidDelete(invalidate);
-			this.workspaceCacheWatcher.onDidChange(invalidate);
-		}
-
 		this.loading = false;
 		this.seedItems();
 		this.render();

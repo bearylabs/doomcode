@@ -27,6 +27,7 @@ import { DoomSearchPanel } from './search/search';
 import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
 import { SelectionHistory } from './search/selectionHistory';
+import { WorkspaceFileIndex } from './search/workspaceFileIndex';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
@@ -909,7 +910,9 @@ export function activate(context: vscode.ExtensionContext) {
 		DASHBOARD_OPEN_ON_ACTIVATION_SETTING,
 		...Object.keys(installDefaults),
 	];
-	const searchPanel = new DoomSearchPanel();
+	const workspaceFileIndex = new WorkspaceFileIndex();
+	context.subscriptions.push(workspaceFileIndex);
+	const searchPanel = new DoomSearchPanel(workspaceFileIndex);
 
 	/** Opens a project folder in the current window and suppresses the dashboard on the next activation. */
 	const openProjectAndSkipDashboard = async (projectUri: vscode.Uri): Promise<void> => {
@@ -946,7 +949,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 	const openEditorsPanel = new DoomOpenEditorsPanel();
 	const whichKeyBindingsPanel = new DoomWhichKeyBindingsPanel();
-	const projectFilePanel = new DoomProjectFilePanel(selectionHistory);
+	const projectFilePanel = new DoomProjectFilePanel(selectionHistory, workspaceFileIndex);
 	const recentProjectsPanel = new DoomRecentProjectsPanel();
 	const findFilePanel = new DoomFindFilePanel(selectionHistory);
 	const sharedPanel = new DoomSharedPanel(

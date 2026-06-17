@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DoomWebviewController } from '../panel/controller';
 import { createNonce, createPanelHtml, substringMatch } from '../panel/helpers';
+import { WorkspaceFileIndex } from './workspaceFileIndex';
 
 const MAX_RESULTS = 200;
 
@@ -181,7 +182,12 @@ export class DoomSearchPanel extends DoomWebviewController {
 	private startingSelection: vscode.Selection | undefined;
 	private targetEditor: vscode.TextEditor | undefined;
 	private workspaceCache: SearchItem[] | undefined;
-	private workspaceCacheWatcher: vscode.FileSystemWatcher | undefined;
+
+	constructor(private readonly fileIndex: WorkspaceFileIndex) {
+		super();
+		// Drop the cached workspace line index whenever the workspace tree changes.
+		this.fileIndex.onCacheInvalidated(() => { this.workspaceCache = undefined; });
+	}
 
 	/** Switches to editor mode and seeds search state from the active editor. Returns false if no editor is open. */
 	prepareShow(): boolean {
@@ -418,14 +424,6 @@ export class DoomSearchPanel extends DoomWebviewController {
 		}
 
 		this.workspaceCache = items;
-		if (!this.workspaceCacheWatcher) {
-			this.workspaceCacheWatcher = vscode.workspace.createFileSystemWatcher('**/*');
-			const invalidate = (): void => { this.workspaceCache = undefined; };
-			this.workspaceCacheWatcher.onDidCreate(invalidate);
-			this.workspaceCacheWatcher.onDidDelete(invalidate);
-			this.workspaceCacheWatcher.onDidChange(invalidate);
-		}
-
 		this.loading = false;
 		this.currentItems = items;
 		this.filterItems();
