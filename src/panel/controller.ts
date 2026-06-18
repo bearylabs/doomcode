@@ -42,6 +42,18 @@ export abstract class DoomWebviewController {
 	// Public contract consumed by DoomSharedPanel / keybinding commands
 	// -----------------------------------------------------------------------
 
+	// Ctrl+K/J are handled as VS Code commands rather than webview keydown events because
+	// Ctrl+K is a chord prefix in VS Code's keybinding system. Without a registered command
+	// consuming it, VS Code enters chord mode even when the webview calls preventDefault().
+	// See the keybindings in package.json (doom.panelMoveUp / doom.panelMoveDown).
+	public async moveUp(): Promise<void> {
+		await this.onMove(this.activeIndex - 1);
+	}
+
+	public async moveDown(): Promise<void> {
+		await this.onMove(this.activeIndex + 1);
+	}
+
 	/** Wires the panel to an already-created WebviewView (e.g. on panel restore). */
 	attachToView(webviewView: vscode.WebviewView): void {
 		this.resolveWebviewView(webviewView);

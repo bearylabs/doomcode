@@ -2883,6 +2883,16 @@
         "when": "inQuickInput && !whichkeyVisible"
       },
       {
+        "key": "ctrl+k",
+        "command": "doom.panelMoveUp",
+        "when": "doom.fuzzySearchVisible || doom.projectFileVisible || doom.findFileVisible || doom.openEditorsVisible || doom.recentProjectsVisible"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "doom.panelMoveDown",
+        "when": "doom.fuzzySearchVisible || doom.projectFileVisible || doom.findFileVisible || doom.openEditorsVisible || doom.recentProjectsVisible"
+      },
+      {
         "key": "ctrl+j",
         "command": "-workbench.action.togglePanel"
       },

@@ -413,10 +413,7 @@ ${renderItem}
 		});
 
 		window.addEventListener('keydown', (event) => {
-			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
-			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
-
-			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
+			if (event.metaKey || event.altKey || event.ctrlKey) {
 				return;
 			}
 ${extraKeydown}
@@ -428,7 +425,7 @@ ${extraKeydown}
 
 			const resultItems = items.filter((item) => item.type !== 'header');
 
-			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
+			if (event.key === 'ArrowDown') {
 				if (resultItems.length === 0) {
 					return;
 				}
@@ -439,7 +436,7 @@ ${extraKeydown}
 				return;
 			}
 
-			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
+			if (event.key === 'ArrowUp') {
 				if (resultItems.length === 0) {
 					return;
 				}

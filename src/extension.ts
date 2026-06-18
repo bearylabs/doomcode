@@ -673,6 +673,14 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const panelMoveUpCmd = vscode.commands.registerCommand('doom.panelMoveUp', () => {
+		void sharedPanel.moveUp();
+	});
+
+	const panelMoveDownCmd = vscode.commands.registerCommand('doom.panelMoveDown', () => {
+		void sharedPanel.moveDown();
+	});
+
 	const sharedPanelViewProvider = vscode.window.registerWebviewViewProvider(
 		DoomSharedPanel.viewId,
 		sharedPanel,
@@ -749,6 +757,8 @@ export function activate(context: vscode.ExtensionContext) {
 		findFileCmd,
 		findFileInProjectCmd,
 		showRecentProjectsCmd,
+		panelMoveUpCmd,
+		panelMoveDownCmd,
 		sharedPanelViewProvider,
 		new vscode.Disposable(() => {
 			if (dashboardRefreshTimer) {

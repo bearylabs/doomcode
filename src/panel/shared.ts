@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { DoomWebviewController } from './controller';
 import { DoomOpenEditorsPanel } from '../buffers/openEditors';
 import { DoomFindFilePanel } from '../search/findFile';
 import { DoomSearchPanel } from '../search/search';
@@ -77,6 +78,18 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		}
 
 		void this.syncVisibilityContexts(webviewView.visible);
+	}
+
+	public async moveUp(): Promise<void> {
+		if (this.activeController instanceof DoomWebviewController) {
+			await this.activeController.moveUp();
+		}
+	}
+
+	public async moveDown(): Promise<void> {
+		if (this.activeController instanceof DoomWebviewController) {
+			await this.activeController.moveDown();
+		}
 	}
 
 	/** Opens which-key without any context overrides (editor focus assumed). */
