@@ -140,7 +140,7 @@ function flattenWhichKeyBindings(
 /** Entry point: reads live config and returns the fully-flattened binding list. */
 export function getFlattenedWhichKeyBindings(): WhichKeyExecutableBinding[] {
 	return flattenWhichKeyBindings(getConfiguredWhichKeyBindings());
-	}
+}
 
 /**
  * Opens a fuzzy-searchable QuickPick over all configured which-key bindings.

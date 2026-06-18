@@ -5,6 +5,7 @@ import {
     getConfiguredWhichKeyBindings,
     type WhichKeyBinding,
 } from './bindings';
+import { createNonce, isRecord } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Which-key menu models
@@ -146,10 +147,8 @@ export function applyTrackedUiContextCommand(
 	}
 }
 
-/** Narrows `unknown` to an object for safe property access on untyped packageJSON entries. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object';
-}
+const BLUR_ENABLE_DELAY_MS = 200;
+const SUPPRESS_WINDOW_MS = 150;
 
 /** Maps literal chars to symbolic names matching the webview keydown handler. */
 function normalizeBindingKey(value: string): string {
@@ -389,19 +388,25 @@ export function evaluateWhenExpression(
 	return new WhenExpressionParser(contextValues, tokens).parse();
 }
 
+type PackageJsonWithKeybindings = {
+	contributes?: {
+		keybindings?: unknown[];
+	};
+};
+
+let cachedTriggerBindings: WhichKeyTriggerBinding[] | undefined;
+
 /**
  * Reads package.json at runtime to discover keys routed through `whichkey.triggerKey`.
  * Args can be a plain string (key only) or an object with an optional condition.
+ * Result is memoized — package.json is static for the session.
  */
-function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
-	const extension = vscode.extensions.getExtension('bearylabs.doom');
-	const packageJson = extension?.packageJSON as {
-		contributes?: {
-			keybindings?: unknown[];
-		};
-	} | undefined;
+function getWhichKeyTriggerBindings(packageJson: PackageJsonWithKeybindings): WhichKeyTriggerBinding[] {
+	if (cachedTriggerBindings) {
+		return cachedTriggerBindings;
+	}
 
-	return (packageJson?.contributes?.keybindings ?? []).flatMap((entry) => {
+	cachedTriggerBindings = (packageJson.contributes?.keybindings ?? []).flatMap((entry) => {
 		if (!isRecord(entry) || entry.command !== 'doom.triggerKey' || typeof entry.when !== 'string') {
 			return [];
 		}
@@ -423,6 +428,8 @@ function getWhichKeyTriggerBindings(): WhichKeyTriggerBinding[] {
 			when: entry.when,
 		}];
 	});
+
+	return cachedTriggerBindings;
 }
 
 /**
@@ -488,7 +495,7 @@ function resolveConditionalBinding(state: DoomWhichKeyMenu, binding: WhichKeyBin
 	const triggeredCondition = selectTriggeredConditionForKey(
 		binding.key,
 		contextValues,
-		getWhichKeyTriggerBindings(),
+		getWhichKeyTriggerBindings(state.extensionPackageJson),
 	);
 
 	if (triggeredCondition) {
@@ -552,10 +559,6 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 	}
 }
 
-/** Per-load random nonce for the Content-Security-Policy script-src directive. */
-function getNonce(): string {
-	return Math.random().toString(36).slice(2, 12);
-}
 
 // ---------------------------------------------------------------------------
 // Which-key panel controller
@@ -565,7 +568,9 @@ export class DoomWhichKeyMenu {
 	static readonly visibleContextKey = 'whichkeyVisible';
 
 	private bigModeEnabled = false;
+	private readonly packageJson: PackageJsonWithKeybindings;
 	private currentBindings: WhichKeyBinding[] = [];
+
 	private currentItems: RenderItem[] = [];
 	private currentShowContext: ShowContext = {
 		terminalFocus: false,
@@ -585,6 +590,14 @@ export class DoomWhichKeyMenu {
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private view: vscode.WebviewView | undefined;
 	private viewDisposables: vscode.Disposable[] = [];
+
+	constructor(packageJson: PackageJsonWithKeybindings) {
+		this.packageJson = packageJson;
+	}
+
+	get extensionPackageJson(): PackageJsonWithKeybindings {
+		return this.packageJson;
+	}
 
 	get isBigModeEnabled(): boolean {
 		return this.bigModeEnabled;
@@ -863,7 +876,7 @@ export class DoomWhichKeyMenu {
 			return;
 		}
 
-if (message.type !== 'activate' || message.index === undefined) {
+		if (message.type !== 'activate' || message.index === undefined) {
 			return;
 		}
 
@@ -980,6 +993,13 @@ if (message.type !== 'activate' || message.index === undefined) {
 		this.hostPendingKeys = [];
 		void this.view?.webview.postMessage({ type: 'hide' });
 		await this.updateVisibilityContext(false);
+		// Fast path: the chord resolved before the panel was revealed, so the doom panel
+		// was never shown. Skip closePanel/focus-restore — there is nothing to close and the
+		// deferred focus would race the subsequent panel.focus of whatever command runs next.
+		if (!this.view?.visible) {
+			return;
+		}
+
 		if (this.trackedContext.activePanel === 'terminal') {
 			await vscode.commands.executeCommand('workbench.action.terminal.focus');
 			if (!this.currentShowContext.terminalFocus) {
@@ -1009,7 +1029,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 	 * The blur listener is delayed 200ms post-render so VS Code can settle focus before the guard activates.
 	 */
 	private getHtml(webview: vscode.Webview): string {
-		const nonce = getNonce();
+		const nonce = createNonce();
 		const csp = [
 			"default-src 'none'",
 			`style-src ${webview.cspSource} 'unsafe-inline'`,
@@ -1144,7 +1164,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			color: var(--text);
 		}
 
-@media (max-width: 760px) {
+		@media (max-width: 760px) {
 			body {
 				padding: 6px 6px 2px;
 			}
@@ -1232,7 +1252,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 			updateGridRowCount();
 
 			if (Array.isArray(state.suppressedKeys) && state.suppressedKeys.length > 0) {
-				suppressUntil = Date.now() + 150;
+				suppressUntil = Date.now() + ${SUPPRESS_WINDOW_MS};
 				state.suppressedKeys.forEach((key) => {
 					suppressedKeys.set(key, (suppressedKeys.get(key) || 0) + 1);
 				});
@@ -1270,7 +1290,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 		window.addEventListener('message', (event) => {
 			if (event.data.type === 'render') {
 				clearTimeout(blurTimer);
-				blurTimer = setTimeout(() => { blurEnabled = true; }, 200);
+				blurTimer = setTimeout(() => { blurEnabled = true; }, ${BLUR_ENABLE_DELAY_MS});
 				render(event.data.state);
 			} else if (event.data.type === 'hide') {
 				clearTimeout(blurTimer);
@@ -1293,7 +1313,7 @@ if (message.type !== 'activate' || message.index === undefined) {
 				return;
 			}
 
-const bindingKey = toBindingKey(event);
+			const bindingKey = toBindingKey(event);
 			if (!bindingKey) {
 				return;
 			}

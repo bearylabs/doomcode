@@ -4,6 +4,11 @@ import * as vscode from 'vscode';
 // Editor group focus commands
 // ---------------------------------------------------------------------------
 
+/** Maximum number of editor groups to walk when searching for top/bottom group. */
+const MAX_GROUP_WALK = 8;
+/** Number of most-recently-used groups to remember. */
+const MAX_RECENT_GROUPS = 2;
+
 const FOCUS_GROUP_COMMANDS: Partial<Record<vscode.ViewColumn, string>> = {
 	[vscode.ViewColumn.One]: "workbench.action.focusFirstEditorGroup",
 	[vscode.ViewColumn.Two]: "workbench.action.focusSecondEditorGroup",
@@ -158,7 +163,7 @@ export async function focusWindowUp(
 
 	await executeCommand('workbench.action.focusFirstEditorGroup');
 	let previous = getActiveViewColumn();
-	for (let i = 0; i < 8; i++) {
+	for (let i = 0; i < MAX_GROUP_WALK; i++) {
 		await executeCommand('workbench.action.focusBelowGroup');
 		const current = getActiveViewColumn();
 		if (current === previous) { break; }
@@ -210,8 +215,8 @@ function createEditorGroupMruToggle(): WindowMruController {
 
 		recentGroups.push(viewColumn);
 
-		if (recentGroups.length > 2) {
-			recentGroups.splice(0, recentGroups.length - 2);
+		if (recentGroups.length > MAX_RECENT_GROUPS) {
+			recentGroups.splice(0, recentGroups.length - MAX_RECENT_GROUPS);
 		}
 	};
 

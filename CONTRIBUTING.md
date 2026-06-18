@@ -164,10 +164,18 @@ flake.nix             # Nix development environment
 
 ### Adding a New Command
 
-1. Register the command in `src/extension.ts` → `activate()`
-2. Add to `package.json` → `contributes.commands`
-3. Add keybinding in `package.json` → `contributes.keybindings` (optional)
-4. Document in `README.md`
+1. Register the command in the appropriate module's `register()` function (or in `src/extension.ts` → `activate()` for commands that don't belong to a dedicated module).
+2. Decide whether to declare it in `package.json` → `contributes.commands` using the rule below.
+3. Add a keybinding in `package.json` → `contributes.keybindings` (optional).
+4. Document in `README.md`.
+
+#### Command declaration rule
+
+**Declare** a command in `contributes.commands` (with a `title` and `"category": "Doom"`) if it is **user-invokable**: it has a meaningful human-readable title, should appear in the Command Palette, or represents a named action that a user might discover and run directly.
+
+**Do not declare** commands that are pure internal implementation details — keybinding-only routing helpers, UI-state toggles triggered only by the extension itself, or mid-keystroke mode-state commands that have no standalone meaning when invoked from the palette (e.g. `doom.whichKeyHide`, `doom.sidebarHide`, `doom.panelHide`, `doom.terminalEscapePrefix`, `doom.terminalEscapeSpace`, `doom.terminalSendEscape`).
+
+The test `activates and registers Doom commands` in `src/test/extension.test.ts` enforces this contract automatically: it asserts that every `contributes.commands` entry and every `doom.*` command in `contributes.keybindings` is actually registered by the extension. CI will catch any drift.
 
 ### Updating Keybindings
 

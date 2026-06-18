@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import { createNonce, formatFileSize, fuzzyMatch, tildeCollapse } from '../panel/helpers';
+import { DoomWebviewController } from '../panel/controller';
+import { createNonce, createPanelHtml, formatFileSize, substringMatch, tildeCollapse } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
+
+const REFRESH_DEBOUNCE_MS = 50;
 
 // ---------------------------------------------------------------------------
 // Open editor models
@@ -47,12 +50,6 @@ interface OpenEditorState {
 	query: string;
 	statusLabel: string;
 	title: string;
-}
-
-interface OpenEditorMessage {
-	index?: number;
-	query?: string;
-	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
 }
 
 /** Formats a view column number as a short group label, e.g. column 2 → "G2". */
@@ -481,22 +478,114 @@ async function openTabInGroupWithOptions(
 // Open editors panel
 // ---------------------------------------------------------------------------
 
-export class DoomOpenEditorsPanel {
+/** Five-column buffer row: label · flags · size · kind · location. */
+const OPEN_EDITORS_LAYOUT_CSS = `		.item {
+			display: grid;
+			grid-template-columns: minmax(18ch, 28ch) 4ch 6ch 10ch minmax(0, 1fr);
+			gap: 2ch;
+			align-items: center;
+			min-height: var(--line-height);
+			padding: 0 10px;
+			border: none;
+			background: transparent;
+			color: inherit;
+			text-align: left;
+			font: inherit;
+			cursor: pointer;
+		}
+
+		.item.active {
+			background: var(--selected);
+			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+			outline-offset: -1px;
+		}
+
+		.flags,
+		.location {
+			color: var(--muted);
+			white-space: nowrap;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.kind {
+			color: var(--accent);
+			white-space: nowrap;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.flags,
+		.kind {
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.size {
+			color: var(--warning);
+			font-variant-numeric: tabular-nums;
+			text-align: right;
+			white-space: nowrap;
+		}
+
+		.label {
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.location {
+			min-width: 0;
+			color: var(--muted);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}`;
+
+/** Builds one buffer row: highlighted label, vim flags, size, kind badge, location. */
+const OPEN_EDITORS_RENDER_ITEM = `				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = item.index === state.activeIndex ? 'item active' : 'item';
+				button.dataset.index = String(item.index);
+
+				const label = document.createElement('span');
+				label.className = 'label';
+				appendHighlightedText(label, item.label, item.matches);
+
+				const flags = document.createElement('span');
+				flags.className = 'flags';
+				flags.textContent = item.flags;
+
+				const kind = document.createElement('span');
+				kind.className = 'kind';
+				kind.textContent = item.kind;
+
+				const size = document.createElement('span');
+				size.className = 'size';
+				size.textContent = item.size ?? '';
+
+				const location = document.createElement('span');
+				location.className = 'location';
+				location.textContent = item.location;
+
+				button.append(label, flags, size, kind, location);
+				button.addEventListener('click', () => {
+					vscode.postMessage({ type: 'activate', index: item.index });
+				});
+				results.appendChild(button);`;
+
+export class DoomOpenEditorsPanel extends DoomWebviewController {
 	static readonly visibleContextKey = 'doom.openEditorsVisible';
 
+	protected readonly visibleContextKey = DoomOpenEditorsPanel.visibleContextKey;
+
 	private accepted = false;
-	private activeIndex = 0;
 	private filter = true;
 	private items: OpenEditorItem[] = [];
 	private lastPreviewKey: string | undefined;
 	private matches: OpenEditorMatch[] = [];
-	private query = '';
-	private ready = false;
 	private refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	private restoreTabKey: string | undefined;
 	private targetGroup: vscode.ViewColumn | undefined;
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
 
 	/** Snapshots the active tab for post-cancel restore, resets state, and loads current open editors. */
 	prepareShow(resetQuery = true, filter = true): void {
@@ -514,47 +603,37 @@ export class DoomOpenEditorsPanel {
 		void this.refreshItems();
 	}
 
-	/** Wires the panel to an already-created WebviewView (e.g. on sidebar restore). */
-	attachToView(webviewView: vscode.WebviewView): void {
-		this.resolveWebviewView(webviewView);
+	protected get itemCount(): number {
+		return this.matches.length;
 	}
 
-	/** Tears down listeners and clears the view reference without destroying the panel instance. */
-	detachFromView(): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
-		this.ready = false;
+	/** Stamps the panel title and workspace name onto the sidebar pane header. */
+	protected updateViewMetadata(): void {
+		if (!this.view) {
+			return;
+		}
+
+		this.view.title = 'Switch to buffer';
+		this.view.description = getWorkspaceLabel();
 	}
 
-	/**
-	 * Bootstraps the WebviewView: injects HTML, wires dispose/visibility/tab-change/message listeners.
-	 * Also subscribes to `onDidChangeTabs` so the list stays live while the panel is open.
-	 */
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		this.updateViewMetadata();
+	/** Live-previews the active item after every render (initial reveal included). */
+	protected async afterRender(): Promise<void> {
+		await this.previewSelection();
+	}
 
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				if (!webviewView.visible) {
-					return;
-				}
+	/** Refreshes the open-editor list each time the panel is revealed. */
+	protected onVisibilityChanged(visible: boolean): void {
+		if (!visible) {
+			return;
+		}
 
-				this.scheduleRefresh();
-			}),
+		this.scheduleRefresh();
+	}
+
+	/** Keeps the list live while open by refreshing on any tab change. */
+	protected extraViewDisposables(webviewView: vscode.WebviewView): vscode.Disposable[] {
+		return [
 			vscode.window.tabGroups.onDidChangeTabs(() => {
 				if (!webviewView.visible) {
 					return;
@@ -562,20 +641,7 @@ export class DoomOpenEditorsPanel {
 
 				this.scheduleRefresh();
 			}),
-			webviewView.webview.onDidReceiveMessage((message: OpenEditorMessage) => {
-				void this.handleMessage(message);
-			})
-		);
-	}
-
-	/** Stamps the panel title and workspace name onto the sidebar pane header. */
-	private updateViewMetadata(): void {
-		if (!this.view) {
-			return;
-		}
-
-		this.view.title = 'Switch to buffer';
-		this.view.description = getWorkspaceLabel();
+		];
 	}
 
 	/** Coalesces rapid onDidChangeTabs bursts into a single refreshItems call after 50 ms of quiet. */
@@ -586,7 +652,7 @@ export class DoomOpenEditorsPanel {
 		this.refreshTimer = setTimeout(() => {
 			this.refreshTimer = undefined;
 			void this.refreshItems();
-		}, 50);
+		}, REFRESH_DEBOUNCE_MS);
 	}
 
 	/** Rebuilds the flat item list from all tab groups, deduplicating by key and skipping hidden tabs. */
@@ -643,7 +709,7 @@ export class DoomOpenEditorsPanel {
 	 * Fuzzy-filters items by `searchText` but highlights matches against `label` only.
 	 * Empty query shows all tabs unranked. Clamps `activeIndex` to stay in bounds.
 	 */
-	private filterItems(): void {
+	protected filterItems(): void {
 		const query = this.query.trim().toLowerCase();
 		const matches = this.items
 			.map((item, index) => {
@@ -656,12 +722,12 @@ export class DoomOpenEditorsPanel {
 					};
 				}
 
-				const searchMatch = fuzzyMatch(item.searchText, query);
+				const searchMatch = substringMatch(item.searchText, query);
 				if (!searchMatch) {
 					return undefined;
 				}
 
-				const labelMatch = fuzzyMatch(item.label.toLowerCase(), query);
+				const labelMatch = substringMatch(item.label.toLowerCase(), query);
 
 				return {
 					displayMatches: labelMatch?.indices ?? [],
@@ -685,51 +751,11 @@ export class DoomOpenEditorsPanel {
 			: Math.min(this.activeIndex, this.matches.length - 1);
 	}
 
-	/** Dispatches webview messages. Query and move changes also trigger a live preview of the active item. */
-	private async handleMessage(message: OpenEditorMessage): Promise<void> {
-		switch (message.type) {
-			case 'ready':
-				this.ready = true;
-				this.render();
-				await this.previewSelection();
-				return;
-			case 'query':
-				this.query = message.query ?? '';
-				this.filterItems();
-				this.render();
-				await this.previewSelection();
-				return;
-			case 'move': {
-				if (this.matches.length === 0 || message.index === undefined) {
-					return;
-				}
-
-				this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
-				this.render();
-				await this.previewSelection();
-				return;
-			}
-			case 'activate': {
-				if (message.index !== undefined) {
-					this.activeIndex = Math.min(Math.max(message.index, 0), this.matches.length - 1);
-				}
-
-				await this.activateSelection();
-				return;
-			}
-			case 'close':
-				await this.close();
-				return;
-			default:
-				return;
-		}
-	}
-
 	/**
 	 * Opens the selected tab in `targetGroup`. Falls back to `revealExistingTab` for unsupported
 	 * input types, then attempts to move it to the target group. Shows a warning if the move fails.
 	 */
-	private async activateSelection(): Promise<void> {
+	protected async activateSelection(): Promise<void> {
 		const match = this.matches[this.activeIndex];
 		if (!match) {
 			return;
@@ -858,18 +884,14 @@ export class DoomOpenEditorsPanel {
 	}
 
 	/** Closes the panel then restores the pre-search editor state if the user cancelled. */
-	private async close(): Promise<void> {
+	protected async close(): Promise<void> {
 		await vscode.commands.executeCommand('workbench.action.closePanel');
 		await this.restorePreviewIfNeeded();
 	}
 
-	/** Serializes current match/index state and posts it to the webview. Guards against rendering before 'ready'. */
-	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
-			return;
-		}
-
-		const state: OpenEditorState = {
+	/** Serializes current match/index state into the render payload. */
+	protected buildRenderState(): OpenEditorState {
+		return {
 			activeIndex: this.activeIndex,
 			emptyText: this.matches.length === 0 ? 'No open editors match.' : '',
 			items: this.matches.map((entry, index) => ({
@@ -888,365 +910,15 @@ export class DoomOpenEditorsPanel {
 			statusLabel: `${this.matches.length === 0 ? 0 : this.activeIndex + 1}/${this.matches.length}`,
 			title: `Switch to buffer (${getWorkspaceLabel()})`,
 		};
-
-		void this.view.webview.postMessage({
-			type: 'render',
-			state,
-		});
 	}
 
-	/**
-	 * Generates the full webview HTML. Nonce-locked CSP prevents script injection.
-	 * The embedded script owns all DOM interaction and communicates exclusively via postMessage.
-	 */
-	private getHtml(webview: vscode.Webview): string {
-		const nonce = createNonce();
-		const csp = [
-			"default-src 'none'",
-			`style-src ${webview.cspSource} 'unsafe-inline'`,
-			`script-src 'nonce-${nonce}'`,
-		].join('; ');
-
-		return `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta http-equiv="Content-Security-Policy" content="${csp}">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Open Editors</title>
-	<style>
-		html {
-			height: 100%;
-		}
-
-		:root {
-			color-scheme: dark;
-			--bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-			--border: var(--vscode-panel-border, color-mix(in srgb, var(--bg) 82%, white 18%));
-			--input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground));
-			--muted: var(--vscode-editorLineNumber-foreground, var(--vscode-descriptionForeground));
-			--text: var(--vscode-editor-foreground);
-			--selected: var(--vscode-editor-lineHighlightBackground, color-mix(in srgb, var(--bg) 80%, white 20%));
-			--accent: var(--vscode-focusBorder, var(--vscode-editorCursor-foreground));
-			--warning: var(--vscode-editorWarning-foreground);
-			--match-bg: var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--accent) 62%, transparent));
-			--match-fg: var(--vscode-editor-findMatchForeground, var(--text));
-			--font-family: var(--vscode-editor-font-family, monospace);
-			--font-size: var(--vscode-editor-font-size, 13px);
-			--line-height: var(--vscode-editor-line-height, 20px);
-		}
-
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			margin: 0;
-			height: 100%;
-			background: var(--bg);
-			color: var(--text);
-			font-family: var(--font-family);
-			font-size: var(--font-size);
-			line-height: var(--line-height);
-			overflow: hidden;
-			display: flex;
-		}
-
-		.shell {
-			display: flex;
-			flex-direction: column;
-			flex: 1 1 auto;
-			min-height: 0;
-		}
-
-		.promptbar {
-			display: grid;
-			grid-template-columns: auto auto 1fr;
-			align-items: center;
-			gap: 10px;
-			padding: 2px 8px;
-			border-bottom: 1px solid var(--border);
-		}
-
-		.status {
-			color: var(--muted);
-			font-variant-numeric: tabular-nums;
-			white-space: nowrap;
-		}
-
-		.input {
-			width: 100%;
-			padding: 0;
-			border: none;
-			outline: none;
-			background: transparent;
-			color: var(--input-fg);
-			font: inherit;
-			caret-color: var(--accent);
-		}
-
-		.input::placeholder {
-			color: color-mix(in srgb, var(--muted) 72%, transparent);
-		}
-
-		.prompt {
-			color: var(--muted);
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-
-		.results {
-			flex: 1 1 0;
-			min-height: 0;
-			overflow: auto;
-			display: flex;
-			flex-direction: column;
-			padding: 2px 0;
-		}
-
-		.item {
-			display: grid;
-			grid-template-columns: minmax(18ch, 28ch) 4ch 6ch 10ch minmax(0, 1fr);
-			gap: 2ch;
-			align-items: center;
-			min-height: var(--line-height);
-			padding: 0 10px;
-			border: none;
-			background: transparent;
-			color: inherit;
-			text-align: left;
-			font: inherit;
-			cursor: pointer;
-		}
-
-		.item.active {
-			background: var(--selected);
-			outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-			outline-offset: -1px;
-		}
-
-		.flags,
-		.location {
-			color: var(--muted);
-			white-space: nowrap;
-			font-variant-numeric: tabular-nums;
-		}
-
-		.kind {
-			color: var(--accent);
-			white-space: nowrap;
-			font-variant-numeric: tabular-nums;
-		}
-
-		.flags,
-		.kind {
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-
-		.size {
-			color: var(--warning);
-			font-variant-numeric: tabular-nums;
-			text-align: right;
-			white-space: nowrap;
-		}
-
-		.label {
-			min-width: 0;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		.location {
-			min-width: 0;
-			color: var(--muted);
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		.match {
-			background: var(--match-bg);
-			color: var(--match-fg);
-		}
-
-		.empty {
-			color: var(--muted);
-			padding: 4px 10px;
-			white-space: nowrap;
-		}
-	</style>
-</head>
-<body>
-	<div class="shell">
-		<div class="promptbar">
-			<div class="status" id="status">0/0</div>
-			<div class="prompt" id="prompt">Switch to buffer:</div>
-			<input class="input" id="query" type="text" spellcheck="false" placeholder="Type to narrow open editors" />
-		</div>
-		<div class="results" id="results"></div>
-		<div class="empty" id="empty" hidden>No open editors match.</div>
-	</div>
-	<script nonce="${nonce}">
-		const vscode = acquireVsCodeApi();
-		const empty = document.getElementById('empty');
-		const query = document.getElementById('query');
-		const prompt = document.getElementById('prompt');
-		const results = document.getElementById('results');
-		const status = document.getElementById('status');
-		let items = [];
-
-		// Renders text into container, wrapping fuzzy-matched char indices in <span class="match">.
-		function appendHighlightedText(container, text, matches) {
-			if (!matches || matches.length === 0) {
-				container.textContent = text;
-				return;
-			}
-
-			let cursor = 0;
-			let matchCursor = 0;
-			while (cursor < text.length) {
-				if (matchCursor >= matches.length || matches[matchCursor] !== cursor) {
-					const nextMatch = matchCursor < matches.length ? matches[matchCursor] : text.length;
-					container.append(document.createTextNode(text.slice(cursor, nextMatch)));
-					cursor = nextMatch;
-					continue;
-				}
-
-				let end = cursor;
-				while (matchCursor < matches.length && matches[matchCursor] === end) {
-					end++;
-					matchCursor++;
-				}
-
-				const mark = document.createElement('span');
-				mark.className = 'match';
-				mark.textContent = text.slice(cursor, end);
-				container.append(mark);
-				cursor = end;
-			}
-		}
-
-		// Full DOM reconcile from state. Skips overwriting the input if focused to avoid caret jump.
-		function render(state) {
-			items = state.items;
-			document.title = state.title;
-			query.placeholder = state.placeholder;
-			prompt.textContent = state.promptLabel;
-			empty.textContent = state.emptyText;
-
-			if (document.activeElement !== query) {
-				query.value = state.query;
-			}
-
-			status.textContent = state.statusLabel;
-			results.innerHTML = '';
-			empty.hidden = items.length > 0;
-
-			items.forEach((item) => {
-				const button = document.createElement('button');
-				button.type = 'button';
-				button.className = item.index === state.activeIndex ? 'item active' : 'item';
-				button.dataset.index = String(item.index);
-
-				const label = document.createElement('span');
-				label.className = 'label';
-				appendHighlightedText(label, item.label, item.matches);
-
-				const flags = document.createElement('span');
-				flags.className = 'flags';
-				flags.textContent = item.flags;
-
-				const kind = document.createElement('span');
-				kind.className = 'kind';
-				kind.textContent = item.kind;
-
-				const size = document.createElement('span');
-				size.className = 'size';
-				size.textContent = item.size ?? '';
-
-				const location = document.createElement('span');
-				location.className = 'location';
-				location.textContent = item.location;
-
-				button.append(label, flags, size, kind, location);
-				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index: item.index });
-				});
-				results.appendChild(button);
-			});
-
-			const activeButton = results.querySelector('[data-index="' + state.activeIndex + '"]');
-			if (activeButton instanceof HTMLElement) {
-				activeButton.scrollIntoView({ block: 'nearest' });
-			}
-
-			query.focus();
-			query.setSelectionRange(query.value.length, query.value.length);
-		}
-
-		query.addEventListener('input', () => {
-			vscode.postMessage({ type: 'query', query: query.value });
+	protected getHtml(webview: vscode.Webview): string {
+		return createPanelHtml({
+			cspSource: webview.cspSource,
+			nonce: createNonce(),
+			title: 'Open Editors',
+			layoutCss: OPEN_EDITORS_LAYOUT_CSS,
+			renderItem: OPEN_EDITORS_RENDER_ITEM,
 		});
-
-		window.addEventListener('message', (event) => {
-			if (event.data.type === 'render') {
-				render(event.data.state);
-			}
-		});
-
-		window.addEventListener('keydown', (event) => {
-			const isCtrlMoveDown = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'j';
-			const isCtrlMoveUp = event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'k';
-
-			if (event.metaKey || event.altKey || (event.ctrlKey && !isCtrlMoveDown && !isCtrlMoveUp)) {
-				return;
-			}
-
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				vscode.postMessage({ type: 'close' });
-				return;
-			}
-
-			if (event.key === 'ArrowDown' || isCtrlMoveDown) {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.min(activeIndex + 1, items.length - 1) });
-				return;
-			}
-
-			if (event.key === 'ArrowUp' || isCtrlMoveUp) {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'move', index: Math.max(activeIndex - 1, 0) });
-				return;
-			}
-
-			if (event.key === 'Enter') {
-				if (items.length === 0) {
-					return;
-				}
-
-				event.preventDefault();
-				const activeIndex = Number(results.querySelector('.item.active')?.dataset.index ?? '0');
-				vscode.postMessage({ type: 'activate', index: Math.max(activeIndex, 0) });
-			}
-		});
-
-		vscode.postMessage({ type: 'ready' });
-	</script>
-</body>
-</html>`;
 	}
 }

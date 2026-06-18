@@ -7,6 +7,12 @@ const DOOM_VIM_BINDING_ARRAY_KINDS = [
 	'KeyBindingsNonRecursive',
 ] as const;
 
+// Recursive variants are scanned for stale Doom commands during cleanup, but Doom never installs into them.
+const DOOM_STALE_VIM_BINDING_ARRAY_KINDS = [
+	'KeyBindingsNonRecursive',
+	'KeyBindings',
+] as const;
+
 type VimBindingEntry = {
 	before?: unknown;
 	commands?: unknown;
@@ -32,6 +38,11 @@ function normalizeBindingSequence(value: unknown): string | undefined {
 /** Single source of truth for the Vim binding arrays Doom currently manages during install. */
 export const DOOM_MANAGED_VIM_BINDING_SETTINGS = DOOM_VIM_BINDING_MODES.flatMap((mode) => (
 	DOOM_VIM_BINDING_ARRAY_KINDS.map((kind) => `vim.${mode}${kind}`)
+));
+
+/** Vim binding arrays scanned for stale Doom commands during cleanup and detection — a superset of the install-managed set. */
+export const DOOM_STALE_VIM_BINDING_SETTINGS = DOOM_VIM_BINDING_MODES.flatMap((mode) => (
+	DOOM_STALE_VIM_BINDING_ARRAY_KINDS.map((kind) => `vim.${mode}${kind}`)
 ));
 
 const DOOM_MANAGED_VIM_BINDING_SETTING_SET = new Set(DOOM_MANAGED_VIM_BINDING_SETTINGS);

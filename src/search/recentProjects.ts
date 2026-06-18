@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
+import { DoomWebviewController } from '../panel/controller';
 import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, orderlessMatch, tildeCollapse } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
@@ -50,12 +51,6 @@ interface RecentProjectState {
 	statusLabel: string;
 	statusWidthCh: number;
 	title: string;
-}
-
-interface RecentProjectMessage {
-	index?: number;
-	query?: string;
-	type: 'activate' | 'close' | 'move' | 'query' | 'ready';
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +108,8 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
 	let raw: unknown;
 	try {
 		raw = await vscode.commands.executeCommand('_workbench.getRecentlyOpened');
-	} catch {
+	} catch (err) {
+		console.warn('[DoomRecentProjects] getRecentlyOpened failed:', err);
 		return [];
 	}
 
@@ -172,10 +168,11 @@ export async function getRecentProjects(): Promise<RecentProjectItem[]> {
  * Doom panels so it can be dropped into any `DoomSharedPanel` slot.
  * Selecting an entry opens the workspace in the current window.
  */
-export class DoomRecentProjectsPanel {
+export class DoomRecentProjectsPanel extends DoomWebviewController {
 	static readonly visibleContextKey = 'doom.recentProjectsVisible';
 
-	private activeIndex = 0;
+	protected readonly visibleContextKey = DoomRecentProjectsPanel.visibleContextKey;
+
 	private allItems: RecentProjectItem[] = [];
 	private filteredItems: RecentProjectMatch[] = [];
 	private loading = false;
@@ -184,22 +181,17 @@ export class DoomRecentProjectsPanel {
 	 * Used by the "spc spc with no workspace" flow to chain into a file picker.
 	 */
 	private onProjectSelected: ((item: RecentProjectItem) => Promise<void>) | undefined;
-	private query = '';
-	private ready = false;
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
 
 	/**
-	 * Resets state. Always returns true — no precondition needed.
+	 * Resets state.
 	 * Pass `onProjectSelected` to intercept selection instead of opening the folder.
 	 */
-	prepareShow(onProjectSelected?: (item: RecentProjectItem) => Promise<void>): boolean {
+	prepareShow(onProjectSelected?: (item: RecentProjectItem) => Promise<void>): void {
 		this.onProjectSelected = onProjectSelected;
 		this.query = '';
 		this.activeIndex = 0;
 		this.allItems = [];
 		this.filteredItems = [];
-		return true;
 	}
 
 	/** Loads recent projects from VS Code's MRU list and renders them, excluding the current workspace. */
@@ -216,40 +208,22 @@ export class DoomRecentProjectsPanel {
 		this.render();
 	}
 
-	/** Wires the panel to an already-created WebviewView. */
-	attachToView(webviewView: vscode.WebviewView): void {
-		this.resolveWebviewView(webviewView);
+	protected get itemCount(): number {
+		return this.filteredItems.length;
 	}
 
-	/** Tears down listeners and clears the view ref. */
-	detachFromView(): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
-		this.ready = false;
-	}
-
-	/** Moves the active result by `delta` rows. No-op at list boundaries. */
-	async moveSelection(delta: number): Promise<void> {
-		if (!this.view?.visible || this.filteredItems.length === 0) {
+	/** Stamps the pane header. */
+	protected updateViewMetadata(): void {
+		if (!this.view) {
 			return;
 		}
 
-		const nextIndex = Math.min(
-			Math.max(this.activeIndex + delta, 0),
-			this.filteredItems.length - 1
-		);
-
-		if (nextIndex === this.activeIndex) {
-			return;
-		}
-
-		this.activeIndex = nextIndex;
-		this.render();
+		this.view.title = 'Open Recent';
+		this.view.description = 'Select a workspace';
 	}
 
 	/** Opens the selected workspace, or calls `onProjectSelected` if set. */
-	async activateSelection(): Promise<void> {
+	protected async activateSelection(): Promise<void> {
 		if (!this.view?.visible || this.filteredItems.length === 0) {
 			return;
 		}
@@ -269,46 +243,11 @@ export class DoomRecentProjectsPanel {
 	}
 
 	/**
-	 * Bootstraps the WebviewView: injects HTML, wires dispose/visibility/message listeners.
-	 * Re-entrant — cleans up previous listeners first.
-	 */
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((d) => d.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.webview.options = { enableScripts: true };
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		webviewView.title = 'Open Recent';
-		webviewView.description = 'Select a workspace';
-
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-					void this.updateVisibilityContext(false);
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-			}),
-			webviewView.webview.onDidReceiveMessage((message: RecentProjectMessage) => {
-				void this.handleMessage(message);
-			})
-		);
-	}
-
-	/** Syncs the `doom.recentProjectsVisible` context key. */
-	private async updateVisibilityContext(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand('setContext', DoomRecentProjectsPanel.visibleContextKey, isVisible);
-	}
-
-	/**
 	 * Orderless-filters `allItems` (already in MRU order).
 	 * Runs against `searchText` (label + path); splits match indices into separate
 	 * label and path arrays so both portions can be highlighted independently.
 	 */
-	private filterItems(): void {
+	protected filterItems(): void {
 		this.activeIndex = 0;
 		const query = this.query.trim().toLowerCase();
 
@@ -342,49 +281,8 @@ export class DoomRecentProjectsPanel {
 			.sort((a, b) => b.score - a.score);
 	}
 
-	/** Dispatches webview messages. */
-	private async handleMessage(message: RecentProjectMessage): Promise<void> {
-		switch (message.type) {
-		case 'ready':
-			this.ready = true;
-			this.render();
-			return;
-		case 'query':
-			this.query = message.query ?? '';
-			this.filterItems();
-			this.render();
-			return;
-		case 'move': {
-			if (this.filteredItems.length === 0 || message.index === undefined) {
-				return;
-			}
-
-			this.activeIndex = message.index;
-			this.render();
-			return;
-		}
-		case 'activate': {
-			if (message.index !== undefined) {
-				this.activeIndex = message.index;
-			}
-
-			await this.activateSelection();
-			return;
-		}
-		case 'close':
-			await this.close();
-			return;
-		default:
-			return;
-		}
-	}
-
-	/** Builds the full state and pushes it to the webview. Guards against rendering before 'ready'. */
-	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
-			return;
-		}
-
+	/** Builds the full render state. Clamps `activeIndex` into range first. */
+	protected buildRenderState(): RecentProjectState {
 		const activeIndex = this.filteredItems.length === 0
 			? 0
 			: Math.min(this.activeIndex, this.filteredItems.length - 1);
@@ -403,7 +301,7 @@ export class DoomRecentProjectsPanel {
 			type: 'result',
 		}));
 
-		const state: RecentProjectState = {
+		return {
 			activeIndex,
 			emptyText: this.loading ? 'Loading recent projects...' : 'No recent projects found.',
 			items,
@@ -414,8 +312,6 @@ export class DoomRecentProjectsPanel {
 			statusWidthCh: this.getStatusWidthCh(),
 			title: 'Open Recent Project',
 		};
-
-		void this.view.webview.postMessage({ type: 'render', state });
 	}
 
 	private getStatusLabel(): string {
@@ -429,13 +325,8 @@ export class DoomRecentProjectsPanel {
 		return digits * 2 + 1;
 	}
 
-	/** Collapses the bottom panel. */
-	private async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
-	}
-
 	/** Generates the webview HTML using the shared file-picker template. */
-	private getHtml(webview: vscode.Webview): string {
+	protected getHtml(webview: vscode.Webview): string {
 		return createFilePickerHtml({
 			cspSource: webview.cspSource,
 			nonce: createNonce(),

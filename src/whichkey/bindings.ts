@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isRecord } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Which-key binding model
@@ -19,11 +20,6 @@ export interface WhichKeyBinding {
 // ---------------------------------------------------------------------------
 // Binding validation and lookup
 // ---------------------------------------------------------------------------
-
-/** Guards against null — `typeof null === 'object'` would otherwise pass. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object';
-}
 
 /** Minimal structural check — intentionally loose so unknown extra fields pass through. */
 function isWhichKeyBinding(value: unknown): value is WhichKeyBinding {
