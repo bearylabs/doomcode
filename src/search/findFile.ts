@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DoomWebviewController, type PanelWebviewMessage } from '../panel/controller';
-import { createFilePickerHtml, createNonce, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
+import { createFilePickerHtml, createNonce, formatFileSize, formatPermissions, formatRelativeTime, normalizePath, tildeCollapse, tildeExpand } from '../panel/helpers';
 import { SelectionHistory } from './selectionHistory';
 
 // ---------------------------------------------------------------------------
@@ -12,9 +12,9 @@ import { SelectionHistory } from './selectionHistory';
 interface DirectoryEntry {
 	name: string;
 	isDir: boolean;
-	size: string;
+	size: number | undefined;
 	mtime: number | undefined;
-	permissions: string;
+	mode: number | undefined;
 }
 
 interface FindFileItem {
@@ -216,16 +216,16 @@ export class DoomFindFilePanel extends DoomWebviewController {
 			this.currentDir === '/' ? `/${name}` : `${this.currentDir}/${name}`;
 
 		for (const entry of entries) {
-			const { name, isDir, size, mtime: lastModifiedMs, permissions } = entry;
+			const { name, isDir, size, mtime: lastModifiedMs, mode } = entry;
 			const displayName = isDir ? name + '/' : name;
 			const item: FindFileItem = {
 				isDir,
 				lastModifiedMs,
 				name: displayName,
 				fsPath: joinPath(name),
-				permissions,
+				permissions: mode !== undefined ? formatPermissions(mode) : '',
 				searchText: displayName.toLowerCase(),
-				size,
+				size: size !== undefined ? formatFileSize(size) : '',
 			};
 			if (isDir) {
 				dirs.push(item);
