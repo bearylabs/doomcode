@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] 2026-06-18 **pre-release**
+
+### Changed
+
+- Major internal code cleanup and refactoring across the extension: Codebase is now smaller more consistant and easier to maintain.
+
+
 ## [0.6.6] 2026-06-16
 
 ### Added
