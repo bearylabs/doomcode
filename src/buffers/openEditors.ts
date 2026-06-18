@@ -706,7 +706,7 @@ export class DoomOpenEditorsPanel extends DoomWebviewController {
 	}
 
 	/**
-	 * Fuzzy-filters items by `searchText` but highlights matches against `label` only.
+	 * Filters items by `searchText` but highlights matches against `label` only.
 	 * Empty query shows all tabs unranked. Clamps `activeIndex` to stay in bounds.
 	 */
 	protected filterItems(): void {

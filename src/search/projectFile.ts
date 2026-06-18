@@ -80,8 +80,8 @@ async function listProjectFiles(rootUri: vscode.Uri, loadId: number, loadSequenc
  *   1. Currently open file tabs (in tab-group order) — equivalent to open buffers.
  *   2. All remaining project files by modification time descending (recently modified first).
  *
- * Fuzzy search runs on the full relative path so directory prefixes are matchable.
- * Results are sorted by fuzzy score when a query is present, preserving the MRU
+ * Orderless search runs on the full relative path so directory prefixes are matchable.
+ * Results are sorted by match score when a query is present, preserving the MRU
  * ordering for equal-score items (stable sort is guaranteed by V8).
  */
 export class DoomProjectFilePanel extends DoomWebviewController {
@@ -296,9 +296,9 @@ export class DoomProjectFilePanel extends DoomWebviewController {
 	}
 
 	/**
-	 * Applies fuzzy filter to `allItems`, capped at 200.
+	 * Applies orderless filter to `allItems`, capped at 200.
 	 * Empty query: shows all items preserving MRU order (open tabs first, then remaining by mtime desc).
-	 * Non-empty query: sorts by fuzzy score (higher = better); mtime breaks ties.
+	 * Non-empty query: sorts by match score (higher = better); mtime breaks ties.
 	 */
 	protected filterItems(): void {
 		this.activeIndex = 0;

@@ -68,7 +68,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
 }
 
-export interface FuzzyMatch {
+export interface SearchMatch {
 	indices: number[];
 	score: number;
 }
@@ -79,7 +79,7 @@ export function createNonce(): string {
 }
 
 /** Substring match. Returns undefined if query is not found as a contiguous run in text. */
-export function substringMatch(text: string, query: string): FuzzyMatch | undefined {
+export function substringMatch(text: string, query: string): SearchMatch | undefined {
 	if (query.length === 0) {
 		return { indices: [], score: 0 };
 	}
@@ -94,12 +94,12 @@ export function substringMatch(text: string, query: string): FuzzyMatch | undefi
 }
 
 /**
- * Orderless AND fuzzy match — mirrors Doom Emacs `orderless` style.
+ * Orderless match — mirrors Doom Emacs `orderless` style.
  * Splits query on whitespace; ALL tokens must match independently as subsequences.
  * Token order in the query does not matter. Score = sum of per-token scores.
  * Indices = sorted union of per-token indices for highlight rendering.
  */
-export function orderlessMatch(text: string, query: string): FuzzyMatch | undefined {
+export function orderlessMatch(text: string, query: string): SearchMatch | undefined {
 	const tokens = query.split(/\s+/).filter(Boolean);
 	if (tokens.length === 0) {
 		return { indices: [], score: 0 };

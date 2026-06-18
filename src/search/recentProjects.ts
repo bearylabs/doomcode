@@ -13,7 +13,7 @@ export interface RecentProjectItem {
 	lastModifiedMs: number | undefined;
 	path: string;
 	permissions: string;
-	/** Concatenation `label + ' ' + path` (lower-cased) used as the fuzzy search target. */
+	/** Concatenation `label + ' ' + path` (lower-cased) used as the search target. */
 	searchText: string;
 	size: string;
 	uri: vscode.Uri;

@@ -168,8 +168,8 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		await this.runWithIdleDelay(this.whichKeyMenu);
 	}
 
-	/** Opens fuzzy search for the active editor. No-op if no editor is open. */
-	async showFuzzySearch(): Promise<void> {
+	/** Opens search for the active editor. No-op if no editor is open. */
+	async showSearch(): Promise<void> {
 		if (!this.searchPanel.prepareShow()) {
 			return;
 		}

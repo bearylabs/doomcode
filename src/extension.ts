@@ -613,15 +613,15 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	const fuzzySearchCmd = vscode.commands.registerCommand(
-		"doom.fuzzySearchActiveTextEditor",
+	const searchCmd = vscode.commands.registerCommand(
+		"doom.searchActiveTextEditor",
 		() => {
-			void sharedPanel.showFuzzySearch();
+			void sharedPanel.showSearch();
 		}
 	);
 
-	const workspaceFuzzySearchCmd = vscode.commands.registerCommand(
-		"doom.fuzzySearchWorkspace",
+	const workspaceSearchCmd = vscode.commands.registerCommand(
+		"doom.searchWorkspace",
 		() => {
 			void sharedPanel.showWorkspaceSearch();
 		}
@@ -750,8 +750,8 @@ export function activate(context: vscode.ExtensionContext) {
 		sidebarHideCmd,
 		panelHideCmd,
 		configurationChangeListener,
-		fuzzySearchCmd,
-		workspaceFuzzySearchCmd,
+		searchCmd,
+		workspaceSearchCmd,
 		openEditorsCmd,
 		allOpenEditorsCmd,
 		findFileCmd,

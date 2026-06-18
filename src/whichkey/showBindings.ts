@@ -143,7 +143,7 @@ export function getFlattenedWhichKeyBindings(): WhichKeyExecutableBinding[] {
 }
 
 /**
- * Opens a fuzzy-searchable QuickPick over all configured which-key bindings.
+ * Opens a searchable QuickPick over all configured which-key bindings.
  * Matches on key path, binding name, and command detail simultaneously.
  * Executes the chosen binding — no-op on dismiss.
  */

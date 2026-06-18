@@ -171,7 +171,7 @@ const SEARCH_RENDER_ITEM = `				if (item.type === 'header') {
 				results.appendChild(button);`;
 
 export class DoomSearchPanel extends DoomWebviewController {
-	static readonly visibleContextKey = 'doom.fuzzySearchVisible';
+	static readonly visibleContextKey = 'doom.searchVisible';
 
 	protected readonly visibleContextKey = DoomSearchPanel.visibleContextKey;
 
@@ -288,7 +288,7 @@ export class DoomSearchPanel extends DoomWebviewController {
 			return;
 		}
 
-		this.view.title = 'Fuzzy Search';
+		this.view.title = 'Search';
 		this.view.description = 'Search current file';
 	}
 
@@ -463,7 +463,7 @@ export class DoomSearchPanel extends DoomWebviewController {
 	}
 
 	/**
-	 * Applies fuzzy filter to `currentItems` and caps results at MAX_RESULTS.
+	 * Applies substring filter to `currentItems` and caps results at MAX_RESULTS.
 	 * Editor mode: shows first MAX_RESULTS lines unranked for queries < 2 chars, then sorts by line number.
 	 * Workspace mode: shows nothing until 2+ chars are typed, then groups by file via `groupWorkspaceMatches`.
 	 */
@@ -587,7 +587,7 @@ export class DoomSearchPanel extends DoomWebviewController {
 			query: this.query,
 			statusLabel: this.getStatusLabel(),
 			statusWidthCh: this.getStatusWidthCh(),
-			title: this.mode === 'workspace' ? 'Project Search' : 'Fuzzy Search',
+			title: this.mode === 'workspace' ? 'Project Search' : 'Search',
 		};
 	}
 
@@ -690,7 +690,7 @@ export class DoomSearchPanel extends DoomWebviewController {
 		return createPanelHtml({
 			cspSource: webview.cspSource,
 			nonce: createNonce(),
-			title: 'Fuzzy Search',
+			title: 'Search',
 			layoutCss: SEARCH_LAYOUT_CSS,
 			renderItem: SEARCH_RENDER_ITEM,
 		});

@@ -147,7 +147,7 @@ export class DoomWhichKeyBindingsPanel extends DoomWebviewController {
 	}
 
 	/**
-	 * Applies fuzzy search against `searchText` and sorts by score desc, then path/name asc.
+	 * Applies substring search against `searchText` and sorts by score desc, then path/name asc.
 	 * Empty query shows all bindings unranked. Clamps `activeIndex` so it never goes out of bounds.
 	 * Match indices are computed against `path` only — highlight stays in the key column.
 	 */
