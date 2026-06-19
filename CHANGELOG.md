@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- `SPC b d` on an editor-group terminal (vterm, claude, copilot, etc.) no longer hides the panel terminal. Focus returns to the editor group after the buffer is killed.
+- Opening the which-key menu and cancelling with Escape while an editor-group terminal is focused no longer collapses the panel terminal.
+
 ## [0.7.0] 2026-06-18 **pre-release**
 
 ### Changed

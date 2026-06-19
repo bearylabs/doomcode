@@ -28,16 +28,16 @@ import {
 import { DOOM_STALE_VIM_BINDING_SETTINGS } from './onboarding/vimBindings';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
-import { DoomSearchPanel } from './search/search';
 import { DoomProjectFilePanel } from './search/projectFile';
 import { DoomRecentProjectsPanel } from './search/recentProjects';
+import { DoomSearchPanel } from './search/search';
 import { SelectionHistory } from './search/selectionHistory';
 import { WorkspaceFileIndex } from './search/workspaceFileIndex';
 import * as terminalCommands from './terminal/terminalCommands';
 import { DoomWhichKeyBindingsPanel } from './whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from './whichkey/menu';
 import { showWhichKeyBindingsQuickPick } from './whichkey/showBindings';
-import { registerWindowMru } from './window/mru';
+import { focusEditorGroup, registerWindowMru } from './window/mru';
 import * as windowCommands from './window/windowCommands';
 
 type WhichKeyMenuStyle = 'doom' | 'vspacecode';
@@ -673,6 +673,32 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	// Workaround: closing an editor-group terminal while a panel terminal is visible causes
+	// VS Code to hide the panel terminal. Briefly focusing the panel terminal and returning
+	// focus to the editor forces it to reappear. Revert the b-d binding to
+	// workbench.action.closeActiveEditor directly if a cleaner fix becomes available.
+	const killBufferCmd = vscode.commands.registerCommand('doom.killBuffer', async () => {
+		const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+		const isEditorTerminal = activeTab?.input instanceof vscode.TabInputTerminal;
+		const editorTerminalLabels = new Set(
+			vscode.window.tabGroups.all
+				.flatMap(g => g.tabs)
+				.filter(t => t.input instanceof vscode.TabInputTerminal)
+				.map(t => t.label)
+		);
+		const hasPanelTerminal = vscode.window.terminals.some(t => !editorTerminalLabels.has(t.name));
+
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+		if (isEditorTerminal && hasPanelTerminal) {
+			const activeColumn = vscode.window.tabGroups.activeTabGroup.viewColumn;
+			await vscode.commands.executeCommand('workbench.action.terminal.focus');
+			if (activeColumn !== undefined) {
+				await focusEditorGroup(activeColumn);
+			}
+		}
+	});
+
 	const panelMoveUpCmd = vscode.commands.registerCommand('doom.panelMoveUp', () => {
 		void sharedPanel.moveUp();
 	});
@@ -754,6 +780,7 @@ export function activate(context: vscode.ExtensionContext) {
 		workspaceSearchCmd,
 		openEditorsCmd,
 		allOpenEditorsCmd,
+		killBufferCmd,
 		findFileCmd,
 		findFileInProjectCmd,
 		showRecentProjectsCmd,

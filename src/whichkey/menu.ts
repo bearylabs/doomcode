@@ -131,6 +131,7 @@ export function applyTrackedUiContextCommand(
 		}
 		return next;
 	case 'workbench.action.terminal.focus':
+	case 'doom.openPanelTerminal':
 		next.activePanel = 'terminal';
 		return next;
 	case 'workbench.action.togglePanel':
@@ -748,7 +749,12 @@ export class DoomWhichKeyMenu {
 		if (showContext?.terminalPanelOpen === true) {
 			this.trackedContext = { ...this.trackedContext, activePanel: 'terminal' };
 		} else if (showContext?.terminalPanelOpen === false && this.trackedContext.activePanel === 'terminal') {
-			this.trackedContext = { ...this.trackedContext, activePanel: '' };
+			// Don't reset when focus moved to an editor-group terminal — the panel terminal
+			// may still be visible even though activePanel != 'terminal' in VS Code's context.
+			const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+			if (!(activeTab?.input instanceof vscode.TabInputTerminal)) {
+				this.trackedContext = { ...this.trackedContext, activePanel: '' };
+			}
 		}
 
 		if (showContext?.explorerVisible === true) {
