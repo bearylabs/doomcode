@@ -28,7 +28,7 @@ import {
 	resolveWindowLeftTarget,
 	resolveWindowRightTarget,
 } from '../window/mru';
-import { resolveWindowDeleteAction } from '../window/windowCommands';
+import { resolveWindowDeleteAction, resolveWindowDownAction } from '../window/windowCommands';
 import {
 	applyTrackedUiContextCommand,
 	evaluateWhenExpression,
@@ -485,6 +485,13 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
 		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
+	});
+
+	test('routes window down to the panel terminal only from an editor terminal with a panel terminal', () => {
+		assert.strictEqual(resolveWindowDownAction(true, true), 'panelTerminal');
+		assert.strictEqual(resolveWindowDownAction(true, false), 'default');
+		assert.strictEqual(resolveWindowDownAction(false, true), 'default');
+		assert.strictEqual(resolveWindowDownAction(false, false), 'default');
 	});
 
 	test('resolves left window target to explorer only on leftmost group', async () => {
