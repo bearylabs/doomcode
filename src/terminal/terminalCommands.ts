@@ -83,13 +83,19 @@ export function register(context: vscode.ExtensionContext): void {
 	 */
 	const openPanelTerminalCmd = vscode.commands.registerCommand(
 		"doom.openPanelTerminal",
-		() => {
+		async () => {
 			const panelTerminals = vscode.window.terminals.filter((t) => !isVtermName(t.name));
 
 			if (panelTerminals.length > 0) {
+				// Existing terminal — show(false) is reliable, no extra focus step needed
 				panelTerminals[panelTerminals.length - 1].show(false);
 			} else {
-				vscode.window.createTerminal({ location: vscode.TerminalLocation.Panel }).show(false);
+				// New terminal — show(false) selects it and opens the panel, but shell
+				// initialization may not be done yet so focus doesn't always land;
+				// workbench.action.terminal.focus follows up to ensure it does
+				const terminal = vscode.window.createTerminal({ location: vscode.TerminalLocation.Panel });
+				terminal.show(false);
+				await vscode.commands.executeCommand('workbench.action.terminal.focus');
 			}
 		}
 	);
