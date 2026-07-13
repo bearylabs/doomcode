@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] 2026-07-13
+
+First stable 0.8 release. This release rolls up the changes introduced during the 0.7.x pre-release cycle.
+
+### Changed
+
+- Major internal code cleanup and refactoring across the extension. The codebase is now smaller, more consistent, and easier to maintain.
+
+### Fixed
+
+- `SPC b d` on an editor-group terminal (vterm, claude, copilot, etc.) no longer hides the panel terminal. Focus returns to the editor group after the buffer is killed.
+- Opening the which-key menu and cancelling with Escape while an editor-group terminal is focused no longer collapses the panel terminal.
+- `SPC w j` from an editor-group terminal now focuses the panel terminal when one is open, instead of bouncing focus back to the editor terminal and leaving the which-key menu stuck in the panel.
+
 ## [0.7.1] 2026-06-19 **pre-release**
 
 ### Fixed
