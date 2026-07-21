@@ -310,7 +310,7 @@
               "key": "d",
               "name": "Kill buffer",
               "type": "command",
-              "command": "doom.killBuffer"
+              "command": "workbench.action.closeActiveEditor"
             },
             {
               "key": "D",
