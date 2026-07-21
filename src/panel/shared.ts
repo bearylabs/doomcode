@@ -256,6 +256,18 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 	private async showMode(mode: SharedPanelMode, controller: SharedPanelController): Promise<void> {
 		const hadView = this.view !== undefined;
 		this.setActiveController(mode, controller);
+		// Capture whether the panel terminal was open before this picker replaces it in the bottom
+		// panel, so close() can restore the terminal instead of collapsing the whole panel. When the
+		// terminal was open but not focused, close() returns focus to the editor group active now
+		// (revealing the terminal steals focus). The which-key menu's tracked context / show context
+		// are the same sources of truth its own close() used.
+		if (controller instanceof DoomWebviewController) {
+			const terminalWasOpen = this.whichKeyMenu.trackedUiContext.activePanel === 'terminal';
+			const restoreEditorGroup = terminalWasOpen && !this.whichKeyMenu.showContext.terminalFocus
+				? vscode.window.tabGroups.activeTabGroup.viewColumn
+				: undefined;
+			controller.setPanelRestoreState(terminalWasOpen, restoreEditorGroup);
+		}
 		if (hadView && this.view) {
 			controller.attachToView(this.view);
 		}

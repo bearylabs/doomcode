@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { focusEditorGroup } from '../window/mru';
 
 /**
  * Messages every Doom bottom-panel picker webview posts back to its controller.
@@ -32,6 +33,13 @@ export abstract class DoomWebviewController {
 	protected activeIndex = 0;
 	protected query = '';
 	protected ready = false;
+	/** Whether the bottom-panel terminal was open when this picker was revealed. Set at show time by DoomSharedPanel. */
+	protected terminalWasOpen = false;
+	/**
+	 * Editor group to refocus after restoring the terminal — set when the terminal was open but not
+	 * focused at show time, so focus returns to the editor. `undefined` keeps focus on the restored terminal.
+	 */
+	protected restoreEditorGroup: vscode.ViewColumn | undefined;
 	protected view: vscode.WebviewView | undefined;
 	protected viewDisposables: vscode.Disposable[] = [];
 
@@ -52,6 +60,17 @@ export abstract class DoomWebviewController {
 
 	public async moveDown(): Promise<void> {
 		await this.onMove(this.activeIndex + 1);
+	}
+
+	/**
+	 * Records the bottom-panel state captured when the picker was revealed so {@link close} can
+	 * restore it: whether the panel terminal was open, and (when it was open but not focused) the
+	 * editor group that should regain focus after the terminal is re-revealed. Called by
+	 * DoomSharedPanel at show time, before the picker replaces the terminal in the bottom panel.
+	 */
+	setPanelRestoreState(terminalWasOpen: boolean, restoreEditorGroup: vscode.ViewColumn | undefined): void {
+		this.terminalWasOpen = terminalWasOpen;
+		this.restoreEditorGroup = restoreEditorGroup;
 	}
 
 	/** Wires the panel to an already-created WebviewView (e.g. on panel restore). */
@@ -175,9 +194,23 @@ export abstract class DoomWebviewController {
 		await vscode.commands.executeCommand('setContext', this.visibleContextKey, isVisible);
 	}
 
-	/** Collapses the bottom panel. */
+	/**
+	 * Dismisses the picker. If the panel terminal was open before the picker took over the bottom
+	 * panel, re-reveals it so the terminal reappears; otherwise collapses the bottom panel.
+	 *
+	 * `terminal.focus` also steals focus, so when the terminal was merely open (not focused) at show
+	 * time, focus is handed back to the editor group that was active — mirroring which-key's restore.
+	 */
 	protected async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
+		if (!this.terminalWasOpen) {
+			await vscode.commands.executeCommand('workbench.action.closePanel');
+			return;
+		}
+
+		await vscode.commands.executeCommand('workbench.action.terminal.focus');
+		if (this.restoreEditorGroup !== undefined && !(await focusEditorGroup(this.restoreEditorGroup))) {
+			await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+		}
 	}
 
 	/** Clamps an index into the current result range (never negative, never past the last row). */

@@ -883,9 +883,9 @@ export class DoomOpenEditorsPanel extends DoomWebviewController {
 		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 	}
 
-	/** Closes the panel then restores the pre-search editor state if the user cancelled. */
+	/** Restores the panel terminal (or collapses the panel), then restores the pre-search editor state if the user cancelled. */
 	protected async close(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.action.closePanel');
+		await super.close();
 		await this.restorePreviewIfNeeded();
 	}
 
