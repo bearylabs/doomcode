@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] 2026-07-21
+
+### Changed
+
+- The which-key menu now opens in its own dedicated editor group instead of the bottom panel. This keeps the menu visually aligned with the editor area and avoids disturbing the panel terminal.
+
 ## [0.8.0] 2026-07-13
 
 First stable 0.8 release. This release rolls up the changes introduced during the 0.7.x pre-release cycle.
