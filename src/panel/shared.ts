@@ -12,7 +12,7 @@ import { DoomWhichKeyMenu } from '../whichkey/menu';
 // Shared panel modes
 // ---------------------------------------------------------------------------
 
-type SharedPanelMode = 'bindings' | 'buffers' | 'findFile' | 'project' | 'recent' | 'search' | 'whichkey';
+type SharedPanelMode = 'bindings' | 'buffers' | 'findFile' | 'project' | 'recent' | 'search';
 
 interface SharedPanelController {
 	attachToView(webviewView: vscode.WebviewView): void;
@@ -106,7 +106,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		// delay reach the native widget before whichkeyVisible propagates, so doom.triggerKey
 		// loses the keybinding conflict. Opening immediately lets the webview capture keys itself.
 		if (delay <= 0 || menu.showContext.terminalFocus || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
-			await this.showMode('whichkey', menu);
+			await menu.show();
 			return;
 		}
 
@@ -126,7 +126,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			// An unrecognised key was left in the queue — show panel immediately.
 			if (menu.hasPendingKeys) {
 				menu.setNavigationStack(resolution.stack);
-				await this.showMode('whichkey', menu);
+				await menu.show();
 				return;
 			}
 
@@ -135,7 +135,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 
 			const remaining = deadline - Date.now();
 			if (remaining <= 0) {
-				await this.showMode('whichkey', menu);
+				await menu.show();
 				return;
 			}
 
@@ -145,7 +145,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			]);
 
 			if (!gotKey) {
-				await this.showMode('whichkey', menu);
+				await menu.show();
 				return;
 			}
 		}
@@ -279,13 +279,8 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		this.activeMode = mode;
 	}
 
-	/** Updates visibility context keys for all panel modes. */
+	/** Updates visibility context keys for all shared-panel modes. Which-key owns its own context key. */
 	private async syncVisibilityContexts(isVisible: boolean): Promise<void> {
-		await vscode.commands.executeCommand(
-			'setContext',
-			DoomWhichKeyMenu.visibleContextKey,
-			isVisible && this.activeMode === 'whichkey'
-		);
 		await vscode.commands.executeCommand(
 			'setContext',
 			DoomSearchPanel.visibleContextKey,
@@ -349,7 +344,7 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		}
 	</style>
 </head>
-<body>Run a Doom command to open which-key, search, or buffers.</body>
+<body>Run a Doom command to open search, buffers, or find file.</body>
 </html>`;
 	}
 }

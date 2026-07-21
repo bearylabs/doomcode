@@ -31,6 +31,7 @@ import {
 import { resolveWindowDeleteAction, resolveWindowDownAction } from '../window/windowCommands';
 import {
 	applyTrackedUiContextCommand,
+	buildMenuLayout,
 	evaluateWhenExpression,
 	selectTriggeredConditionForKey,
 } from '../whichkey/menu';
@@ -649,6 +650,60 @@ suite('Extension Test Suite', () => {
 			markersVisible: false,
 			sidebarVisible: false,
 		});
+	});
+
+	test('wraps the previous editor layout under a full-width bottom menu group', () => {
+		// Single existing group → menu group is the second, full-width bottom child.
+		assert.deepStrictEqual(
+			buildMenuLayout({ orientation: 0, groups: [{ size: 100 }] }),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{ size: 100 }], size: 0.72 },
+					{ size: 0.28 },
+				],
+			},
+		);
+
+		// Three side-by-side groups → all three stay in the full-width top block, sizes preserved.
+		assert.deepStrictEqual(
+			buildMenuLayout({
+				orientation: 0,
+				groups: [{ size: 300 }, { size: 300 }, { size: 400 }],
+			}),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{ size: 300 }, { size: 300 }, { size: 400 }], size: 0.72 },
+					{ size: 0.28 },
+				],
+			},
+		);
+
+		// A previously vertical (stacked) layout gets one extra wrapper so the outer split's first
+		// nesting level (horizontal) doesn't flatten the original top/bottom stacking.
+		assert.deepStrictEqual(
+			buildMenuLayout({ orientation: 1, groups: [{ size: 200 }, { size: 200 }] }),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{ groups: [{ size: 200 }, { size: 200 }] }], size: 0.72 },
+					{ size: 0.28 },
+				],
+			},
+		);
+
+		// Missing groups falls back to a single empty group.
+		assert.deepStrictEqual(
+			buildMenuLayout({}),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{}], size: 0.72 },
+					{ size: 0.28 },
+				],
+			},
+		);
 	});
 
 	test('evaluates native-style which-key when expressions', () => {

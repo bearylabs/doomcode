@@ -562,11 +562,55 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 
 
 // ---------------------------------------------------------------------------
-// Which-key panel controller
+// Editor-group layout for the menu
+// ---------------------------------------------------------------------------
+
+/** VS Code grid orientation for `vscode.setEditorLayout`: children stacked along the vertical axis (top/bottom). */
+const GROUP_ORIENTATION_VERTICAL = 1;
+/** Fraction of window height given to the menu's bottom group; the remainder keeps the previous layout. */
+const MENU_GROUP_HEIGHT_FRACTION = 0.28;
+
+/** Mirrors the (non-exported) argument shape of `vscode.getEditorLayout` / `vscode.setEditorLayout`. */
+export interface EditorGroupLayout {
+	orientation?: number;
+	groups?: EditorGroupLayoutNode[];
+}
+
+export interface EditorGroupLayoutNode {
+	groups?: EditorGroupLayoutNode[];
+	size?: number;
+}
+
+/**
+ * Builds a layout that keeps `previous` as a full-width top block and appends one fresh full-width
+ * group beneath it. The outer split is vertical (top/bottom); nested containers alternate orientation
+ * automatically (the first nesting level becomes horizontal), so a previous layout whose top-level
+ * groups were themselves stacked vertically gets one extra wrapper level to preserve that stacking.
+ */
+export function buildMenuLayout(previous: EditorGroupLayout): EditorGroupLayout {
+	const previousGroups = previous.groups ?? [{}];
+	const topChild: EditorGroupLayoutNode =
+		previous.orientation === GROUP_ORIENTATION_VERTICAL
+			? { groups: [{ groups: previousGroups }] }
+			: { groups: previousGroups };
+	topChild.size = 1 - MENU_GROUP_HEIGHT_FRACTION;
+
+	return {
+		orientation: GROUP_ORIENTATION_VERTICAL,
+		groups: [
+			topChild,
+			{ size: MENU_GROUP_HEIGHT_FRACTION },
+		],
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Which-key menu controller
 // ---------------------------------------------------------------------------
 
 export class DoomWhichKeyMenu {
 	static readonly visibleContextKey = 'whichkeyVisible';
+	private static readonly viewType = 'doom.whichKeyMenu';
 
 	private bigModeEnabled = false;
 	private readonly packageJson: PackageJsonWithKeybindings;
@@ -589,8 +633,14 @@ export class DoomWhichKeyMenu {
 	private suppressedHostDuplicateKeys: string[] = [];
 	private suppressedDuplicateKeys: string[] = [];
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
-	private view: vscode.WebviewView | undefined;
-	private viewDisposables: vscode.Disposable[] = [];
+	private panel: vscode.WebviewPanel | undefined;
+	private panelDisposables: vscode.Disposable[] = [];
+	/** Snapshot of the editor grid taken before reshaping, restored verbatim when the menu closes. */
+	private previousLayout: EditorGroupLayout | undefined;
+	/** Ignore the focus-loss fallback until this time — creating the panel steals editor focus once. */
+	private blurGuardUntil = 0;
+	/** Serialises overlapping close triggers (Escape + blur + active-editor-change) into one teardown. */
+	private closing = false;
 
 	constructor(packageJson: PackageJsonWithKeybindings) {
 		this.packageJson = packageJson;
@@ -765,29 +815,111 @@ export class DoomWhichKeyMenu {
 	}
 
 	/**
-	 * SharedPanelController contract — called when this controller becomes active.
-	 * When re-attaching to the same retained webview, skip HTML reinitialization so
-	 * the webview's JS context stays intact and keys typed immediately after SPC aren't lost.
+	 * Opens the menu in a brand-new, full-width editor group pinned to the bottom of the grid.
+	 * The pre-existing editor layout is captured first so it can be restored verbatim on close,
+	 * then reshaped (vertical outer split) so the menu group spans the full window width below it.
+	 * A fresh webview is created each time, so the blur guard and JS state always start clean.
 	 */
-	attachToView(webviewView: vscode.WebviewView): void {
-		if (this.view === webviewView) {
-			this.viewDisposables.forEach((disposable) => disposable.dispose());
-			this.viewDisposables = [];
-			this.registerViewListeners(webviewView);
+	async show(): Promise<void> {
+		if (this.panel) {
+			this.panel.reveal(this.panel.viewColumn, false);
 			this.render();
 			return;
 		}
 
-		this.resolveWebviewView(webviewView);
-	}
+		const targetColumn = await this.reshapeLayoutForMenu();
 
-	/** SharedPanelController contract — disposes view-scoped listeners so the next attach starts clean. */
-	detachFromView(): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = undefined;
 		this.ready = false;
 		this.currentItems = [];
+		// Creating the panel steals focus from the active text editor, firing onDidChangeActiveTextEditor
+		// once — ignore the fallback during this settle window so the menu doesn't close itself on open.
+		this.blurGuardUntil = Date.now() + BLUR_ENABLE_DELAY_MS;
+
+		const panel = vscode.window.createWebviewPanel(
+			DoomWhichKeyMenu.viewType,
+			'Doom Which Key',
+			{ viewColumn: targetColumn, preserveFocus: false },
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+			},
+		);
+		this.panel = panel;
+		panel.webview.html = this.getHtml(panel.webview);
+		this.registerPanelListeners(panel);
+		await this.updateVisibilityContext(true);
+	}
+
+	/**
+	 * Captures the current editor layout, then reshapes the grid into a vertical outer split whose
+	 * top child wraps the previous layout and whose bottom child is a fresh full-width group.
+	 * Returns the ViewColumn of that new bottom group.
+	 */
+	private async reshapeLayoutForMenu(): Promise<number> {
+		const previous = await vscode.commands.executeCommand<EditorGroupLayout>('vscode.getEditorLayout');
+		this.previousLayout = previous;
+		// Existing groups keep columns 1..N when a trailing group is appended, so the new
+		// bottom group is column N+1.
+		const targetColumn = vscode.window.tabGroups.all.length + 1;
+		await vscode.commands.executeCommand('vscode.setEditorLayout', buildMenuLayout(previous));
+		return targetColumn;
+	}
+
+	/** Wires panel-scoped listeners: message dispatch, dispose-driven close, and the focus-loss fallback. */
+	private registerPanelListeners(panel: vscode.WebviewPanel): void {
+		this.panelDisposables.push(
+			panel.onDidDispose(() => {
+				// User closed the tab directly. Our own teardown nulls this.panel before disposing,
+				// so a programmatic dispose is a no-op here.
+				if (this.panel === panel) {
+					void this.close();
+				}
+			}),
+			panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
+				void this.handleMessage(message);
+			}),
+			vscode.window.onDidChangeActiveTextEditor(() => {
+				if (this.isShowing && Date.now() > this.blurGuardUntil) {
+					void this.close();
+				}
+			}),
+		);
+	}
+
+	/** Disposes the panel (if still open), tears down its listeners, and restores the pre-menu editor layout. */
+	private async teardownPanel(): Promise<void> {
+		this.panelDisposables.forEach((disposable) => disposable.dispose());
+		this.panelDisposables = [];
+		const panel = this.panel;
+		this.panel = undefined;
+		this.ready = false;
+		this.currentItems = [];
+		panel?.dispose();
+		if (this.previousLayout) {
+			await vscode.commands.executeCommand('vscode.setEditorLayout', this.previousLayout);
+			this.previousLayout = undefined;
+		}
+	}
+
+	/** Restores focus to the editor/terminal/explorer that was active before the menu opened. */
+	private async restoreFocusAfterClose(): Promise<void> {
+		if (this.trackedContext.activePanel === 'terminal') {
+			await vscode.commands.executeCommand('workbench.action.terminal.focus');
+			if (!this.currentShowContext.terminalFocus) {
+				if (this.preWhichKeyEditorGroup !== undefined) {
+					await focusEditorGroup(this.preWhichKeyEditorGroup);
+				} else {
+					await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+				}
+			}
+			return;
+		}
+
+		if (this.currentShowContext.explorerFocused && this.trackedContext.sidebarVisible) {
+			await vscode.commands.executeCommand('workbench.action.focusSideBar');
+		} else if (this.preWhichKeyEditorGroup !== undefined) {
+			await focusEditorGroup(this.preWhichKeyEditorGroup);
+		}
 	}
 
 	/** Returns root bindings when the navigation stack is empty (top-level menu). */
@@ -796,9 +928,9 @@ export class DoomWhichKeyMenu {
 		return current?.bindings ?? this.currentBindings;
 	}
 
-	/** Used when the panel collapses externally; avoids a double-close if the view is already hidden. */
+	/** Used when the menu collapses externally; avoids a double-close if the panel is already gone. */
 	async hide(): Promise<void> {
-		if (!this.view?.visible) {
+		if (!this.panel) {
 			this.isShowing = false;
 			this.hostPendingKeys = [];
 			await this.updateVisibilityContext(false);
@@ -806,51 +938,6 @@ export class DoomWhichKeyMenu {
 		}
 
 		await this.close();
-	}
-
-	/**
-	 * Disposes previous listeners first — called on re-attachment (panel mode switch), not just first registration.
-	 * Also wires the `onDidChangeActiveTextEditor` fallback for focus-loss detection alongside the webview blur listener.
-	 */
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.forEach((disposable) => disposable.dispose());
-		this.viewDisposables = [];
-		this.view = webviewView;
-		webviewView.title = 'Doom Which Key';
-		webviewView.description = 'Two-column menu';
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
-		webviewView.webview.html = this.getHtml(webviewView.webview);
-		this.registerViewListeners(webviewView);
-	}
-
-	/** Registers view-scoped event listeners, used both on first init and retained-view re-attach. */
-	private registerViewListeners(webviewView: vscode.WebviewView): void {
-		this.viewDisposables.push(
-			webviewView.onDidDispose(() => {
-				if (this.view === webviewView) {
-					this.view = undefined;
-					this.ready = false;
-					this.currentItems = [];
-					void this.updateVisibilityContext(false);
-				}
-			}),
-			webviewView.onDidChangeVisibility(() => {
-				void this.updateVisibilityContext(webviewView.visible);
-				if (webviewView.visible) {
-					this.render();
-				}
-			}),
-			webviewView.webview.onDidReceiveMessage((message: WebviewMessage) => {
-				void this.handleMessage(message);
-			}),
-			vscode.window.onDidChangeActiveTextEditor(() => {
-				if (this.isShowing) {
-					void this.close();
-				}
-			})
-		);
 	}
 
 	/** Closes the menu before executing so commands see the original UI state, not the which-key overlay. */
@@ -937,7 +1024,7 @@ export class DoomWhichKeyMenu {
 	 * Pending keys let the host queue a chord before the webview is ready.
 	 */
 	private render(): void {
-		if (!this.view || !this.ready || !this.view.visible) {
+		if (!this.panel || !this.ready || !this.panel.visible) {
 			return;
 		}
 
@@ -959,7 +1046,7 @@ export class DoomWhichKeyMenu {
 			suppressedKeys: this.suppressedDuplicateKeys.splice(0),
 		};
 
-		void this.view.webview.postMessage({
+		void this.panel.webview.postMessage({
 			type: 'render',
 			state,
 		});
@@ -990,38 +1077,31 @@ export class DoomWhichKeyMenu {
 	}
 
 	/**
-	 * Posts 'hide' to the webview before closing to reset the blur guard.
-	 * Without this, the webview retains its `blurEnabled = true` state and spuriously closes on the next open.
-	 * If the terminal was the active panel before which-key opened, restore it instead of closing the panel.
+	 * Closes the menu: disposes the panel, restores the previous editor layout, and returns focus.
+	 * The `closing` guard makes concurrent triggers (Escape + blur + active-editor-change + dispose)
+	 * idempotent. Fast path: when the chord resolved before the panel was ever created there is
+	 * nothing to tear down, so skip layout-restore/focus which would race the next command.
 	 */
 	private async close(): Promise<void> {
-		this.isShowing = false;
-		this.hostPendingKeys = [];
-		void this.view?.webview.postMessage({ type: 'hide' });
-		await this.updateVisibilityContext(false);
-		// Fast path: the chord resolved before the panel was revealed, so the doom panel
-		// was never shown. Skip closePanel/focus-restore — there is nothing to close and the
-		// deferred focus would race the subsequent panel.focus of whatever command runs next.
-		if (!this.view?.visible) {
+		if (this.closing) {
 			return;
 		}
 
-		if (this.trackedContext.activePanel === 'terminal') {
-			await vscode.commands.executeCommand('workbench.action.terminal.focus');
-			if (!this.currentShowContext.terminalFocus) {
-				if (this.preWhichKeyEditorGroup !== undefined) {
-					await focusEditorGroup(this.preWhichKeyEditorGroup);
-				} else {
-					await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-				}
+		this.closing = true;
+		try {
+			this.isShowing = false;
+			this.hostPendingKeys = [];
+			await this.updateVisibilityContext(false);
+
+			if (!this.panel) {
+				this.previousLayout = undefined;
+				return;
 			}
-		} else {
-			await vscode.commands.executeCommand('workbench.action.closePanel');
-			if (this.currentShowContext.explorerFocused && this.trackedContext.sidebarVisible) {
-				await vscode.commands.executeCommand('workbench.action.focusSideBar');
-			} else if (this.preWhichKeyEditorGroup !== undefined) {
-				await focusEditorGroup(this.preWhichKeyEditorGroup);
-			}
+
+			await this.teardownPanel();
+			await this.restoreFocusAfterClose();
+		} finally {
+			this.closing = false;
 		}
 	}
 
