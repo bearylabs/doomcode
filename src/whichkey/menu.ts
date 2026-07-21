@@ -582,26 +582,52 @@ export interface EditorGroupLayoutNode {
 }
 
 /**
- * Builds a layout that keeps `previous` as a full-width top block and appends one fresh full-width
- * group beneath it. The outer split is vertical (top/bottom); nested containers alternate orientation
- * automatically (the first nesting level becomes horizontal), so a previous layout whose top-level
- * groups were themselves stacked vertically gets one extra wrapper level to preserve that stacking.
+ * Builds a layout that reproduces `previous` as a full-width top block and appends one fresh
+ * full-width group as the bottom-most row for the menu. The outer split is always vertical
+ * (top/bottom) so the menu spans the entire window width beneath the previous layout.
+ *
+ * `setEditorLayout` flips orientation on every nesting level and drops redundant single-child
+ * wrappers (see VS Code's `serializeGridNodeDescriptor`/`sanitizeGridNodeDescriptor`), so the
+ * previous groups are placed differently depending on their orientation:
+ *
+ *  - Side-by-side (or a single group): nest the previous groups under one top block. As a child of
+ *    the vertical outer split, that block lays its own children out horizontally, reproducing the
+ *    columns; any sub-splits alternate from there.
+ *  - Already stacked (vertical): the previous split is colinear with the outer split. Nesting it
+ *    would need a redundant single-child wrapper that VS Code collapses, flattening the stack into
+ *    a side-by-side split (the original bug). Instead, merge the previous rows straight into the
+ *    outer split and append the menu as one more row, rescaling the rows to share the top portion.
  */
 export function buildMenuLayout(previous: EditorGroupLayout): EditorGroupLayout {
 	const previousGroups = previous.groups ?? [{}];
-	const topChild: EditorGroupLayoutNode =
-		previous.orientation === GROUP_ORIENTATION_VERTICAL
-			? { groups: [{ groups: previousGroups }] }
-			: { groups: previousGroups };
-	topChild.size = 1 - MENU_GROUP_HEIGHT_FRACTION;
+	const menuGroup: EditorGroupLayoutNode = { size: MENU_GROUP_HEIGHT_FRACTION };
+
+	if (previous.orientation === GROUP_ORIENTATION_VERTICAL) {
+		const topRows = scaleGroupSizes(previousGroups, 1 - MENU_GROUP_HEIGHT_FRACTION);
+		return {
+			orientation: GROUP_ORIENTATION_VERTICAL,
+			groups: [...topRows, menuGroup],
+		};
+	}
 
 	return {
 		orientation: GROUP_ORIENTATION_VERTICAL,
 		groups: [
-			topChild,
-			{ size: MENU_GROUP_HEIGHT_FRACTION },
+			{ groups: previousGroups, size: 1 - MENU_GROUP_HEIGHT_FRACTION },
+			menuGroup,
 		],
 	};
+}
+
+/**
+ * Returns copies of `groups` whose sizes are rescaled to sum to `fraction`, preserving their
+ * relative proportions and any nested `groups`. Groups without a positive size share the space
+ * equally, so a sizeless fallback still yields a sane split.
+ */
+function scaleGroupSizes(groups: EditorGroupLayoutNode[], fraction: number): EditorGroupLayoutNode[] {
+	const weights = groups.map((group) => (typeof group.size === 'number' && group.size > 0 ? group.size : 1));
+	const total = weights.reduce((sum, weight) => sum + weight, 0);
+	return groups.map((group, index) => ({ ...group, size: (weights[index] / total) * fraction }));
 }
 
 // ---------------------------------------------------------------------------

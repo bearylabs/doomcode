@@ -680,14 +680,63 @@ suite('Extension Test Suite', () => {
 			},
 		);
 
-		// A previously vertical (stacked) layout gets one extra wrapper so the outer split's first
-		// nesting level (horizontal) doesn't flatten the original top/bottom stacking.
+		// Two stacked (vertical) groups are colinear with the outer vertical split, so they merge
+		// into it as full-width rows and the menu becomes a third full-width row — the bottom group
+		// is never split left/right. Rows keep their relative proportions within the top portion.
 		assert.deepStrictEqual(
 			buildMenuLayout({ orientation: 1, groups: [{ size: 200 }, { size: 200 }] }),
 			{
 				orientation: 1,
 				groups: [
-					{ groups: [{ groups: [{ size: 200 }, { size: 200 }] }], size: 1 - 0.18 },
+					{ size: (200 / 400) * (1 - 0.18) },
+					{ size: (200 / 400) * (1 - 0.18) },
+					{ size: 0.18 },
+				],
+			},
+		);
+
+		// Mixed grid: two columns where the right column is itself split into rows. The whole grid
+		// stays in the top block (a horizontal child of the vertical outer split) and the menu spans
+		// the full width beneath it.
+		assert.deepStrictEqual(
+			buildMenuLayout({
+				orientation: 0,
+				groups: [
+					{ size: 960 },
+					{ groups: [{ size: 540 }, { size: 540 }], size: 960 },
+				],
+			}),
+			{
+				orientation: 1,
+				groups: [
+					{
+						groups: [
+							{ size: 960 },
+							{ groups: [{ size: 540 }, { size: 540 }], size: 960 },
+						],
+						size: 1 - 0.18,
+					},
+					{ size: 0.18 },
+				],
+			},
+		);
+
+		// Mixed grid with a vertical outer split: rows where the top row is split into two columns.
+		// The rows merge into the outer split (rescaled, nested column split preserved) and the menu
+		// is appended as the last full-width row.
+		assert.deepStrictEqual(
+			buildMenuLayout({
+				orientation: 1,
+				groups: [
+					{ groups: [{ size: 960 }, { size: 960 }], size: 300 },
+					{ size: 300 },
+				],
+			}),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{ size: 960 }, { size: 960 }], size: (300 / 600) * (1 - 0.18) },
+					{ size: (300 / 600) * (1 - 0.18) },
 					{ size: 0.18 },
 				],
 			},
