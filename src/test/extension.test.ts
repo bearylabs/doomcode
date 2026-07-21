@@ -659,8 +659,8 @@ suite('Extension Test Suite', () => {
 			{
 				orientation: 1,
 				groups: [
-					{ groups: [{ size: 100 }], size: 0.72 },
-					{ size: 0.28 },
+					{ groups: [{ size: 100 }], size: 1 - 0.18 },
+					{ size: 0.18 },
 				],
 			},
 		);
@@ -674,8 +674,8 @@ suite('Extension Test Suite', () => {
 			{
 				orientation: 1,
 				groups: [
-					{ groups: [{ size: 300 }, { size: 300 }, { size: 400 }], size: 0.72 },
-					{ size: 0.28 },
+					{ groups: [{ size: 300 }, { size: 300 }, { size: 400 }], size: 1 - 0.18 },
+					{ size: 0.18 },
 				],
 			},
 		);
@@ -687,8 +687,8 @@ suite('Extension Test Suite', () => {
 			{
 				orientation: 1,
 				groups: [
-					{ groups: [{ groups: [{ size: 200 }, { size: 200 }] }], size: 0.72 },
-					{ size: 0.28 },
+					{ groups: [{ groups: [{ size: 200 }, { size: 200 }] }], size: 1 - 0.18 },
+					{ size: 0.18 },
 				],
 			},
 		);
@@ -699,8 +699,8 @@ suite('Extension Test Suite', () => {
 			{
 				orientation: 1,
 				groups: [
-					{ groups: [{}], size: 0.72 },
-					{ size: 0.28 },
+					{ groups: [{}], size: 1 - 0.18 },
+					{ size: 0.18 },
 				],
 			},
 		);
