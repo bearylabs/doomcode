@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
+import { createNonce, isRecord } from '../panel/helpers';
 import { focusEditorGroup } from '../window/mru';
 import {
-    executeWhichKeyBindingCommands,
-    getConfiguredWhichKeyBindings,
-    type WhichKeyBinding,
+	executeWhichKeyBindingCommands,
+	getConfiguredWhichKeyBindings,
+	type WhichKeyBinding,
 } from './bindings';
-import { createNonce, isRecord } from '../panel/helpers';
 
 // ---------------------------------------------------------------------------
 // Which-key menu models
@@ -568,7 +568,7 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 /** VS Code grid orientation for `vscode.setEditorLayout`: children stacked along the vertical axis (top/bottom). */
 const GROUP_ORIENTATION_VERTICAL = 1;
 /** Fraction of window height given to the menu's bottom group; the remainder keeps the previous layout. */
-const MENU_GROUP_HEIGHT_FRACTION = 0.28;
+const MENU_GROUP_HEIGHT_FRACTION = 0.18;
 
 /** Mirrors the (non-exported) argument shape of `vscode.getEditorLayout` / `vscode.setEditorLayout`. */
 export interface EditorGroupLayout {
