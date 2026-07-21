@@ -474,6 +474,76 @@ async function openTabInGroupWithOptions(
 	return false;
 }
 
+/**
+ * Relocates every tab from the group in `sourceColumn` into `targetColumn`, then removes the emptied
+ * source group. Dispatches per input type, mirroring the open-editors panel:
+ * - Files/diffs/notebooks/custom editors are re-opened in the target group. Opening shares the
+ *   underlying document model, so dirty edits survive and nothing is force-closed; the originals stay
+ *   in the source group (keeping it alive) until it is closed below.
+ * - Terminals are moved via `moveTerminalEditorToGroup` — a terminal cannot be duplicated, so this is
+ *   a true move — landing in the editor group rather than the panel.
+ *
+ * The source group is closed at the end to drop the now-duplicated originals and any tab type that
+ * could not be re-opened (e.g. webviews), matching the previous close-group behaviour for those. If a
+ * terminal is still stuck in the source (a move failed) the group is left open so it is never
+ * force-closed. Focus finally lands on the group that received the tabs, tolerating the column
+ * renumbering that follows the source group collapsing.
+ */
+export async function relocateTabsAndCloseGroup(
+	sourceColumn: vscode.ViewColumn,
+	targetColumn: vscode.ViewColumn,
+): Promise<void> {
+	const sourceGroup = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+	if (!sourceGroup || sourceColumn === targetColumn) {
+		return;
+	}
+
+	// Re-open every non-terminal tab in the target group. Snapshot the list first — opening copies
+	// does not mutate the source group, so the snapshot stays valid across the loop.
+	for (const tab of [...sourceGroup.tabs]) {
+		if (tab.input instanceof vscode.TabInputTerminal) {
+			continue;
+		}
+		await openTabInGroup(tab, targetColumn);
+	}
+
+	// Move each terminal tab out of the source group. Re-read the source group each pass because
+	// moving a tab invalidates prior Tab references; the file copies opened above keep the source
+	// group alive so it does not collapse (and renumber the target) mid-loop.
+	const terminalCount = sourceGroup.tabs.filter((tab) => tab.input instanceof vscode.TabInputTerminal).length;
+	for (let pass = 0; pass < terminalCount; pass++) {
+		const currentSource = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+		const terminalTab = currentSource?.tabs.find((tab) => tab.input instanceof vscode.TabInputTerminal);
+		if (!terminalTab) {
+			break;
+		}
+
+		if (!(await revealExistingTab(terminalTab))) {
+			break;
+		}
+		await moveTerminalEditorToGroup(terminalTab, targetColumn);
+	}
+
+	// Close the emptied source group to drop the duplicated originals (and any unmovable tab types).
+	// Skip only when a terminal is still there, so a failed move never force-closes it.
+	const leftoverGroup = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+	const holdsTerminal = leftoverGroup?.tabs.some((tab) => tab.input instanceof vscode.TabInputTerminal);
+	if (leftoverGroup && !holdsTerminal) {
+		await vscode.window.tabGroups.close(leftoverGroup);
+	}
+
+	// Land focus on the group that received the tabs, tolerating column renumbering.
+	const remainingColumns = vscode.window.tabGroups.all
+		.map((group) => group.viewColumn)
+		.filter((column): column is vscode.ViewColumn => column !== undefined);
+	const focusColumn = remainingColumns.includes(targetColumn)
+		? targetColumn
+		: remainingColumns.sort((left, right) => left - right)[0];
+	if (focusColumn !== undefined) {
+		await focusEditorGroup(focusColumn);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Open editors panel
 // ---------------------------------------------------------------------------
