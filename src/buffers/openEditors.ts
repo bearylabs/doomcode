@@ -323,7 +323,7 @@ function getTabDedupKey(tab: vscode.Tab): string {
  * Focuses the tab's group then steps forward or backward through tabs (whichever is shorter)
  * until the target tab is active. Returns true only if the correct tab ends up active.
  */
-async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
+export async function revealExistingTab(tab: vscode.Tab): Promise<boolean> {
 	const group = tab.group;
 	const targetGroup = group.viewColumn;
 	const targetIndex = group.tabs.indexOf(tab);
@@ -398,7 +398,7 @@ function isTerminalTabActiveInGroup(targetGroup: vscode.ViewColumn, label: strin
  * Moves a terminal tab to `targetGroup`. Tries `moveActiveEditor` first; if that fails,
  * falls back to the terminal panel → editor-area dance via `moveToTerminalPanel` / `moveToEditor`.
  */
-async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
+export async function moveTerminalEditorToGroup(tab: vscode.Tab, targetGroup: vscode.ViewColumn): Promise<boolean> {
 	if (!(tab.input instanceof vscode.TabInputTerminal)) {
 		return false;
 	}

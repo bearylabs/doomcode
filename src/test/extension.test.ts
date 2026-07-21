@@ -28,7 +28,7 @@ import {
 	resolveWindowLeftTarget,
 	resolveWindowRightTarget,
 } from '../window/mru';
-import { resolveWindowDeleteAction, resolveWindowDownAction } from '../window/windowCommands';
+import { resolveAdjacentEditorColumn, resolveWindowDeleteAction, resolveWindowDownAction } from '../window/windowCommands';
 import {
 	applyTrackedUiContextCommand,
 	buildMenuLayout,
@@ -482,10 +482,32 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('routes window delete by active terminal mode', () => {
-		assert.strictEqual(resolveWindowDeleteAction(false, false), 'closeGroup');
-		assert.strictEqual(resolveWindowDeleteAction(false, true), 'moveTerminalEditorToPanelAndCloseGroup');
-		assert.strictEqual(resolveWindowDeleteAction(true, true), 'moveTerminalEditorToPanelAndCloseGroup');
-		assert.strictEqual(resolveWindowDeleteAction(true, false), 'closePanel');
+		assert.strictEqual(resolveWindowDeleteAction(false, false, false), 'closeGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, false, true), 'closeGroup');
+		// Terminal editor with another group present relocates to it; alone it stays put (never the panel).
+		assert.strictEqual(resolveWindowDeleteAction(false, true, true), 'moveTerminalEditorToGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, true, true), 'moveTerminalEditorToGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true, false), 'keepTerminalEditor');
+		assert.strictEqual(resolveWindowDeleteAction(true, true, false), 'keepTerminalEditor');
+		// Panel-terminal focus always closes the panel regardless of other groups.
+		assert.strictEqual(resolveWindowDeleteAction(true, false, false), 'closePanel');
+		assert.strictEqual(resolveWindowDeleteAction(true, false, true), 'closePanel');
+	});
+
+	test('resolves adjacent editor column for relocating a terminal', () => {
+		const columnOne = vscode.ViewColumn.One;
+		const columnTwo = vscode.ViewColumn.Two;
+		const columnThree = vscode.ViewColumn.Three;
+		const three = [{ viewColumn: columnOne }, { viewColumn: columnTwo }, { viewColumn: columnThree }];
+
+		// Prefers the next-higher column.
+		assert.strictEqual(resolveAdjacentEditorColumn(columnOne, three), columnTwo);
+		assert.strictEqual(resolveAdjacentEditorColumn(columnTwo, three), columnThree);
+		// The last group wraps to the previous column.
+		assert.strictEqual(resolveAdjacentEditorColumn(columnThree, three), columnTwo);
+		// A lone group has no adjacent target.
+		assert.strictEqual(resolveAdjacentEditorColumn(columnOne, [{ viewColumn: columnOne }]), undefined);
+		assert.strictEqual(resolveAdjacentEditorColumn(undefined, three), undefined);
 	});
 
 	test('routes window down to the panel terminal only from an editor terminal with a panel terminal', () => {
