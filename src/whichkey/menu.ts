@@ -462,6 +462,9 @@ export function selectTriggeredConditionForKey(
 /**
  * Blends live VS Code state with tracked state.
  * activePanel and copilotVisible have no direct query API so they come from tracked context.
+ * multipleEditorGroups comes from a pre-menu snapshot, not a live read: the menu opens as its
+ * own editor group, so a live `tabGroups.all.length` would over-count and flip the flag on with a
+ * single real group. See {@link DoomWhichKeyMenu.hadMultipleEditorGroupsBeforeMenu}.
  */
 function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 	const activeEditor = vscode.window.activeTextEditor;
@@ -480,7 +483,7 @@ function buildContextSnapshot(state: DoomWhichKeyMenu): ContextSnapshot {
 		editorHasSelection: activeSelection !== undefined && !activeSelection.isEmpty,
 		explorerViewletVisible: state.trackedUiContext.explorerViewletVisible,
 		markersVisible: state.trackedUiContext.markersVisible,
-		multipleEditorGroups: vscode.window.tabGroups.all.length > 1,
+		multipleEditorGroups: state.hadMultipleEditorGroupsBeforeMenu,
 		terminalFocus: state.showContext.terminalFocus,
 	};
 }
@@ -654,6 +657,8 @@ export class DoomWhichKeyMenu {
 	private isShowing = false;
 	private nextKeyResolvers: Array<() => void> = [];
 	private preWhichKeyEditorGroup: vscode.ViewColumn | undefined;
+	/** Real editor-group count (>1) captured before the menu adds its own group; feeds multipleEditorGroups. */
+	private preWhichKeyMultipleEditorGroups = false;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
 	private suppressedHostDuplicateKeys: string[] = [];
@@ -686,6 +691,16 @@ export class DoomWhichKeyMenu {
 
 	get preWhichKeyEditorGroupColumn(): vscode.ViewColumn | undefined {
 		return this.preWhichKeyEditorGroup;
+	}
+
+	/**
+	 * Whether more than one real editor group existed when the menu opened, snapshotted in
+	 * {@link prepareShow} before the menu's own group is created. Reading `tabGroups.all.length`
+	 * live once the menu is open counts the menu group too, wrongly flipping H/J/K/L to the
+	 * move-group branch with a single real group.
+	 */
+	get hadMultipleEditorGroupsBeforeMenu(): boolean {
+		return this.preWhichKeyMultipleEditorGroups;
 	}
 
 	get showContext(): ShowContext {
@@ -809,6 +824,9 @@ export class DoomWhichKeyMenu {
 		this.suppressedHostDuplicateKeys = [];
 		this.suppressedDuplicateKeys = [];
 		this.preWhichKeyEditorGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
+		// Snapshot before the menu adds its own editor group so multipleEditorGroups reflects the
+		// real group count for the whole session (used by the H/J/K/L conditional bindings).
+		this.preWhichKeyMultipleEditorGroups = vscode.window.tabGroups.all.length > 1;
 		this.currentShowContext = {
 			terminalFocus: showContext?.terminalFocus === true,
 			terminalPanelOpen: showContext?.terminalPanelOpen === true,
