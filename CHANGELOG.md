@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] 2026-07-22 **pre-release**
+
+### Fixed
+
+- `SPC SPC` and `SPC .` now open a not-yet-open file in the editor group that was active when the picker was invoked, instead of placing it in a different group when multiple editor groups are open.
+
 ## [0.9.0] 2026-07-21
 
 ### Changed

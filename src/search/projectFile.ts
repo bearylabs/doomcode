@@ -187,8 +187,8 @@ export class DoomProjectFilePanel extends DoomWebviewController {
 			}
 		}
 
-		// Not open anywhere → open in active group.
-		await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false });
+		// Not open anywhere → open in the group that was active when the picker was invoked.
+		await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false, viewColumn: activeGroup.viewColumn });
 	}
 
 	/**
