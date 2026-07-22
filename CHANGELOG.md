@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.2] 2026-07-22 **pre-release**
+
+### Fixed
+
+- `SPC SPC` and `SPC .` now reveal a file in the focused group when it is already open as a background tab in another group, instead of bringing it to the foreground in that other group and stealing focus away.
+
 ## [0.9.1] 2026-07-22 **pre-release**
 
 ### Fixed

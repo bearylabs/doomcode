@@ -155,10 +155,12 @@ export class DoomFindFilePanel extends DoomWebviewController {
 				if (!(tab.input instanceof vscode.TabInputText) || tab.input.uri.fsPath !== uri.fsPath) {
 					continue;
 				}
-				if (group !== activeGroup && tab === group.activeTab) {
+				// Open in another group → open/reveal in our focused group.
+				if (group !== activeGroup) {
 					await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false, viewColumn: activeGroup.viewColumn });
 					return;
 				}
+				// Already in the focused group → switch to it.
 				await vscode.window.showTextDocument(document, { preview: false, preserveFocus: false, viewColumn: group.viewColumn });
 				return;
 			}
