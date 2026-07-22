@@ -481,20 +481,25 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(detectDashboardMode('0.2.0', '0.2.0'), 'startup');
 	});
 
-	test('routes window delete by active terminal mode', () => {
-		// Another editor group present → relocate every tab into it, then close the emptied group,
-		// regardless of whether the active tab is a file or a terminal editor.
-		assert.strictEqual(resolveWindowDeleteAction(false, false, true), 'relocateAndCloseGroup');
-		assert.strictEqual(resolveWindowDeleteAction(false, true, true), 'relocateAndCloseGroup');
-		assert.strictEqual(resolveWindowDeleteAction(true, true, true), 'relocateAndCloseGroup');
-		// Lone editor group → no-op: nowhere to relocate to, so the group is left untouched
-		// (its editors are not closed and a terminal is never sent to the panel).
-		assert.strictEqual(resolveWindowDeleteAction(false, false, false), 'keepGroup');
-		assert.strictEqual(resolveWindowDeleteAction(false, true, false), 'keepGroup');
-		assert.strictEqual(resolveWindowDeleteAction(true, true, false), 'keepGroup');
-		// Panel-terminal focus always closes the panel regardless of other groups.
-		assert.strictEqual(resolveWindowDeleteAction(true, false, false), 'closePanel');
-		assert.strictEqual(resolveWindowDeleteAction(true, false, true), 'closePanel');
+	test('routes window delete by focus and terminal contents', () => {
+		// Another editor group present, source group has file editors only → close the focused group.
+		assert.strictEqual(resolveWindowDeleteAction(false, false, true, false), 'closeGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true, true, false), 'closeGroup');
+		// Another editor group present, source group holds a terminal editor → evacuate terminals first,
+		// then close the group (never exile the terminal to the panel).
+		assert.strictEqual(resolveWindowDeleteAction(false, false, true, true), 'moveTerminalsThenCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true, true, true), 'moveTerminalsThenCloseGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, true, true, true), 'moveTerminalsThenCloseGroup');
+		// Lone editor group → no-op regardless of terminal contents: nowhere to send a terminal, so the
+		// group is left untouched (its editors are not closed and a terminal is never sent to the panel).
+		assert.strictEqual(resolveWindowDeleteAction(false, false, false, false), 'keepGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, true, false, false), 'keepGroup');
+		assert.strictEqual(resolveWindowDeleteAction(true, true, false, true), 'keepGroup');
+		assert.strictEqual(resolveWindowDeleteAction(false, false, false, true), 'keepGroup');
+		// Panel-terminal focus always closes the panel regardless of other groups or contents.
+		assert.strictEqual(resolveWindowDeleteAction(true, false, false, false), 'closePanel');
+		assert.strictEqual(resolveWindowDeleteAction(true, false, true, false), 'closePanel');
+		assert.strictEqual(resolveWindowDeleteAction(true, false, true, true), 'closePanel');
 	});
 
 	test('resolves adjacent editor column for relocating a terminal', () => {

@@ -1,26 +1,30 @@
 import * as vscode from 'vscode';
-import { relocateTabsAndCloseGroup } from '../buffers/openEditors';
+import { moveTerminalEditorToGroup, revealExistingTab } from '../buffers/openEditors';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
 import { focusWindowDown, focusWindowLeft, focusWindowRight, focusWindowUp } from './mru';
 
 export type WindowDeleteAction =
 	| 'closePanel'
-	| 'relocateAndCloseGroup'
-	| 'keepGroup';
+	| 'keepGroup'
+	| 'closeGroup'
+	| 'moveTerminalsThenCloseGroup';
 export type WindowDownAction = 'panelTerminal' | 'default';
 
 /**
  * Pure function: determines the correct `doom.windowDelete` action based on focus context.
  * - Terminal panel focus (no editor terminal active) → close the panel.
- * - Another editor group exists → relocate every tab in the closing group to it, then remove the
- *   emptied group (files, diffs and terminals alike; terminals never go to the panel).
- * - Only one editor group → keep it untouched: there is nowhere to relocate its tabs, so `SPC w d`
+ * - Only one editor group → keep it untouched: there is nowhere to send a terminal, so `SPC w d`
  *   is a no-op rather than closing the group's editors (and never exiles a terminal to the panel).
+ * - Source group has file editors only → close it natively; VS Code focuses the adjacent group and
+ *   expands it to fill (fast, no relocation, no flashing).
+ * - Source group holds a terminal editor → evacuate the terminal(s) into the neighbour first (a
+ *   terminal would otherwise be exiled to the panel on close), then close the emptied source group.
  */
 export function resolveWindowDeleteAction(
 	terminalFocus: boolean,
 	activeTerminalEditor: boolean,
 	hasOtherEditorGroup: boolean,
+	sourceGroupHasTerminal: boolean,
 ): WindowDeleteAction {
 	if (terminalFocus && !activeTerminalEditor) {
 		return 'closePanel';
@@ -30,7 +34,7 @@ export function resolveWindowDeleteAction(
 		return 'keepGroup';
 	}
 
-	return 'relocateAndCloseGroup';
+	return sourceGroupHasTerminal ? 'moveTerminalsThenCloseGroup' : 'closeGroup';
 }
 
 /**
@@ -83,14 +87,25 @@ export function register(context: vscode.ExtensionContext, deps: WindowCommandDe
 		"doom.windowDelete",
 		async () => {
 			const activeGroup = vscode.window.tabGroups.activeTabGroup;
+			// The closing group is the one active when whichkey opened (preWhichKeyEditorGroupColumn is
+			// set during whichkey command execution and undefined for direct invocations); using it is
+			// robust against the which-key menu's focus handoff — the menu opens in its own editor group
+			// since 0.9.0.
+			const sourceColumn = whichKeyMenu.preWhichKeyEditorGroupColumn ?? activeGroup.viewColumn;
+			const sourceGroup = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+
 			const activeTerminalEditor = activeGroup.activeTab?.input instanceof vscode.TabInputTerminal;
 			const hasOtherEditorGroup = vscode.window.tabGroups.all.some(
-				(group) => group.viewColumn !== activeGroup.viewColumn,
+				(group) => group.viewColumn !== sourceColumn,
 			);
+			const sourceGroupHasTerminal = sourceGroup?.tabs.some(
+				(tab) => tab.input instanceof vscode.TabInputTerminal,
+			) ?? false;
 			const action = resolveWindowDeleteAction(
 				whichKeyMenu.showContext.terminalFocus,
 				activeTerminalEditor,
 				hasOtherEditorGroup,
+				sourceGroupHasTerminal,
 			);
 
 			if (action === 'closePanel') {
@@ -99,26 +114,67 @@ export function register(context: vscode.ExtensionContext, deps: WindowCommandDe
 			}
 
 			if (action === 'keepGroup') {
-				// Only one editor group is open, so there is nowhere to relocate its tabs. Leave it
+				// Only one editor group is open, so there is nowhere to send a terminal. Leave it
 				// untouched rather than closing its editors (and never exile a terminal to the panel).
 				return;
 			}
 
-			// action === 'relocateAndCloseGroup': move every tab in the closing group — files, diffs and
-			// terminals alike — into the adjacent group, then remove the emptied source group. The
-			// closing group is the one active when whichkey opened (preWhichKeyEditorGroupColumn is set
-			// during whichkey command execution and undefined for direct invocations); using it avoids
-			// relying on focus being honoured after the whichkey panel closes. The destination is the
-			// next-higher column (or the next-lower one when the source is the last group). Nothing is
-			// force-closed, so dirty editors survive, and terminals land in an editor group rather than
-			// the panel. Focus ends up in the destination group.
-			const sourceColumn = whichKeyMenu.preWhichKeyEditorGroupColumn ?? activeGroup.viewColumn;
+			if (!sourceGroup) {
+				return;
+			}
+
+			if (action === 'closeGroup') {
+				// File editors only: close the focused group natively. VS Code focuses an adjacent group
+				// automatically and expands it to fill — fast, no relocation, no flashing. Unsaved files
+				// trigger VS Code's normal save prompt.
+				await vscode.window.tabGroups.close(sourceGroup);
+				return;
+			}
+
+			// action === 'moveTerminalsThenCloseGroup': the source group holds terminal editor(s), which
+			// cannot simply be dropped like files (closing the group would exile them to the panel).
+			// Evacuate each terminal into the adjacent group, then close the source group to drop its
+			// remaining file editors. The destination is the next-higher column (or the next-lower one
+			// when the source is the last group).
 			const targetColumn = resolveAdjacentEditorColumn(sourceColumn, vscode.window.tabGroups.all);
 			if (targetColumn === undefined) {
 				return;
 			}
 
-			await relocateTabsAndCloseGroup(sourceColumn, targetColumn);
+			// Capture the neighbour's active tab before moving anything: VS Code always activates a moved
+			// editor at its destination, so the terminal(s) would cover the neighbour's editor otherwise.
+			const targetGroup = vscode.window.tabGroups.all.find((group) => group.viewColumn === targetColumn);
+			const neighborActiveTab = targetGroup?.activeTab;
+
+			// Move each terminal tab out of the source group. Re-read the source group each pass because
+			// moving a tab invalidates prior Tab references.
+			const terminalCount = sourceGroup.tabs.filter((tab) => tab.input instanceof vscode.TabInputTerminal).length;
+			for (let pass = 0; pass < terminalCount; pass++) {
+				const currentSource = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+				const terminalTab = currentSource?.tabs.find((tab) => tab.input instanceof vscode.TabInputTerminal);
+				if (!terminalTab) {
+					break;
+				}
+
+				if (!(await revealExistingTab(terminalTab))) {
+					break;
+				}
+				await moveTerminalEditorToGroup(terminalTab, targetColumn);
+			}
+
+			// Close the now terminal-free source group to drop its remaining file editors. Skip only when
+			// a terminal is still stuck there (a move failed), so a failed move never force-closes it.
+			const leftoverGroup = vscode.window.tabGroups.all.find((group) => group.viewColumn === sourceColumn);
+			const holdsTerminal = leftoverGroup?.tabs.some((tab) => tab.input instanceof vscode.TabInputTerminal);
+			if (leftoverGroup && !holdsTerminal) {
+				await vscode.window.tabGroups.close(leftoverGroup);
+			}
+
+			// Re-activate the neighbour's previously-active tab so the moved terminal(s) sit in the
+			// background rather than covering it.
+			if (neighborActiveTab) {
+				await revealExistingTab(neighborActiveTab);
+			}
 		}
 	);
 

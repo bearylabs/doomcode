@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - `SPC SPC` and `SPC .` now open a not-yet-open file in the editor group that was active when the picker was invoked, instead of placing it in a different group when multiple editor groups are open.
+- `SPC w d` (window delete) no longer re-opens every editor from the closing group into its neighbour — which flashed each editor and made it look like the wrong window closed. The focused group now cleanly disappears and the neighbour expands to fill. Groups with a terminal editor still evacuate the terminal into the neighbour (as a background tab, never the panel) before closing. (Reverts commit 0a1907f)
 
 ## [0.9.0] 2026-07-21
 
