@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.3] 2026-07-22 **pre-release**
+
+### Fixed
+
+- Opening an AI CLI terminal (`SPC o a` — copilot/claude/codex) or a plain editor terminal (`SPC o T`) now reliably lands keyboard focus inside the terminal. On a cold start — when editors are restored but terminals are not — `terminal.show()` alone could fail to focus the freshly created terminal, leaving focus nowhere and keystrokes going into the void. Focus is now reasserted after the terminal opens, matching what the panel terminal (`SPC o t`) already did.
+
 ## [0.9.2] 2026-07-22 **pre-release**
 
 ### Fixed

@@ -44,6 +44,10 @@ async function openCliTerminal(name: string): Promise<void> {
 	});
 	terminal.show();
 	await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
+	// A freshly created editor terminal's renderer/shell may not be ready when show() runs, so
+	// focus doesn't reliably land in it (worse on a cold start while editors are still restoring).
+	// terminal.focus reasserts focus into the terminal — same follow-up doom.openPanelTerminal uses.
+	await vscode.commands.executeCommand('workbench.action.terminal.focus');
 	terminal.sendText(name);
 }
 
@@ -65,6 +69,9 @@ export function register(context: vscode.ExtensionContext): void {
 			terminal.show();
 			// Lock the title so the shell (bash PROMPT_COMMAND / PS1) cannot override it
 			await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', { name });
+			// show() alone doesn't reliably focus a freshly created editor terminal (the renderer/shell
+			// may not be ready yet, especially on a cold start while editors restore), so reassert focus.
+			await vscode.commands.executeCommand('workbench.action.terminal.focus');
 		}
 	);
 
