@@ -572,6 +572,8 @@ function toRenderItem(state: DoomWhichKeyMenu, binding: WhichKeyBinding): Render
 const GROUP_ORIENTATION_VERTICAL = 1;
 /** Fraction of window height given to the menu's bottom group; the remainder keeps the previous layout. */
 const MENU_GROUP_HEIGHT_FRACTION = 0.18;
+/** Slack between the requested and realised menu-row fraction before a pixel-exact retry is worth it. */
+const MENU_HEIGHT_TOLERANCE = 0.02;
 
 /** Mirrors the (non-exported) argument shape of `vscode.getEditorLayout` / `vscode.setEditorLayout`. */
 export interface EditorGroupLayout {
@@ -600,23 +602,31 @@ export interface EditorGroupLayoutNode {
  *    would need a redundant single-child wrapper that VS Code collapses, flattening the stack into
  *    a side-by-side split (the original bug). Instead, merge the previous rows straight into the
  *    outer split and append the menu as one more row, rescaling the rows to share the top portion.
+ *
+ * Sizes are fractions of the editor area when `totalHeight` is unknown and pixels when it is
+ * given. Pixels matter: VS Code marks a group non-proportional once it sits exactly at its
+ * minimum width/height (see `EditorGroupView.proportionalLayout`), and a non-proportional node
+ * keeps its `size` verbatim as pixels — a fractional `0.82` then survives as 0.82px and the menu
+ * row swallows the whole editor area. Pixel sizes are correct on both layout paths.
  */
-export function buildMenuLayout(previous: EditorGroupLayout): EditorGroupLayout {
+export function buildMenuLayout(previous: EditorGroupLayout, totalHeight?: number): EditorGroupLayout {
+	const scale = totalHeight !== undefined && totalHeight > 0 ? totalHeight : 1;
+	const menuSize = MENU_GROUP_HEIGHT_FRACTION * scale;
+	const topSize = scale - menuSize;
 	const previousGroups = previous.groups ?? [{}];
-	const menuGroup: EditorGroupLayoutNode = { size: MENU_GROUP_HEIGHT_FRACTION };
+	const menuGroup: EditorGroupLayoutNode = { size: menuSize };
 
 	if (previous.orientation === GROUP_ORIENTATION_VERTICAL) {
-		const topRows = scaleGroupSizes(previousGroups, 1 - MENU_GROUP_HEIGHT_FRACTION);
 		return {
 			orientation: GROUP_ORIENTATION_VERTICAL,
-			groups: [...topRows, menuGroup],
+			groups: [...scaleGroupSizes(previousGroups, topSize), menuGroup],
 		};
 	}
 
 	return {
 		orientation: GROUP_ORIENTATION_VERTICAL,
 		groups: [
-			{ groups: previousGroups, size: 1 - MENU_GROUP_HEIGHT_FRACTION },
+			{ groups: previousGroups, size: topSize },
 			menuGroup,
 		],
 	};
@@ -631,6 +641,27 @@ function scaleGroupSizes(groups: EditorGroupLayoutNode[], fraction: number): Edi
 	const weights = groups.map((group) => (typeof group.size === 'number' && group.size > 0 ? group.size : 1));
 	const total = weights.reduce((sum, weight) => sum + weight, 0);
 	return groups.map((group, index) => ({ ...group, size: (weights[index] / total) * fraction }));
+}
+
+/**
+ * Reads the realised menu-row height out of a layout returned by `vscode.getEditorLayout` after
+ * the reshape. The applied layout is a vertical split, so the root children's sizes are row
+ * heights in pixels — the only point at which the editor area's height is observable.
+ * Returns `undefined` when the layout carries no usable sizes.
+ */
+export function measureMenuRow(applied: EditorGroupLayout): { fraction: number; totalHeight: number } | undefined {
+	const rows = applied.groups ?? [];
+	const menuRow = rows[rows.length - 1];
+	if (rows.length < 2 || typeof menuRow?.size !== 'number') {
+		return undefined;
+	}
+
+	const totalHeight = rows.reduce((sum, row) => sum + (typeof row.size === 'number' ? row.size : 0), 0);
+	if (totalHeight <= 0) {
+		return undefined;
+	}
+
+	return { fraction: menuRow.size / totalHeight, totalHeight };
 }
 
 // ---------------------------------------------------------------------------
@@ -906,7 +937,25 @@ export class DoomWhichKeyMenu {
 		// bottom group is column N+1.
 		const targetColumn = vscode.window.tabGroups.all.length + 1;
 		await vscode.commands.executeCommand('vscode.setEditorLayout', buildMenuLayout(previous));
+		await this.correctMenuRowHeight(previous);
 		return targetColumn;
+	}
+
+	/**
+	 * Re-applies the layout with pixel sizes when the fractional first pass did not land on
+	 * MENU_GROUP_HEIGHT_FRACTION. Only a pre-existing group pinned to its minimum width/height
+	 * triggers this (see {@link buildMenuLayout}), so the common case costs one extra
+	 * `getEditorLayout` and nothing more. Runs before the webview exists, so a corrected layout
+	 * never flashes menu content at the wrong height.
+	 */
+	private async correctMenuRowHeight(previous: EditorGroupLayout): Promise<void> {
+		const applied = await vscode.commands.executeCommand<EditorGroupLayout>('vscode.getEditorLayout');
+		const measured = measureMenuRow(applied);
+		if (!measured || Math.abs(measured.fraction - MENU_GROUP_HEIGHT_FRACTION) <= MENU_HEIGHT_TOLERANCE) {
+			return;
+		}
+
+		await vscode.commands.executeCommand('vscode.setEditorLayout', buildMenuLayout(previous, measured.totalHeight));
 	}
 
 	/** Wires panel-scoped listeners: message dispatch, dispose-driven close, and the focus-loss fallback. */

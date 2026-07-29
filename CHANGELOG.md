@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4] 2026-07-29 **pre-release**
+
+### Fixed
+
+- The which-key menu no longer takes over the whole editor area when one editor group is dragged down to its minimum width. VS Code lays such a group out non-proportionally, which made the menu's relative group sizes be read as pixels; the menu group is now sized in real pixels.
+
 ## [0.9.3] 2026-07-22 **pre-release**
 
 ### Fixed

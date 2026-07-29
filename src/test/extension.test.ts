@@ -33,6 +33,7 @@ import {
 	applyTrackedUiContextCommand,
 	buildMenuLayout,
 	evaluateWhenExpression,
+	measureMenuRow,
 	selectTriggeredConditionForKey,
 } from '../whichkey/menu';
 
@@ -783,6 +784,50 @@ suite('Extension Test Suite', () => {
 				],
 			},
 		);
+
+		// Pixel mode: sizes scale to the real editor height so a group pinned to its minimum
+		// width (laid out non-proportionally by VS Code) cannot swallow the menu row's space.
+		assert.deepStrictEqual(
+			buildMenuLayout({ orientation: 0, groups: [{ size: 1722 }, { size: 220 }] }, 1346),
+			{
+				orientation: 1,
+				groups: [
+					{ groups: [{ size: 1722 }, { size: 220 }], size: 1346 - 0.18 * 1346 },
+					{ size: 0.18 * 1346 },
+				],
+			},
+		);
+
+		// Pixel mode, stacked rows: rows keep their proportions within the top portion.
+		assert.deepStrictEqual(
+			buildMenuLayout({ orientation: 1, groups: [{ size: 200 }, { size: 200 }] }, 1000),
+			{
+				orientation: 1,
+				groups: [
+					{ size: (200 / 400) * 820 },
+					{ size: (200 / 400) * 820 },
+					{ size: 180 },
+				],
+			},
+		);
+	});
+
+	test('measures the realised menu row height', () => {
+		// Healthy read-back: the menu row is the requested 18%.
+		assert.deepStrictEqual(
+			measureMenuRow({ orientation: 1, groups: [{ size: 1104, groups: [{ size: 315 }, { size: 315 }] }, { size: 242 }] }),
+			{ fraction: 242 / 1346, totalHeight: 1346 },
+		);
+
+		// Broken read-back: the top block kept its fractional size as pixels and the menu row took
+		// the rest. The row sizes still sum to the true editor height, so the retry can use it.
+		assert.deepStrictEqual(
+			measureMenuRow({ orientation: 1, groups: [{ size: 0.82, groups: [{ size: 1722 }, { size: 220 }] }, { size: 1345.18 }] }),
+			{ fraction: 1345.18 / 1346, totalHeight: 1346 },
+		);
+
+		assert.strictEqual(measureMenuRow({}), undefined);
+		assert.strictEqual(measureMenuRow({ orientation: 1, groups: [{ size: 100 }] }), undefined);
 	});
 
 	test('evaluates native-style which-key when expressions', () => {
