@@ -2258,7 +2258,7 @@
           "terminalPanelOpen": false,
           "explorerVisible": false
         },
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode =~ /^(?!Insert|Replace|SearchInProgressMode|CommandlineInProgress).*$/ && activePanel != 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
@@ -2267,7 +2267,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": false
         },
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode =~ /^(?!Insert|Replace|SearchInProgressMode|CommandlineInProgress).*$/ && activePanel == 'terminal' && !explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
@@ -2276,7 +2276,7 @@
           "terminalPanelOpen": false,
           "explorerVisible": true
         },
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && activePanel != 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode =~ /^(?!Insert|Replace|SearchInProgressMode|CommandlineInProgress).*$/ && activePanel != 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",
@@ -2285,7 +2285,7 @@
           "terminalPanelOpen": true,
           "explorerVisible": true
         },
-        "when": "editorTextFocus && vim.active && vim.mode != 'Insert' && activePanel == 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
+        "when": "editorTextFocus && vim.active && vim.mode =~ /^(?!Insert|Replace|SearchInProgressMode|CommandlineInProgress).*$/ && activePanel == 'terminal' && explorerViewletVisible && !whichkeyActive && !whichkeyVisible && !doom.searchVisible && !doom.projectFileVisible && !doom.recentProjectsVisible && !doom.findFileVisible && !inDebugRepl && !suggestWidgetVisible && !parameterHintsVisible"
       },
       {
         "key": "space",

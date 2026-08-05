@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5] 2026-08-05 **pre-release**
+
+### Fixed
+
+- Typing a space inside a Vim search (`/` or `?`) or a Vim command line (`:`) now inserts a space into the search or command instead of opening the which-key menu. The `SPC` binding only excluded Insert mode, but Vim's search and command line keep text focus in the editor, so which-key swallowed the key before Vim could see it. Replace mode (`R`) is excluded for the same reason.
+
 ## [0.9.4] 2026-07-29 **pre-release**
 
 ### Fixed
