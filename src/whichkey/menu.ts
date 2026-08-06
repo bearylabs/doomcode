@@ -936,6 +936,16 @@ export class DoomWhichKeyMenu {
 		try {
 			const targetColumn = await this.reshapeLayoutForMenu();
 
+			// The chord can be cancelled while the grid reshapes — Escape resolves doom.whichKeyHide
+			// throughout, since whichkeyVisible has been true since SPC. hide() takes its no-panel
+			// branch, correctly, because this.panel is still unset here. Creating one anyway would
+			// leave the panel on screen with isShowing false, and doom.triggerKey would then consume
+			// every key and drop it (extension.ts) rather than let it reach the editor.
+			if (!this.isShowing) {
+				await this.teardownPanel();
+				return;
+			}
+
 			this.ready = false;
 			this.currentItems = [];
 

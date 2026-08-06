@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 
 - `Esc` now dismisses an open which-key menu instead of closing whichever panel or auxiliary bar happens to be visible. The surface-closing bindings are declared below the which-key binding and VS Code resolves ties by last-definition-wins, so the menu was left hanging; they now carry the `!whichkeyVisible` guard.
 - Chord keys are no longer hijacked by the side bar's own bindings. With the explorer, open-editors, timeline or panel focused, keys such as `d`, `r`, `q`, `o` and `y` ran their view command instead of continuing the chord — the same last-definition-wins tie-break as the `Esc` fix above. Those bindings now stand down while a chord is in flight and behave as before outside one.
-- `SPC` followed by `Esc` during the idle delay no longer pops the menu open anyway. The chord was cleared but the pending display was not cancelled.
+- `SPC` followed by `Esc` during the idle delay no longer pops the menu open anyway. The chord was cleared but the pending display was not cancelled. `Esc` pressed in the moment the menu was already opening could likewise leave it on screen in a dead state where it swallowed every key; the open is now abandoned if the chord ended while the editor grid was still being reshaped.
 - Keys typed quickly at the start of a chord are no longer lost or applied twice. The menu used to hand ownership of the keyboard from the host bindings to its webview mid-chord, which could not be done atomically; the host bindings now own the whole chord and the webview only draws.
 
 ## [0.9.5] 2026-08-05 **pre-release**
