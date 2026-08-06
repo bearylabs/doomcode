@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.6] 2026-08-06 **pre-release**
+
+### Added
+
+- `Esc` in Vim normal mode now clears search highlighting (`:nohl`), matching Doom's escape hook. With `vim.hlsearch` on, matches from `/` or `?` stayed lit until `:noh` was typed by hand.
+
+### Changed
+
+- `Esc` no longer closes the left side bar. 
+
+### Fixed
+
+- `Esc` now dismisses an open which-key menu instead of closing whichever panel or auxiliary bar happens to be visible. The surface-closing bindings are declared below the which-key binding and VS Code resolves ties by last-definition-wins, so the menu was left hanging; they now carry the `!whichkeyVisible` guard.
+
 ## [0.9.5] 2026-08-05 **pre-release**
 
 ### Fixed

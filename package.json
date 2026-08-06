@@ -119,6 +119,17 @@
         "commands": [
           "editor.action.deleteLines"
         ]
+      },
+      {
+        "before": [
+          "<Esc>"
+        ],
+        "after": [
+          "<Esc>"
+        ],
+        "commands": [
+          ":nohl"
+        ]
       }
     ],
     "vim.visualModeKeyBindingsNonRecursive": [
@@ -2753,23 +2764,18 @@
       },
       {
         "key": "escape",
-        "command": "workbench.action.closeSidebar",
-        "when": "(sideBarVisible && !explorerViewletVisible && !view.workbench.explorer.openEditorsView.visible && !(activeViewlet == 'workbench.view.debug'))"
-      },
-      {
-        "key": "escape",
         "command": "workbench.action.closeAuxiliaryBar",
-        "when": "auxiliaryBarVisible && !inputFocus"
+        "when": "auxiliaryBarVisible && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "escape",
         "command": "workbench.action.closePanel",
-        "when": "panelVisible && view.workbench.panel.markers.view.visible"
+        "when": "panelVisible && view.workbench.panel.markers.view.visible && !whichkeyVisible"
       },
       {
         "key": "escape",
         "command": "workbench.action.closePanel",
-        "when": "panelVisible && view.workbench.panel.repl.view.visible"
+        "when": "panelVisible && view.workbench.panel.repl.view.visible && !whichkeyVisible"
       },
       {
         "key": "q",
@@ -2950,23 +2956,13 @@
       },
       {
         "key": "escape",
-        "command": "workbench.action.findInFiles",
-        "when": "searchViewletVisible || viewletVisible && activeViewlet == 'workbench.view.search' || focusedView == 'workbench.view.search'"
-      },
-      {
-        "key": "escape",
         "command": "workbench.action.toggleAuxiliaryBar",
-        "when": "focusedView == 'workbench.view.search' && auxiliaryBarVisible && !explorerViewletVisible"
+        "when": "focusedView == 'workbench.view.search' && auxiliaryBarVisible && !explorerViewletVisible && !whichkeyVisible"
       },
       {
         "key": "escape",
         "command": "workbench.action.togglePanel",
-        "when": "focusedView == 'workbench.view.search' && panelVisible"
-      },
-      {
-        "key": "escape",
-        "command": "workbench.action.toggleSidebarVisibility",
-        "when": "focusedView == 'workbench.view.search' && sideBarVisible && !explorerViewletVisible"
+        "when": "focusedView == 'workbench.view.search' && panelVisible && !whichkeyVisible"
       },
       {
         "key": "ctrl+c",
