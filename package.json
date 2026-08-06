@@ -1553,10 +1553,10 @@
         },
         "doom.whichKey.idleDelay": {
           "type": "number",
-          "default": 1,
+          "default": 0.5,
           "minimum": 0,
           "maximum": 10,
-          "markdownDescription": "Seconds to wait after `SPC` before opening the which-key panel. Keys pressed within this window are buffered; if they resolve to a leaf binding the panel never opens and the command executes silently. Set to `0` to disable and always open the panel immediately."
+          "markdownDescription": "Seconds to wait after `SPC` before the which-key panel appears. Keys always take effect as they are typed; a chord completed within this window simply runs without the panel ever being drawn. Set to `0` to always show the panel immediately."
         },
         "doom.dashboard.openOnActivation": {
           "type": "boolean",

@@ -92,63 +92,38 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		}
 	}
 
-	/** Opens which-key without any context overrides (editor focus assumed). */
+	/** Seconds to wait before the which-key panel appears; `0` opens it immediately. */
 	private getIdleDelay(): number {
 		return vscode.workspace
 			.getConfiguration()
-			.get<number>('doom.whichKey.idleDelay', 1.0);
+			.get<number>('doom.whichKey.idleDelay', 0.5);
 	}
 
+	/**
+	 * Arms the panel's display deadline. For editor focus the chord runs through the menu's own key
+	 * queue either way, so this only decides whether the panel is ever seen: a chord completed before
+	 * the delay lapses executes silently and cancels the timer from there.
+	 */
 	private async runWithIdleDelay(menu: DoomWhichKeyMenu): Promise<void> {
 		const delay = this.getIdleDelay();
 
-		// Skip the idle delay when the terminal or explorer has focus — keys typed during the
-		// delay reach the native widget before whichkeyVisible propagates, so doom.triggerKey
-		// loses the keybinding conflict. Opening immediately lets the webview capture keys itself.
+		// Keys buffered while whichkeyVisible propagated may already have completed the chord.
+		if (!menu.isCurrentlyShowing) {
+			return;
+		}
+
+		// No delay when another input consumer holds focus. A focused terminal sends plain characters
+		// straight to the shell instead of resolving doom.triggerKey (that would need the command in
+		// terminal.integrated.commandsToSkipShell), and a foreign webview feeds them to its own input.
+		// Opening at once moves focus to the menu webview, after which the host bindings win. Until
+		// then every keystroke of the chord is lost — SPC itself only survives because it arrives as
+		// alt/ctrl+space or the escape-space prefix, which the shell does not claim.
 		if (delay <= 0 || menu.showContext.terminalFocus || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
 			await menu.show();
 			return;
 		}
 
-		const deadline = Date.now() + delay * 1000;
-
-		// Reactive loop: re-evaluate on every key arrival.
-		// Execute immediately on a leaf; show panel immediately on an unrecognised key;
-		// only fall through to show panel when the timer expires with the queue exhausted.
-		while (true) {
-			const resolution = menu.resolveQueuedKeys();
-
-			if (resolution.type === 'execute') {
-				await menu.executeBinding(resolution.binding);
-				return;
-			}
-
-			// An unrecognised key was left in the queue — show panel immediately.
-			if (menu.hasPendingKeys) {
-				menu.setNavigationStack(resolution.stack);
-				await menu.show();
-				return;
-			}
-
-			// Queue exhausted mid-group — commit the walked depth and wait for the next key or timeout.
-			menu.setNavigationStack(resolution.stack);
-
-			const remaining = deadline - Date.now();
-			if (remaining <= 0) {
-				await menu.show();
-				return;
-			}
-
-			const gotKey = await Promise.race([
-				menu.waitForNextKey().then(() => true as const),
-				new Promise<false>((resolve) => setTimeout(() => resolve(false), remaining)),
-			]);
-
-			if (!gotKey) {
-				await menu.show();
-				return;
-			}
-		}
+		menu.scheduleShow(delay * 1000);
 	}
 
 	async showWhichKey(): Promise<void> {

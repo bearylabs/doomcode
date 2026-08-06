@@ -683,7 +683,8 @@ export class DoomWhichKeyMenu {
 	};
 	private hostPendingKeys: string[] = [];
 	private isShowing = false;
-	private nextKeyResolvers: Array<() => void> = [];
+	/** True from the start of {@link show} until the panel exists — see {@link queueKey}. */
+	private opening = false;
 	private preWhichKeyEditorGroup: vscode.ViewColumn | undefined;
 	/** Real editor-group count (>1) captured before the menu adds its own group; feeds multipleEditorGroups. */
 	private preWhichKeyMultipleEditorGroups = false;
@@ -694,6 +695,8 @@ export class DoomWhichKeyMenu {
 	private panelDisposables: vscode.Disposable[] = [];
 	/** Snapshot of the editor grid taken before reshaping, restored verbatim when the menu closes. */
 	private previousLayout: EditorGroupLayout | undefined;
+	/** Pending idle-delay display timer; see {@link scheduleShow}. */
+	private showTimer: ReturnType<typeof setTimeout> | undefined;
 	/** Serialises overlapping close triggers (Escape + blur + dispose) into one teardown. */
 	private closing = false;
 
@@ -741,45 +744,86 @@ export class DoomWhichKeyMenu {
 
 	/**
 	 * The single entry point for every key of a chord — the webview does not read the keyboard.
-	 * Before the panel exists the idle-delay loop drains the queue (woken via nextKeyResolvers);
-	 * once the panel is up nothing else is listening, so the drain has to be kicked from here.
+	 * Nothing else is listening, so this drives the chord in all three states: against the binding
+	 * tree before the panel exists, against the rendered level once it is up, and — while a
+	 * {@link show} is still in flight — buffered for `render()` to drain, since resolving there
+	 * could execute and close the chord underneath the panel being created.
 	 */
 	queueKey(key: string): void {
 		this.hostPendingKeys.push(key);
-		const resolvers = this.nextKeyResolvers.splice(0);
-		resolvers.forEach((r) => r());
 
-		if (this.panel && this.ready) {
-			this.drainPendingKey();
+		if (this.panel) {
+			if (this.ready) {
+				this.drainPendingKey();
+			}
+			return;
+		}
+
+		if (this.opening) {
+			return;
+		}
+
+		void this.resolveBufferedKeys();
+	}
+
+	/**
+	 * Walks the buffered keys with no panel on screen: a completed chord executes silently and the
+	 * display timer is dropped, and a key that matches nothing at the current level opens the panel
+	 * at once rather than sitting out the rest of the delay. Otherwise the walked depth is committed
+	 * and the chord waits — for the next key, or for the timer.
+	 */
+	private async resolveBufferedKeys(): Promise<void> {
+		const resolution = this.resolveQueuedKeys();
+
+		if (resolution.type === 'execute') {
+			this.cancelScheduledShow();
+			await this.executeBinding(resolution.binding);
+			return;
+		}
+
+		this.stack = resolution.stack;
+
+		if (this.hostPendingKeys.length > 0) {
+			await this.show();
 		}
 	}
 
-	/** Resolves on the next call to queueKey — used by the idle-delay loop to wake on key arrival. */
-	waitForNextKey(): Promise<void> {
-		return new Promise<void>((resolve) => {
-			this.nextKeyResolvers.push(resolve);
-		});
+	/**
+	 * Arms the idle-delay display timer. Purely a rendering deadline: the chord itself is driven by
+	 * {@link queueKey} either way, so a lapsed or cancelled timer can only change whether the panel
+	 * is seen, never whether a binding runs.
+	 */
+	scheduleShow(delayMs: number): void {
+		this.cancelScheduledShow();
+		this.showTimer = setTimeout(() => {
+			this.showTimer = undefined;
+			// The chord may have executed or been dismissed while the timer ran.
+			if (!this.isShowing || this.panel) {
+				return;
+			}
+
+			void this.show();
+		}, delayMs);
 	}
 
-	/** True when buffered keys remain after a resolveQueuedKeys walk (unrecognised key encountered). */
-	get hasPendingKeys(): boolean {
-		return this.hostPendingKeys.length > 0;
-	}
+	private cancelScheduledShow(): void {
+		if (this.showTimer === undefined) {
+			return;
+		}
 
-	/** Sets the navigation stack directly — used by resolveQueuedKeys to pre-navigate before the panel opens. */
-	setNavigationStack(stack: WhichKeyBinding[]): void {
-		this.stack = stack;
+		clearTimeout(this.showTimer);
+		this.showTimer = undefined;
 	}
 
 	/**
 	 * Walks the binding tree against buffered keys without opening the panel.
-	 * Starts from the current navigation depth (respects any stack already set by setNavigationStack).
+	 * Starts from the current navigation depth, so successive calls resume where the last one stopped.
 	 * Returns 'execute' when all queued keys resolve to a leaf command (silent execution, panel never shown).
 	 * Returns 'show' when keys run out mid-tree or hit an unknown key; the partially-walked stack
 	 * is included so the panel can open pre-navigated to the right group.
 	 * Unrecognised keys are left in hostPendingKeys for the rendered panel to handle.
 	 */
-	resolveQueuedKeys(): { type: 'show'; stack: WhichKeyBinding[] } | { type: 'execute'; binding: WhichKeyBinding } {
+	private resolveQueuedKeys(): { type: 'show'; stack: WhichKeyBinding[] } | { type: 'execute'; binding: WhichKeyBinding } {
 		let levelBindings = this.currentLevelBindings;
 		const stack: WhichKeyBinding[] = [...this.stack];
 
@@ -834,6 +878,8 @@ export class DoomWhichKeyMenu {
 
 	/** Called before the panel opens so bindings are fresh and the navigation stack is at root. */
 	prepareShow(showContext?: Partial<ShowContext>): void {
+		// A timer left armed by the previous chord would pop this one's panel open early.
+		this.cancelScheduledShow();
 		this.isShowing = true;
 		this.hostPendingKeys = [];
 		this.preWhichKeyEditorGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
@@ -878,29 +924,37 @@ export class DoomWhichKeyMenu {
 	 * A fresh webview is created each time, so the blur guard and JS state always start clean.
 	 */
 	async show(): Promise<void> {
+		this.cancelScheduledShow();
+
 		if (this.panel) {
 			this.panel.reveal(this.panel.viewColumn, true);
 			this.render();
 			return;
 		}
 
-		const targetColumn = await this.reshapeLayoutForMenu();
+		this.opening = true;
+		try {
+			const targetColumn = await this.reshapeLayoutForMenu();
 
-		this.ready = false;
-		this.currentItems = [];
+			this.ready = false;
+			this.currentItems = [];
 
-		const panel = vscode.window.createWebviewPanel(
-			DoomWhichKeyMenu.viewType,
-			'Doom Which Key',
-			{ viewColumn: targetColumn, preserveFocus: true },
-			{
-				enableScripts: true,
-				retainContextWhenHidden: true,
-			},
-		);
-		this.panel = panel;
-		panel.webview.html = this.getHtml(panel.webview);
-		this.registerPanelListeners(panel);
+			const panel = vscode.window.createWebviewPanel(
+				DoomWhichKeyMenu.viewType,
+				'Doom Which Key',
+				{ viewColumn: targetColumn, preserveFocus: true },
+				{
+					enableScripts: true,
+					retainContextWhenHidden: true,
+				},
+			);
+			this.panel = panel;
+			panel.webview.html = this.getHtml(panel.webview);
+			this.registerPanelListeners(panel);
+		} finally {
+			this.opening = false;
+		}
+
 		await this.updateVisibilityContext(true);
 	}
 
@@ -998,6 +1052,7 @@ export class DoomWhichKeyMenu {
 	/** Used when the menu collapses externally; avoids a double-close if the panel is already gone. */
 	async hide(): Promise<void> {
 		if (!this.panel) {
+			this.cancelScheduledShow();
 			this.isShowing = false;
 			this.hostPendingKeys = [];
 			await this.updateVisibilityContext(false);
@@ -1161,6 +1216,7 @@ export class DoomWhichKeyMenu {
 
 		this.closing = true;
 		try {
+			this.cancelScheduledShow();
 			this.isShowing = false;
 			this.hostPendingKeys = [];
 			await this.updateVisibilityContext(false);
