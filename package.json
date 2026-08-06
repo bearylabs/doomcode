@@ -2681,37 +2681,37 @@
       {
         "key": "c f",
         "command": "explorer.newFile",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "shift+r",
         "command": "renameFile",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "r",
         "command": "workbench.files.action.refreshFilesExplorer",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "c d",
         "command": "explorer.newFolder",
-        "when": "explorerViewletFocus && !inputFocus"
+        "when": "explorerViewletFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "d",
         "command": "deleteFile",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "o o",
         "command": "explorer.openAndPassFocus",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "o v",
         "command": "explorer.openToSide",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "o s",
@@ -2722,27 +2722,27 @@
             "workbench.action.moveEditorToBelowGroup"
           ]
         },
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "y f",
         "command": "filesExplorer.copy",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "y a",
         "command": "copyFilePath",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "y r",
         "command": "copyRelativeFilePath",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "d",
         "command": "workbench.action.closeActiveEditor",
-        "when": "openEditorsFocus && !inputFocus"
+        "when": "openEditorsFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "shift+d",
@@ -2753,12 +2753,12 @@
             "workbench.action.closeSidebar"
           ]
         },
-        "when": "openEditorsFocus && !inputFocus"
+        "when": "openEditorsFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "command": "workbench.action.closeActiveEditor",
         "key": "c",
-        "when": "openEditorsFocus && !inputFocus"
+        "when": "openEditorsFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "enter",
@@ -2769,7 +2769,7 @@
             "workbench.action.closeSidebar"
           ]
         },
-        "when": "openEditorsFocus && !inputFocus"
+        "when": "openEditorsFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "escape",
@@ -2789,22 +2789,22 @@
       {
         "key": "q",
         "command": "doom.sidebarHide",
-        "when": "filesExplorerFocus && !inputFocus"
+        "when": "filesExplorerFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "q",
         "command": "doom.sidebarHide",
-        "when": "openEditorsFocus && !inputFocus"
+        "when": "openEditorsFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "q",
         "command": "doom.panelHide",
-        "when": "timelineFocused && !inputFocus"
+        "when": "timelineFocused && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "w",
         "command": "workbench.action.closePanel",
-        "when": "panelFocus && !inputFocus"
+        "when": "panelFocus && !inputFocus && !whichkeyVisible"
       },
       {
         "key": "ctrl+escape",

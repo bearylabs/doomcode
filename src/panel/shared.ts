@@ -135,8 +135,13 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 		// so the delay is safe there. Doom installs that setting, but the onboarding flow is opt-in,
 		// hence the check rather than an assumption. A focused foreign webview has no equivalent
 		// escape hatch and feeds the characters to its own input regardless.
+		//
+		// The sidebar used to need the same escape and no longer does. It never consumed typing the
+		// way a shell does; Doom's own view-local bindings (filesExplorerFocus etc.) simply outranked
+		// doom.triggerKey because they sit later in the keybindings array. They now carry
+		// !whichkeyVisible, so they stand down for the duration of a chord.
 		const terminalWouldEatKeys = menu.showContext.terminalFocus && !this.triggerKeySkipsShell();
-		if (delay <= 0 || terminalWouldEatKeys || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
+		if (delay <= 0 || terminalWouldEatKeys || menu.showContext.webviewFocused) {
 			await menu.show();
 			return;
 		}
