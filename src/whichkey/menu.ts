@@ -697,6 +697,8 @@ export class DoomWhichKeyMenu {
 	private previousLayout: EditorGroupLayout | undefined;
 	/** Pending idle-delay display timer; see {@link scheduleShow}. */
 	private showTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Delay {@link showTimer} was armed with, so each key of the chord can restart it. */
+	private showDelayMs: number | undefined;
 	/** Serialises overlapping close triggers (Escape + blur + dispose) into one teardown. */
 	private closing = false;
 
@@ -770,7 +772,7 @@ export class DoomWhichKeyMenu {
 	 * Walks the buffered keys with no panel on screen: a completed chord executes silently and the
 	 * display timer is dropped, and a key that matches nothing at the current level opens the panel
 	 * at once rather than sitting out the rest of the delay. Otherwise the walked depth is committed
-	 * and the chord waits — for the next key, or for the timer.
+	 * and the chord waits — for the next key, or for the restarted timer.
 	 */
 	private async resolveBufferedKeys(): Promise<void> {
 		const resolution = this.resolveQueuedKeys();
@@ -785,7 +787,13 @@ export class DoomWhichKeyMenu {
 
 		if (this.hostPendingKeys.length > 0) {
 			await this.show();
+			return;
 		}
+
+		// Reaching here means every buffered key was consumed and each one pushed a group: the
+		// execute and unrecognised-key cases both returned above, and queueKey never calls in with
+		// an empty queue. So the chord has advanced a level and the display deadline restarts.
+		this.restartScheduledShow();
 	}
 
 	/**
@@ -795,6 +803,7 @@ export class DoomWhichKeyMenu {
 	 */
 	scheduleShow(delayMs: number): void {
 		this.cancelScheduledShow();
+		this.showDelayMs = delayMs;
 		this.showTimer = setTimeout(() => {
 			this.showTimer = undefined;
 			// The chord may have executed or been dismissed while the timer ran.
@@ -807,12 +816,29 @@ export class DoomWhichKeyMenu {
 	}
 
 	private cancelScheduledShow(): void {
+		// Cleared ahead of the guard so a lapsed timer forgets its delay too.
+		this.showDelayMs = undefined;
 		if (this.showTimer === undefined) {
 			return;
 		}
 
 		clearTimeout(this.showTimer);
 		this.showTimer = undefined;
+	}
+
+	/**
+	 * Restarts an already-running display timer so the delay measures how long the user has sat
+	 * still at this level, not how old the chord is — which is what Emacs' which-key-idle-delay
+	 * means and what the setting's name promises. A no-op unless a timer is actually armed, so the
+	 * immediate-open paths (delay 0, the terminal/webview bypass) never acquire one retroactively.
+	 */
+	private restartScheduledShow(): void {
+		const delayMs = this.showDelayMs;
+		if (this.showTimer === undefined || delayMs === undefined) {
+			return;
+		}
+
+		this.scheduleShow(delayMs);
 	}
 
 	/**

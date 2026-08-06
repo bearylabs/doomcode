@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - `Esc` no longer closes the left side bar. 
 - **`doom.whichKey.idleDelay` has changed meaning, and its default moved from `1` to `0.5`.** Keys now always take effect as typed; the delay only decides whether the menu is ever drawn. A chord completed before it lapses executes silently and the panel never appears. If you had set this value deliberately, the behaviour you get from it is not the same as before.
 - The idle delay now applies in the terminal and in the side bar as well. Previously the menu popped open immediately in both, because the keys of a chord would otherwise have been swallowed there.
+- The idle delay is now measured from the last key of a chord rather than from `SPC`, matching Emacs' `which-key-idle-delay`. The menu appears when you pause, instead of arriving mid-typing a fixed time into the chord. A chord typed at a steady pace slower than the delay now finishes without the menu ever being drawn.
 
 ### Fixed
 

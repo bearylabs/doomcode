@@ -1565,7 +1565,7 @@
           "default": 0.5,
           "minimum": 0,
           "maximum": 10,
-          "markdownDescription": "Seconds to wait after `SPC` before the which-key panel appears. Keys always take effect as they are typed; a chord completed within this window simply runs without the panel ever being drawn. Set to `0` to always show the panel immediately."
+          "markdownDescription": "Seconds of inactivity before the which-key panel appears. The wait restarts on every key of a chord, so the panel shows up when you pause rather than at a fixed time after `SPC`. Keys always take effect as they are typed; a chord typed without pausing runs without the panel ever being drawn. Set to `0` to always show the panel immediately."
         },
         "doom.dashboard.openOnActivation": {
           "type": "boolean",
