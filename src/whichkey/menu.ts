@@ -746,7 +746,11 @@ export class DoomWhichKeyMenu {
 		return this.trackedContext;
 	}
 
-	/** Keys pressed before the webview is ready are buffered and replayed after the first render. */
+	/**
+	 * The single entry point for every key of a chord — the webview does not read the keyboard.
+	 * Before the panel exists the idle-delay loop drains the queue (woken via nextKeyResolvers);
+	 * once the panel is up nothing else is listening, so the drain has to be kicked from here.
+	 */
 	queueKey(key: string): void {
 		const suppressedIndex = this.suppressedHostDuplicateKeys.indexOf(key);
 		if (suppressedIndex >= 0) {
@@ -757,6 +761,10 @@ export class DoomWhichKeyMenu {
 		this.hostPendingKeys.push(key);
 		const resolvers = this.nextKeyResolvers.splice(0);
 		resolvers.forEach((r) => r());
+
+		if (this.panel && this.ready) {
+			this.drainPendingKey();
+		}
 	}
 
 	/** Marks a host-consumed key so one late duplicate from focus handoff can be ignored by the webview. */
@@ -1119,8 +1127,8 @@ export class DoomWhichKeyMenu {
 	}
 
 	/**
-	 * Drains one pending key per render pass; subsequent keys are handled via handleMessage → render recursion.
-	 * Pending keys let the host queue a chord before the webview is ready.
+	 * Pushes the current level to the webview, then drains one key buffered before it was ready.
+	 * Keys arriving after this point come in through {@link queueKey} instead.
 	 */
 	private render(): void {
 		if (!this.panel || !this.ready || !this.panel.visible) {
@@ -1150,13 +1158,24 @@ export class DoomWhichKeyMenu {
 			state,
 		});
 
-		if (this.hostPendingKeys.length > 0 && this.currentItems.length > 0) {
-			const key = this.hostPendingKeys.shift()!;
-			const index = this.currentItems.findIndex((item) => item.key === key);
-			if (index >= 0) {
-				this.suppressDuplicateKey(key);
-				void this.handleMessage({ type: 'activate', index });
-			}
+		this.drainPendingKey();
+	}
+
+	/**
+	 * Applies one buffered key against the level currently on screen. Any keys behind it drain
+	 * through the handleMessage → render recursion, so this only ever consumes one per call.
+	 * A key with no binding at this level is discarded, matching the pre-render walk.
+	 */
+	private drainPendingKey(): void {
+		if (this.hostPendingKeys.length === 0 || this.currentItems.length === 0) {
+			return;
+		}
+
+		const key = this.hostPendingKeys.shift()!;
+		const index = this.currentItems.findIndex((item) => item.key === key);
+		if (index >= 0) {
+			this.suppressDuplicateKey(key);
+			void this.handleMessage({ type: 'activate', index });
 		}
 	}
 
@@ -1382,9 +1401,6 @@ export class DoomWhichKeyMenu {
 		const empty = document.getElementById('empty');
 		const path = document.getElementById('path');
 		let items = [];
-		let pendingKeys = [];
-		const suppressedKeys = new Map();
-		let suppressUntil = 0;
 		let blurEnabled = false;
 		let blurTimer = null;
 
@@ -1436,40 +1452,9 @@ export class DoomWhichKeyMenu {
 
 			updateGridRowCount();
 
-			if (Array.isArray(state.suppressedKeys) && state.suppressedKeys.length > 0) {
-				suppressUntil = Date.now() + ${SUPPRESS_WINDOW_MS};
-				state.suppressedKeys.forEach((key) => {
-					suppressedKeys.set(key, (suppressedKeys.get(key) || 0) + 1);
-				});
-			}
-
 			if (shell instanceof HTMLElement && document.activeElement === document.body) {
 				shell.focus();
 			}
-
-			if (pendingKeys.length > 0 && items.length > 0) {
-				const key = pendingKeys.shift();
-				const index = items.findIndex((item) => item.key === key);
-				if (index >= 0) {
-					vscode.postMessage({ type: 'activate', index, source: 'keyboard' });
-				}
-			}
-		}
-
-		function toBindingKey(event) {
-			if (event.key === ' ') {
-				return 'SPC';
-			}
-
-			if (event.key === 'Tab') {
-				return 'TAB';
-			}
-
-			if (event.key.length === 1) {
-				return event.key;
-			}
-
-			return null;
 		}
 
 		window.addEventListener('message', (event) => {
@@ -1480,55 +1465,6 @@ export class DoomWhichKeyMenu {
 			} else if (event.data.type === 'hide') {
 				clearTimeout(blurTimer);
 				blurEnabled = false;
-				pendingKeys = [];
-				suppressedKeys.clear();
-				suppressUntil = 0;
-			}
-		});
-
-		window.addEventListener('keydown', (event) => {
-			if (event.metaKey || event.ctrlKey || event.altKey) {
-				return;
-			}
-
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				pendingKeys = [];
-				vscode.postMessage({ type: 'close' });
-				return;
-			}
-
-			const bindingKey = toBindingKey(event);
-			if (!bindingKey) {
-				return;
-			}
-
-			if (Date.now() > suppressUntil) {
-				suppressedKeys.clear();
-				suppressUntil = 0;
-			}
-
-			const suppressedCount = suppressedKeys.get(bindingKey) || 0;
-			if (suppressedCount > 0) {
-				event.preventDefault();
-				if (suppressedCount === 1) {
-					suppressedKeys.delete(bindingKey);
-				} else {
-					suppressedKeys.set(bindingKey, suppressedCount - 1);
-				}
-				return;
-			}
-
-			if (items.length === 0) {
-				event.preventDefault();
-				pendingKeys.push(bindingKey);
-				return;
-			}
-
-			const index = items.findIndex((item) => item.key === bindingKey);
-			if (index >= 0) {
-				event.preventDefault();
-				vscode.postMessage({ type: 'activate', index, source: 'keyboard' });
 			}
 		});
 
