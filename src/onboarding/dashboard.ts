@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import * as vscode from 'vscode';
 import { createNonce } from '../panel/helpers';
+import { isDoomMergedCommandListSetting, listContainsCommand } from './skipShell';
 import {
     hasEquivalentDoomManagedVimBinding,
     isDoomManagedVimBindingSetting,
@@ -266,11 +267,23 @@ export function resolveStartupCommandsFromBindings(
  */
 export function evaluateInstalledDefaults(
 	defaults: Record<string, unknown>,
-	inspectSetting: (key: string) => { globalValue?: unknown } | undefined,
+	inspectSetting: (key: string) => { globalValue?: unknown; defaultValue?: unknown } | undefined,
 ): InstallDefaultsState {
 	const entries = Object.entries(defaults);
 	const matchingDefaults = entries.reduce((count, [key, value]) => {
-		const currentValue = inspectSetting(key)?.globalValue;
+		const inspected = inspectSetting(key);
+		const currentValue = inspected?.globalValue;
+
+		if (isDoomMergedCommandListSetting(key) && Array.isArray(value)) {
+			// Install only appends here, so containment is the test rather than equality. A user list
+			// replaces the contributed configuration default outright, so the default only counts
+			// while the user owns nothing — same precedence VS Code applies at read time.
+			const effectiveValue = Array.isArray(currentValue) ? currentValue : inspected?.defaultValue;
+			const allPresent = value.every((entry) => (
+				typeof entry === 'string' && listContainsCommand(effectiveValue, entry)
+			));
+			return allPresent ? count + 1 : count;
+		}
 
 		if (isDoomManagedVimBindingSetting(key) && Array.isArray(currentValue) && Array.isArray(value)) {
 			// Mirror install-time equivalence rules so the dashboard does not report false negatives.

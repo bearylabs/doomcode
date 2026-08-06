@@ -143,7 +143,15 @@
       }
     ],
     "window.restoreWindows": "none",
-    "window.menuBarVisibility": "compact"
+    "window.menuBarVisibility": "compact",
+    "terminal.integrated.commandsToSkipShell": [
+      "doom.whichKeyShow",
+      "doom.whichKeyHide",
+      "doom.triggerKey",
+      "doom.terminalEscapePrefix",
+      "doom.terminalEscapeSpace",
+      "doom.terminalSendEscape"
+    ]
   },
   "doomDashboard": {
     "startupCommandKeyPaths": [
@@ -1516,6 +1524,7 @@
       "terminal.integrated.commandsToSkipShell": [
         "doom.whichKeyShow",
         "doom.whichKeyHide",
+        "doom.triggerKey",
         "doom.terminalEscapePrefix",
         "doom.terminalEscapeSpace",
         "doom.terminalSendEscape"

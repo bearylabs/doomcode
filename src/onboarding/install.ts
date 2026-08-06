@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isDoomMergedCommandListSetting, mergeCommandList } from './skipShell';
 import {
 	getDoomManagedVimBindingConflictKey,
 	getDoomManagedVimBindingSignature,
@@ -151,6 +152,27 @@ function getErrorReason(error: unknown): string {
 	return 'Unknown error';
 }
 
+/** Writes one setting, recording the failure instead of throwing. Returns true when the write landed. */
+async function updateSetting(
+	config: ConfigurationLike,
+	key: string,
+	value: unknown,
+	target: vscode.ConfigurationTarget,
+	failures: ApplyDefaultsFailure[],
+): Promise<boolean> {
+	try {
+		await config.update(key, value, target);
+		return true;
+	} catch (error) {
+		console.warn(`Failed to apply setting '${key}':`, error);
+		failures.push({
+			key,
+			reason: getErrorReason(error),
+		});
+		return false;
+	}
+}
+
 /** Returns true if the user has set this key at any scope — used to skip overwriting intentional user config. */
 export function hasUserOwnedSettingValue(inspected: SettingInspectLike<unknown> | undefined): boolean {
 	if (!inspected) {
@@ -199,15 +221,24 @@ export async function applyDefaultsToConfiguration(
 					continue;
 				}
 
-				try {
-					await config.update(key, merged, target);
+				if (await updateSetting(config, key, merged, target, failures)) {
 					applied++;
-				} catch (error) {
-					console.warn(`Failed to apply setting '${key}':`, error);
-					failures.push({
-						key,
-						reason: getErrorReason(error),
-					});
+				}
+				continue;
+			}
+		}
+
+		if (isDoomMergedCommandListSetting(key)) {
+			// VS Code and the user both contribute entries here, so Doom appends rather than taking the list over.
+			const merged = mergeCommandList(inspected.globalValue, value);
+			if (merged !== undefined) {
+				if (merged === inspected.globalValue) {
+					skipped++;
+					continue;
+				}
+
+				if (await updateSetting(config, key, merged, target, failures)) {
+					applied++;
 				}
 				continue;
 			}
@@ -218,15 +249,8 @@ export async function applyDefaultsToConfiguration(
 			continue;
 		}
 
-		try {
-			await config.update(key, value, target);
+		if (await updateSetting(config, key, value, target, failures)) {
 			applied++;
-		} catch (error) {
-			console.warn(`Failed to apply setting '${key}':`, error);
-			failures.push({
-				key,
-				reason: getErrorReason(error),
-			});
 		}
 	}
 

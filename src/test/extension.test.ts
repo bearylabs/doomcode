@@ -405,6 +405,76 @@ suite('Extension Test Suite', () => {
 		});
 	});
 
+	test('appends Doom commands to an existing commandsToSkipShell list', async () => {
+		const updates: Array<{ key: string; value: unknown; target: vscode.ConfigurationTarget }> = [];
+		const result = await applyDefaultsToConfiguration(
+			{
+				inspect<T>(_key: string) {
+					return { globalValue: ['workbench.action.quickOpen'] as T };
+				},
+				update(key: string, value: unknown, target: vscode.ConfigurationTarget) {
+					updates.push({ key, value, target });
+					return Promise.resolve();
+				},
+			},
+			{ 'terminal.integrated.commandsToSkipShell': ['doom.triggerKey'] },
+		);
+
+		assert.deepStrictEqual(updates, [
+			{
+				key: 'terminal.integrated.commandsToSkipShell',
+				value: ['workbench.action.quickOpen', 'doom.triggerKey'],
+				target: vscode.ConfigurationTarget.Global,
+			},
+		]);
+		assert.strictEqual(result.applied, 1);
+	});
+
+	test('leaves commandsToSkipShell alone when the command is present or opted out', async () => {
+		const runWith = async (globalValue: unknown) => {
+			const updates: string[] = [];
+			const result = await applyDefaultsToConfiguration(
+				{
+					inspect<T>(_key: string) {
+						return { globalValue: globalValue as T };
+					},
+					update(key: string) {
+						updates.push(key);
+						return Promise.resolve();
+					},
+				},
+				{ 'terminal.integrated.commandsToSkipShell': ['doom.triggerKey'] },
+			);
+
+			return { updates, result };
+		};
+
+		// Already installed — re-running install must not duplicate the entry.
+		const present = await runWith(['doom.triggerKey']);
+		assert.deepStrictEqual(present.updates, []);
+		assert.strictEqual(present.result.skipped, 1);
+
+		// The `-command` removal form is a deliberate opt-out, not a missing entry.
+		const optedOut = await runWith(['-doom.triggerKey']);
+		assert.deepStrictEqual(optedOut.updates, []);
+		assert.strictEqual(optedOut.result.skipped, 1);
+	});
+
+	test('marks commandsToSkipShell installed from the contributed default but not from a foreign user list', () => {
+		const evaluate = (inspected: { globalValue?: unknown; defaultValue?: unknown }) => (
+			evaluateInstalledDefaults(
+				{ 'terminal.integrated.commandsToSkipShell': ['doom.triggerKey'] },
+				() => inspected,
+			).isInstalled
+		);
+
+		// Contributed via package.json configurationDefaults, nothing to write.
+		assert.strictEqual(evaluate({ defaultValue: ['doom.triggerKey'] }), true);
+		// A user list replaces that default, so the command is not actually in effect.
+		assert.strictEqual(evaluate({ globalValue: ['other.command'], defaultValue: ['doom.triggerKey'] }), false);
+		assert.strictEqual(evaluate({ globalValue: ['other.command', 'doom.triggerKey'] }), true);
+	});
+
 	test('marks Vim defaults installed when defaults are subset of user array', () => {
 		const installState = evaluateInstalledDefaults(
 			{

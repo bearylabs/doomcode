@@ -7,6 +7,11 @@ import { DoomProjectFilePanel } from '../search/projectFile';
 import { DoomRecentProjectsPanel } from '../search/recentProjects';
 import { DoomWhichKeyBindingsPanel } from '../whichkey/bindingsPanel';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
+import {
+	COMMANDS_TO_SKIP_SHELL_SETTING,
+	DOOM_TRIGGER_KEY_COMMAND,
+	listContainsCommand,
+} from '../onboarding/skipShell';
 
 // ---------------------------------------------------------------------------
 // Shared panel modes
@@ -99,6 +104,14 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			.get<number>('doom.whichKey.idleDelay', 0.5);
 	}
 
+	/** True once a focused terminal forwards `doom.triggerKey` to the workbench instead of the shell. */
+	private triggerKeySkipsShell(): boolean {
+		return listContainsCommand(
+			vscode.workspace.getConfiguration().get(COMMANDS_TO_SKIP_SHELL_SETTING),
+			DOOM_TRIGGER_KEY_COMMAND,
+		);
+	}
+
 	/**
 	 * Arms the panel's display deadline. For editor focus the chord runs through the menu's own key
 	 * queue either way, so this only decides whether the panel is ever seen: a chord completed before
@@ -112,13 +125,18 @@ export class DoomSharedPanel implements vscode.WebviewViewProvider {
 			return;
 		}
 
-		// No delay when another input consumer holds focus. A focused terminal sends plain characters
-		// straight to the shell instead of resolving doom.triggerKey (that would need the command in
-		// terminal.integrated.commandsToSkipShell), and a foreign webview feeds them to its own input.
-		// Opening at once moves focus to the menu webview, after which the host bindings win. Until
-		// then every keystroke of the chord is lost — SPC itself only survives because it arrives as
-		// alt/ctrl+space or the escape-space prefix, which the shell does not claim.
-		if (delay <= 0 || menu.showContext.terminalFocus || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
+		// No delay when another input consumer holds focus and would eat the chord. Opening at once
+		// moves focus to the menu webview, after which the host bindings win; until then every
+		// keystroke is lost — SPC itself only survives because it arrives as alt/ctrl+space or the
+		// escape-space prefix, which those consumers do not claim.
+		//
+		// The terminal is the one case with a way out: with doom.triggerKey in
+		// terminal.integrated.commandsToSkipShell the keys reach the workbench instead of the shell,
+		// so the delay is safe there. Doom installs that setting, but the onboarding flow is opt-in,
+		// hence the check rather than an assumption. A focused foreign webview has no equivalent
+		// escape hatch and feeds the characters to its own input regardless.
+		const terminalWouldEatKeys = menu.showContext.terminalFocus && !this.triggerKeySkipsShell();
+		if (delay <= 0 || terminalWouldEatKeys || menu.showContext.explorerFocused || menu.showContext.webviewFocused) {
 			await menu.show();
 			return;
 		}
