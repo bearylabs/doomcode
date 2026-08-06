@@ -7,14 +7,20 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `Esc` in Vim normal mode now clears search highlighting (`:nohl`), matching Doom's escape hook. With `vim.hlsearch` on, matches from `/` or `?` stayed lit until `:noh` was typed by hand.
+- `doom.triggerKey` is now contributed to `terminal.integrated.commandsToSkipShell`, so chord keys reach the workbench instead of the shell while a terminal has focus. The binding is gated on `whichkeyVisible` and therefore only claims keys during an open chord — ordinary terminal typing is untouched. If you maintain your own `commandsToSkipShell` list, your value replaces the contributed default; run `doom.install` once to have Doom's commands merged into it.
 
 ### Changed
 
 - `Esc` no longer closes the left side bar. 
+- **`doom.whichKey.idleDelay` has changed meaning, and its default moved from `1` to `0.5`.** Keys now always take effect as typed; the delay only decides whether the menu is ever drawn. A chord completed before it lapses executes silently and the panel never appears. If you had set this value deliberately, the behaviour you get from it is not the same as before.
+- The idle delay now applies in the terminal and in the side bar as well. Previously the menu popped open immediately in both, because the keys of a chord would otherwise have been swallowed there.
 
 ### Fixed
 
 - `Esc` now dismisses an open which-key menu instead of closing whichever panel or auxiliary bar happens to be visible. The surface-closing bindings are declared below the which-key binding and VS Code resolves ties by last-definition-wins, so the menu was left hanging; they now carry the `!whichkeyVisible` guard.
+- Chord keys are no longer hijacked by the side bar's own bindings. With the explorer, open-editors, timeline or panel focused, keys such as `d`, `r`, `q`, `o` and `y` ran their view command instead of continuing the chord — the same last-definition-wins tie-break as the `Esc` fix above. Those bindings now stand down while a chord is in flight and behave as before outside one.
+- `SPC` followed by `Esc` during the idle delay no longer pops the menu open anyway. The chord was cleared but the pending display was not cancelled.
+- Keys typed quickly at the start of a chord are no longer lost or applied twice. The menu used to hand ownership of the keyboard from the host bindings to its webview mid-chord, which could not be done atomically; the host bindings now own the whole chord and the webview only draws.
 
 ## [0.9.5] 2026-08-05 **pre-release**
 
