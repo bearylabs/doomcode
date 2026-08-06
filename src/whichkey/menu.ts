@@ -51,12 +51,10 @@ interface ViewState {
 	footerLabel: string;
 	footerPath: string;
 	items: RenderItem[];
-	suppressedKeys: string[];
 }
 
 interface WebviewMessage {
 	index?: number;
-	source?: 'keyboard' | 'mouse';
 	type: 'activate' | 'close' | 'ready';
 }
 
@@ -149,7 +147,6 @@ export function applyTrackedUiContextCommand(
 }
 
 const BLUR_ENABLE_DELAY_MS = 200;
-const SUPPRESS_WINDOW_MS = 150;
 
 /** Maps literal chars to symbolic names matching the webview keydown handler. */
 function normalizeBindingKey(value: string): string {
@@ -692,16 +689,12 @@ export class DoomWhichKeyMenu {
 	private preWhichKeyMultipleEditorGroups = false;
 	private ready = false;
 	private stack: WhichKeyBinding[] = [];
-	private suppressedHostDuplicateKeys: string[] = [];
-	private suppressedDuplicateKeys: string[] = [];
 	private trackedContext: TrackedUiContext = createTrackedUiContext();
 	private panel: vscode.WebviewPanel | undefined;
 	private panelDisposables: vscode.Disposable[] = [];
 	/** Snapshot of the editor grid taken before reshaping, restored verbatim when the menu closes. */
 	private previousLayout: EditorGroupLayout | undefined;
-	/** Ignore the focus-loss fallback until this time — creating the panel steals editor focus once. */
-	private blurGuardUntil = 0;
-	/** Serialises overlapping close triggers (Escape + blur + active-editor-change) into one teardown. */
+	/** Serialises overlapping close triggers (Escape + blur + dispose) into one teardown. */
 	private closing = false;
 
 	constructor(packageJson: PackageJsonWithKeybindings) {
@@ -752,12 +745,6 @@ export class DoomWhichKeyMenu {
 	 * once the panel is up nothing else is listening, so the drain has to be kicked from here.
 	 */
 	queueKey(key: string): void {
-		const suppressedIndex = this.suppressedHostDuplicateKeys.indexOf(key);
-		if (suppressedIndex >= 0) {
-			this.suppressedHostDuplicateKeys.splice(suppressedIndex, 1);
-			return;
-		}
-
 		this.hostPendingKeys.push(key);
 		const resolvers = this.nextKeyResolvers.splice(0);
 		resolvers.forEach((r) => r());
@@ -765,16 +752,6 @@ export class DoomWhichKeyMenu {
 		if (this.panel && this.ready) {
 			this.drainPendingKey();
 		}
-	}
-
-	/** Marks a host-consumed key so one late duplicate from focus handoff can be ignored by the webview. */
-	private suppressDuplicateKey(key: string): void {
-		this.suppressedDuplicateKeys.push(key);
-	}
-
-	/** Marks a webview-consumed keyboard key so one late duplicate from VS Code host routing is ignored. */
-	private suppressHostDuplicateKey(key: string): void {
-		this.suppressedHostDuplicateKeys.push(key);
 	}
 
 	/** Resolves on the next call to queueKey — used by the idle-delay loop to wake on key arrival. */
@@ -816,7 +793,6 @@ export class DoomWhichKeyMenu {
 			}
 
 			this.hostPendingKeys.shift();
-			this.suppressDuplicateKey(key);
 
 			if (binding.type === 'bindings') {
 				stack.push(binding);
@@ -860,8 +836,6 @@ export class DoomWhichKeyMenu {
 	prepareShow(showContext?: Partial<ShowContext>): void {
 		this.isShowing = true;
 		this.hostPendingKeys = [];
-		this.suppressedHostDuplicateKeys = [];
-		this.suppressedDuplicateKeys = [];
 		this.preWhichKeyEditorGroup = vscode.window.tabGroups.activeTabGroup.viewColumn;
 		// Snapshot before the menu adds its own editor group so multipleEditorGroups reflects the
 		// real group count for the whole session (used by the H/J/K/L conditional bindings).
@@ -914,10 +888,6 @@ export class DoomWhichKeyMenu {
 
 		this.ready = false;
 		this.currentItems = [];
-		// preserveFocus only defers the focus steal (~340ms), it does not prevent it, so this guard
-		// no longer covers the whole settle window — see the undefined-editor check in
-		// registerPanelListeners. Kept until the handoff code is removed.
-		this.blurGuardUntil = Date.now() + BLUR_ENABLE_DELAY_MS;
 
 		const panel = vscode.window.createWebviewPanel(
 			DoomWhichKeyMenu.viewType,
@@ -967,7 +937,7 @@ export class DoomWhichKeyMenu {
 		await vscode.commands.executeCommand('vscode.setEditorLayout', buildMenuLayout(previous, measured.totalHeight));
 	}
 
-	/** Wires panel-scoped listeners: message dispatch, dispose-driven close, and the focus-loss fallback. */
+	/** Wires panel-scoped listeners: message dispatch and dispose-driven close. */
 	private registerPanelListeners(panel: vscode.WebviewPanel): void {
 		this.panelDisposables.push(
 			panel.onDidDispose(() => {
@@ -979,16 +949,6 @@ export class DoomWhichKeyMenu {
 			}),
 			panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
 				void this.handleMessage(message);
-			}),
-			vscode.window.onDidChangeActiveTextEditor((editor) => {
-				// `undefined` is the menu's own arrival: preserveFocus only defers the focus steal,
-				// so ~340ms in the panel goes active and the active editor drops to undefined. That
-				// lands past blurGuardUntil and used to close the menu on open. Only a real editor
-				// becoming active means the user navigated away, which is what this fallback is for;
-				// leaving to a terminal/explorer is still covered by the webview's blur close.
-				if (editor && this.isShowing && Date.now() > this.blurGuardUntil) {
-					void this.close();
-				}
 			}),
 		);
 	}
@@ -1090,10 +1050,6 @@ export class DoomWhichKeyMenu {
 			return;
 		}
 
-		if (message.source === 'keyboard') {
-			this.suppressHostDuplicateKey(binding.key);
-		}
-
 		if (binding.type === 'bindings') {
 			this.stack.push(binding);
 			this.render();
@@ -1150,7 +1106,6 @@ export class DoomWhichKeyMenu {
 			footerLabel,
 			footerPath,
 			items: this.currentItems,
-			suppressedKeys: this.suppressedDuplicateKeys.splice(0),
 		};
 
 		void this.panel.webview.postMessage({
@@ -1174,7 +1129,6 @@ export class DoomWhichKeyMenu {
 		const key = this.hostPendingKeys.shift()!;
 		const index = this.currentItems.findIndex((item) => item.key === key);
 		if (index >= 0) {
-			this.suppressDuplicateKey(key);
 			void this.handleMessage({ type: 'activate', index });
 		}
 	}
@@ -1440,7 +1394,7 @@ export class DoomWhichKeyMenu {
 				button.className = item.isGroup ? 'item group' : 'item';
 				button.type = 'button';
 				button.addEventListener('click', () => {
-					vscode.postMessage({ type: 'activate', index, source: 'mouse' });
+					vscode.postMessage({ type: 'activate', index });
 				});
 				button.innerHTML = \`
 					<span class="key">\${item.key}</span>
