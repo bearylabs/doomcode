@@ -2267,6 +2267,132 @@
         "when": "whichkeyVisible"
       },
       {
+        "key": "-",
+        "command": "doom.triggerKey",
+        "args": "-",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": ";",
+        "command": "doom.triggerKey",
+        "args": ";",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "'",
+        "command": "doom.triggerKey",
+        "args": "'",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "\\",
+        "command": "doom.triggerKey",
+        "args": "\\",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+1",
+        "command": "doom.triggerKey",
+        "args": "!",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+2",
+        "command": "doom.triggerKey",
+        "args": "@",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+3",
+        "command": "doom.triggerKey",
+        "args": "#",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+4",
+        "command": "doom.triggerKey",
+        "args": "$",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+5",
+        "command": "doom.triggerKey",
+        "args": "%",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+6",
+        "command": "doom.triggerKey",
+        "args": "^",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+7",
+        "command": "doom.triggerKey",
+        "args": "&",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+9",
+        "command": "doom.triggerKey",
+        "args": "(",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+0",
+        "command": "doom.triggerKey",
+        "args": ")",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+-",
+        "command": "doom.triggerKey",
+        "args": "_",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+=",
+        "command": "doom.triggerKey",
+        "args": "+",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+[",
+        "command": "doom.triggerKey",
+        "args": "{",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+]",
+        "command": "doom.triggerKey",
+        "args": "}",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+\\",
+        "command": "doom.triggerKey",
+        "args": "|",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+'",
+        "command": "doom.triggerKey",
+        "args": "\"",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+/",
+        "command": "doom.triggerKey",
+        "args": "?",
+        "when": "whichkeyVisible"
+      },
+      {
+        "key": "shift+`",
+        "command": "doom.triggerKey",
+        "args": "~",
+        "when": "whichkeyVisible"
+      },
+      {
         "key": "escape",
         "command": "doom.whichKeyHide",
         "when": "whichkeyVisible"
