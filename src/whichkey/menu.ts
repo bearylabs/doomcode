@@ -897,7 +897,7 @@ export class DoomWhichKeyMenu {
 	 */
 	async show(): Promise<void> {
 		if (this.panel) {
-			this.panel.reveal(this.panel.viewColumn, false);
+			this.panel.reveal(this.panel.viewColumn, true);
 			this.render();
 			return;
 		}
@@ -906,14 +906,15 @@ export class DoomWhichKeyMenu {
 
 		this.ready = false;
 		this.currentItems = [];
-		// Creating the panel steals focus from the active text editor, firing onDidChangeActiveTextEditor
-		// once — ignore the fallback during this settle window so the menu doesn't close itself on open.
+		// preserveFocus only defers the focus steal (~340ms), it does not prevent it, so this guard
+		// no longer covers the whole settle window — see the undefined-editor check in
+		// registerPanelListeners. Kept until the handoff code is removed.
 		this.blurGuardUntil = Date.now() + BLUR_ENABLE_DELAY_MS;
 
 		const panel = vscode.window.createWebviewPanel(
 			DoomWhichKeyMenu.viewType,
 			'Doom Which Key',
-			{ viewColumn: targetColumn, preserveFocus: false },
+			{ viewColumn: targetColumn, preserveFocus: true },
 			{
 				enableScripts: true,
 				retainContextWhenHidden: true,
@@ -971,8 +972,13 @@ export class DoomWhichKeyMenu {
 			panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
 				void this.handleMessage(message);
 			}),
-			vscode.window.onDidChangeActiveTextEditor(() => {
-				if (this.isShowing && Date.now() > this.blurGuardUntil) {
+			vscode.window.onDidChangeActiveTextEditor((editor) => {
+				// `undefined` is the menu's own arrival: preserveFocus only defers the focus steal,
+				// so ~340ms in the panel goes active and the active editor drops to undefined. That
+				// lands past blurGuardUntil and used to close the menu on open. Only a real editor
+				// becoming active means the user navigated away, which is what this fallback is for;
+				// leaving to a terminal/explorer is still covered by the webview's blur close.
+				if (editor && this.isShowing && Date.now() > this.blurGuardUntil) {
 					void this.close();
 				}
 			}),
