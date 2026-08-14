@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.7] 2026-08-14 **pre-release**
+
+### Changed
+
+- Terminals are restored on reload again — Doom no longer ships `terminal.integrated.enablePersistentSessions: false` as a default. Set it in your own settings if you preferred terminals not coming back.
+
+### Fixed
+
+- `SPC o t` no longer lands in an editor-group terminal after a window reload. Editor terminals were recognised by name, and VS Code does not reliably restore terminal names; they are now identified by their editor tab type instead.
+- `SPC w j` from the bottom-most editor terminal descends into the panel terminal again after a reload, for the same reason.
+
 ## [0.9.6] 2026-08-06 **pre-release**
 
 ### Added

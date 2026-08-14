@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { moveTerminalEditorToGroup, revealExistingTab } from '../buffers/openEditors';
+import { hasPanelTerminal } from '../terminal/terminalCommands';
 import { DoomWhichKeyMenu } from '../whichkey/menu';
 import { focusWindowDown, focusWindowLeft, focusWindowRight, focusWindowUp } from './mru';
 
@@ -65,8 +66,8 @@ export function resolveAdjacentEditorColumn(
  * Pure function: `SPC w j` from a bottom-most editor terminal should descend into the panel
  * terminal, but VS Code has no API to focus a terminal by location when an editor terminal and
  * a panel terminal coexist — `focusPanel`/`terminal.focus` target the editor terminal and leave
- * the which-key view stuck in the panel. The `doom.openPanelTerminal` primitive selects the panel
- * terminal by name instead, so route to it whenever both terminals are present.
+ * the which-key view stuck in the panel. The `doom.openPanelTerminal` primitive reveals the panel
+ * itself, so route to it whenever both terminals are present.
  */
 export function resolveWindowDownAction(
 	isEditorTerminal: boolean,
@@ -209,16 +210,7 @@ export function register(context: vscode.ExtensionContext, deps: WindowCommandDe
 			const activeGroup = vscode.window.tabGroups.activeTabGroup;
 			const isEditorTerminal = activeGroup.activeTab?.input instanceof vscode.TabInputTerminal;
 
-			// A panel terminal is any terminal not represented as an editor-area terminal tab.
-			const editorTerminalLabels = new Set(
-				vscode.window.tabGroups.all
-					.flatMap(g => g.tabs)
-					.filter(t => t.input instanceof vscode.TabInputTerminal)
-					.map(t => t.label)
-			);
-			const hasPanelTerminal = vscode.window.terminals.some(t => !editorTerminalLabels.has(t.name));
-
-			if (resolveWindowDownAction(isEditorTerminal, hasPanelTerminal) === 'panelTerminal') {
+			if (resolveWindowDownAction(isEditorTerminal, hasPanelTerminal()) === 'panelTerminal') {
 				// Descend into the panel terminal only when the editor terminal is the bottom-most group.
 				// If a group exists below, focusBelowGroup moves there and we keep normal down behaviour.
 				const before = activeGroup.viewColumn;
