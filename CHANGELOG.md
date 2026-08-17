@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.8] 2026-08-17 **pre-release**
+
+### Added
+
+- `doom.projects.openInNewWindow` (default `false`) — with it on, a project picked in the recent-projects picker (`SPC p p`) opens in a new VS Code window instead of replacing the current one. A window with no project open always reuses itself regardless of the setting, so the `SPC SPC` fallback picker never leaves an empty window stranded behind the new one.
+
 ## [0.9.7] 2026-08-14 **pre-release**
 
 ### Changed

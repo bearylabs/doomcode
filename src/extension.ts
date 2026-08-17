@@ -29,7 +29,7 @@ import { DOOM_STALE_VIM_BINDING_SETTINGS } from './onboarding/vimBindings';
 import { DoomSharedPanel } from './panel/shared';
 import { DoomFindFilePanel } from './search/findFile';
 import { DoomProjectFilePanel } from './search/projectFile';
-import { DoomRecentProjectsPanel } from './search/recentProjects';
+import { DoomRecentProjectsPanel, getProjectOpenOptions } from './search/recentProjects';
 import { DoomSearchPanel } from './search/search';
 import { SelectionHistory } from './search/selectionHistory';
 import { WorkspaceFileIndex } from './search/workspaceFileIndex';
@@ -438,10 +438,13 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(workspaceFileIndex);
 	const searchPanel = new DoomSearchPanel();
 
-	/** Opens a project folder in the current window and suppresses the dashboard on the next activation. */
+	/**
+	 * Opens a project folder — in the current window, or a new one per `doom.projects.openInNewWindow` —
+	 * and suppresses the dashboard on the next activation.
+	 */
 	const openProjectAndSkipDashboard = async (projectUri: vscode.Uri): Promise<void> => {
 		await context.globalState.update(SKIP_DASHBOARD_KEY, true);
-		await vscode.commands.executeCommand('vscode.openFolder', projectUri, { forceReuseWindow: true });
+		await vscode.commands.executeCommand('vscode.openFolder', projectUri, getProjectOpenOptions());
 	};
 	const whichKeyMenu = new DoomWhichKeyMenu(context.extension.packageJSON as { contributes?: { keybindings?: unknown[] } });
 	const dashboard = new DoomDashboard(context.extensionUri);

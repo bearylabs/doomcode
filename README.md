@@ -159,6 +159,8 @@ This creates a clean primary editor area with file navigation and history in the
 
 If the dashboard opening on activation becomes noise, set `doom.dashboard.openOnActivation` to `false`.
 
+To have `SPC p p` open the picked project in a new VS Code window rather than replacing the current one, set `doom.projects.openInNewWindow` to `true`. A window with no project open always reuses itself, so picking a project from the `SPC SPC` fallback never leaves an empty window behind.
+
 ### Step 4: Clean Up Your UI (Recommended)
 
 The configuration assumes a **clean UI**. For best results:

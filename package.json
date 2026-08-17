@@ -1570,6 +1570,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Open Doom Code's start page whenever the extension activates. The page contains manual install and cleanup actions, repository links, and the current changelog."
+        },
+        "doom.projects.openInNewWindow": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Open a project picked from Doom Code's recent-projects picker (`SPC p p`) in a new VS Code window instead of replacing the current one. A window with no project open always reuses itself, so an empty window is never left behind."
         }
       }
     },

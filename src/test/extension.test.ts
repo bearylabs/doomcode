@@ -20,6 +20,7 @@ import {
 	hasEquivalentDoomManagedVimBinding,
 	isDoomManagedVimBindingSetting,
 } from '../onboarding/vimBindings';
+import { resolveProjectOpenOptions } from '../search/recentProjects';
 import {
 	focusWindowLeft,
 	focusWindowRight,
@@ -550,6 +551,17 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(detectDashboardMode(undefined, '0.2.0'), 'welcome');
 		assert.strictEqual(detectDashboardMode('0.1.2', '0.2.0'), 'update');
 		assert.strictEqual(detectDashboardMode('0.2.0', '0.2.0'), 'startup');
+	});
+
+	test('routes project opening to a new window only when one is worth keeping', () => {
+		// Setting off → always replace the current window, as before.
+		assert.deepStrictEqual(resolveProjectOpenOptions(false, true), { forceReuseWindow: true });
+		assert.deepStrictEqual(resolveProjectOpenOptions(false, false), { forceReuseWindow: true });
+		// Setting on with a project open → open alongside it.
+		assert.deepStrictEqual(resolveProjectOpenOptions(true, true), { forceNewWindow: true });
+		// Setting on but the window is empty (the SPC SPC fallback picker) → reuse it rather than
+		// stranding an empty window behind the new one.
+		assert.deepStrictEqual(resolveProjectOpenOptions(true, false), { forceReuseWindow: true });
 	});
 
 	test('routes window delete by focus and terminal contents', () => {

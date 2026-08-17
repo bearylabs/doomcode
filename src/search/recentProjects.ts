@@ -54,6 +54,33 @@ interface RecentProjectState {
 }
 
 // ---------------------------------------------------------------------------
+// Window placement
+// ---------------------------------------------------------------------------
+
+export const OPEN_PROJECT_IN_NEW_WINDOW_SETTING = 'doom.projects.openInNewWindow';
+
+/**
+ * Window placement flags for `vscode.openFolder`. A window with no project open always
+ * reuses itself — opening a new one would strand the empty window behind it.
+ */
+export function resolveProjectOpenOptions(
+	openInNewWindow: boolean,
+	hasOpenWorkspace: boolean,
+): { forceNewWindow: true } | { forceReuseWindow: true } {
+	return openInNewWindow && hasOpenWorkspace
+		? { forceNewWindow: true }
+		: { forceReuseWindow: true };
+}
+
+/** Reads the user's new-window preference and maps it onto `vscode.openFolder` options. */
+export function getProjectOpenOptions(): { forceNewWindow: true } | { forceReuseWindow: true } {
+	return resolveProjectOpenOptions(
+		vscode.workspace.getConfiguration().get<boolean>(OPEN_PROJECT_IN_NEW_WINDOW_SETTING, false),
+		Boolean(vscode.workspace.workspaceFolders?.length),
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Loader (exported for reuse outside this panel)
 // ---------------------------------------------------------------------------
 
@@ -238,7 +265,7 @@ export class DoomRecentProjectsPanel extends DoomWebviewController {
 		if (this.onProjectSelected) {
 			await this.onProjectSelected(entry.item);
 		} else {
-			await vscode.commands.executeCommand('vscode.openFolder', entry.item.uri, { forceReuseWindow: true });
+			await vscode.commands.executeCommand('vscode.openFolder', entry.item.uri, getProjectOpenOptions());
 		}
 	}
 
